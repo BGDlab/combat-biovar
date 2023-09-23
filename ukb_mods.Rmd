@@ -1,0 +1,23 @@
+---
+title: "UKB Models"
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float: true
+date: '2023-09-23'
+---
+
+## Setup
+
+```{r setup, include=FALSE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+if(!require('pacman')) {
+  install.packages('pacman')
+}
+pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, plyr, shinySIR, patchwork, ggstatsplot, qqplotr, arrangements, purrr, parallel, rlang)
+```
+
+## Load Data
+
+## EDA
