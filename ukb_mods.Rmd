@@ -67,14 +67,15 @@ ggplot(data=ukb_df, aes(x=log_age, y=GMV)) +
 mean.tbv.sim <- function(df, s, ageRange){
   tbv_list <- list()
   for (i in ageRange){
-      tbv.val <- df %>%
+      tbv.df <- df %>%
         dplyr::filter(sex == s) %>%
-        sort(log_age) %>%
-        dplyr::filter(log_age >= (i+0.01), log_age <= (i-0.01)) %>%
-        mean(TBV)
+        arrange(log_age) %>%
+        dplyr::filter(log_age >= (i-0.005) & log_age <= (i+0.005)) %>%
+        summarize(m = mean(TBV, na.rm = TRUE))
+      tbv.val <-tbv.df$m
       tbv_list <- append(tbv_list, tbv.val)
   }
-  return(tbv_list)
+  return(unlist(tbv_list))
 }
 
 sim.data.ukb <- function(df){
@@ -110,7 +111,7 @@ sim.data.ukb <- function(df){
 plot_singlestudy_centiles <- function(gamlssModel, phenotype, df, color_var)
 {
   #use functions in GAMLSS repo plotting_functions.R to sim and predict
-  sim <- sim.data(df) #simulate data
+  sim <- sim.data.ukb(df) #simulate data
   pred <- centile_predict(gamlssModel, sim$dataToPredictM, sim$dataToPredictF, sim$ageRange, sim$desiredCentiles) #predict centiles
   
   #extract vals
@@ -128,16 +129,16 @@ plot_singlestudy_centiles <- function(gamlssModel, phenotype, df, color_var)
   sampleCentileFan <- ggplot() +
     geom_point(aes(x=age_col, y=yvar, color=color_col), alpha=0.3) +
     scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) + 
-    geom_line(aes(x=ages, y=pred$fanCentiles_M[[1]]), alpha=0.1, linetype="dashed") +
-    geom_line(aes(x=ages, y=pred$fanCentiles_M[[3]]), alpha=0.3, linetype="dashed") +
-    geom_line(aes(x=ages, y=pred$fanCentiles_M[[5]]), linetype="dashed", color="#40004BFF") +
-    geom_line(aes(x=ages, y=pred$fanCentiles_M[[7]]), alpha=0.3, linetype="dashed") +
-    geom_line(aes(x=ages, y=pred$fanCentiles_M[[9]]), alpha=0.1, linetype="dashed") +
-    geom_line(aes(x=ages, y=pred$fanCentiles_F[[1]]), alpha=0.1, linetype="longdash") +
-    geom_line(aes(x=ages, y=pred$fanCentiles_F[[3]]), alpha=0.3, linetype="longdash") +
-    geom_line(aes(x=ages, y=pred$fanCentiles_F[[5]]), linetype="longdash", color="#00441BFF") +
-    geom_line(aes(x=ages, y=pred$fanCentiles_F[[7]]), alpha=0.3, linetype="longdash") +
-    geom_line(aes(x=ages, y=pred$fanCentiles_F[[9]]), alpha=0.1, linetype="longdash") +
+    geom_line(aes(x=ages, y=pred$fanCentiles_M[[1]]), alpha=0.1) +
+    geom_line(aes(x=ages, y=pred$fanCentiles_M[[2]]), alpha=0.3) +
+    geom_line(aes(x=ages, y=pred$fanCentiles_M[[3]]), color="#40004BFF") +
+    geom_line(aes(x=ages, y=pred$fanCentiles_M[[4]]), alpha=0.3) +
+    geom_line(aes(x=ages, y=pred$fanCentiles_M[[5]]), alpha=0.1) +
+    geom_line(aes(x=ages, y=pred$fanCentiles_F[[1]]), alpha=0.1) +
+    geom_line(aes(x=ages, y=pred$fanCentiles_F[[2]]), alpha=0.3) +
+    geom_line(aes(x=ages, y=pred$fanCentiles_F[[3]]), color="#00441BFF") +
+    geom_line(aes(x=ages, y=pred$fanCentiles_F[[4]]), alpha=0.3) +
+    geom_line(aes(x=ages, y=pred$fanCentiles_F[[5]]), alpha=0.1) +
     geom_point(aes(x=male_peak_age, y=pred$peak_M), color="#40004BFF", size=3) +
     geom_point(aes(x=female_peak_age, y=pred$peak_F), color="#00441BFF", size=3) +
     labs(title=deparse(substitute(gamlssModel))) +
@@ -192,7 +193,7 @@ summary(m4.tbv)
 ```
 
 ```{r}
-plot_singlestudy_centiles(m4, "GMV", ukb_df, sex_char)
+plot_singlestudy_centiles(m4, "GMV", ukb_df, "sex")
 
 ```
 
