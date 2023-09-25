@@ -15,9 +15,196 @@ knitr::opts_chunk$set(echo = TRUE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, plyr, shinySIR, patchwork, ggstatsplot, qqplotr, arrangements, purrr, parallel, rlang)
+pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider)
+
+#pull plotting functions from github
+plot.func.url <- "https://raw.githubusercontent.com/BGDlab/GAMLSS/main/plotting_functions.R?token=GHSAT0AAAAAACGAYP4HZWCTHACGUM6KG2PSZIQUPBA"
+Sys.setenv(GITHUB_PAT = "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") #if needed to access private BGDlab GAMLSS repo
+source_url(plot.func.url)
 ```
 
 ## Load Data
 
+Load UKB Data from Jakob
+
+```{r}
+cn_data <- fread(file="data/lifespan_dataset_dkatlas_CNonly.csv")
+#table(cn_data$study)
+```
+
+Filter
+
+```{r}
+ukb_df <- cn_data %>%
+  dplyr::filter(study == "UKB") %>%
+  mutate(age_yrs = round(age_days/365.25),
+         log_age = log(age_days, base=10),
+         TBV=(sGMV+GMV+WMV+Ventricles),
+         fs_version = as.factor(fs_version),
+         sex = as.factor(sex),
+         sex_int = as.numeric(case_when(sex == "Male" ~ 0,
+                                        sex == "Female" ~ 1)),
+         sex.log_age = sex_int * log_age) %>%
+  na.omit() #1 subj has 1 missing val
+
+skim(ukb_df)
+n_unique(ukb_df$participant) == nrow(ukb_df) #no duplicate subj
+```
+
 ## EDA
+
+```{r}
+ggplot(data=ukb_df, aes(x=age_yrs)) +
+  geom_histogram(aes(fill=sex_char), alpha=0.6, position="identity")
+
+ggplot(data=ukb_df, aes(x=log_age, y=GMV)) +
+  geom_point(aes(color=sex_char), alpha=0.6)
+```
+
+## Basic Plot Function
+
+```{r}
+mean.tbv.sim <- function(df, s, ageRange){
+  tbv_list <- list()
+  for (i in ageRange){
+      tbv.val <- df %>%
+        dplyr::filter(sex == s) %>%
+        sort(log_age) %>%
+        dplyr::filter(log_age >= (i+0.01), log_age <= (i-0.01)) %>%
+        mean(TBV)
+      tbv_list <- append(tbv_list, tbv.val)
+  }
+  return(tbv_list)
+}
+
+sim.data.ukb <- function(df){
+  minAge <- min(df$log_age)
+  maxAge <- max(df$log_age)
+  ageRange <- seq(minAge, maxAge, 0.005)  # generate an age range with increments of 0.005
+  
+  #sim data
+  dataToPredictM <- data.frame(log_age=ageRange,
+                               sex=c(rep(as.factor("Male"), length(ageRange))),
+                               fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
+                               study=c(as.factor(rep(Mode(df$study), length(ageRange)))),
+                               sex.log_age=c(rep(0, length(ageRange))))
+  dataToPredictM$TBV <- mean.tbv.sim(df, "Male", ageRange)
+  
+  dataToPredictF <- data.frame(log_age=ageRange,
+                               sex=c(rep(as.factor("Female"), length(ageRange))),
+                               fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
+                               study=c(as.factor(rep(Mode(df$study), length(ageRange)))),
+                               sex.log_age=ageRange)
+  dataToPredictF$TBV <- mean.tbv.sim(df, "Female", ageRange)
+  
+  # List of centiles for the fan plot
+  desiredCentiles <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+  
+  # return
+  sim <- list(ageRange, dataToPredictM, dataToPredictF, desiredCentiles)
+  names(sim) <- c("ageRange", "dataToPredictM", "dataToPredictF", "desiredCentiles")
+  return(sim)
+}
+
+
+plot_singlestudy_centiles <- function(gamlssModel, phenotype, df, color_var)
+{
+  #use functions in GAMLSS repo plotting_functions.R to sim and predict
+  sim <- sim.data(df) #simulate data
+  pred <- centile_predict(gamlssModel, sim$dataToPredictM, sim$dataToPredictF, sim$ageRange, sim$desiredCentiles) #predict centiles
+  
+  #extract vals
+  ages <- sim$ageRange
+  age_col <- df$log_age
+  male_peak_age <- pred$peak_age_M
+  female_peak_age <- pred$peak_age_F
+  unit_text <- "(log(years))"
+  
+  #plot!
+  #sometimes df[,get()] works, sometimes not found...????
+  yvar <- df[[phenotype]]
+  color_col <- df[[color_var]]
+  
+  sampleCentileFan <- ggplot() +
+    geom_point(aes(x=age_col, y=yvar, color=color_col), alpha=0.3) +
+    scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) + 
+    geom_line(aes(x=ages, y=pred$fanCentiles_M[[1]]), alpha=0.1, linetype="dashed") +
+    geom_line(aes(x=ages, y=pred$fanCentiles_M[[3]]), alpha=0.3, linetype="dashed") +
+    geom_line(aes(x=ages, y=pred$fanCentiles_M[[5]]), linetype="dashed", color="#40004BFF") +
+    geom_line(aes(x=ages, y=pred$fanCentiles_M[[7]]), alpha=0.3, linetype="dashed") +
+    geom_line(aes(x=ages, y=pred$fanCentiles_M[[9]]), alpha=0.1, linetype="dashed") +
+    geom_line(aes(x=ages, y=pred$fanCentiles_F[[1]]), alpha=0.1, linetype="longdash") +
+    geom_line(aes(x=ages, y=pred$fanCentiles_F[[3]]), alpha=0.3, linetype="longdash") +
+    geom_line(aes(x=ages, y=pred$fanCentiles_F[[5]]), linetype="longdash", color="#00441BFF") +
+    geom_line(aes(x=ages, y=pred$fanCentiles_F[[7]]), alpha=0.3, linetype="longdash") +
+    geom_line(aes(x=ages, y=pred$fanCentiles_F[[9]]), alpha=0.1, linetype="longdash") +
+    geom_point(aes(x=male_peak_age, y=pred$peak_M), color="#40004BFF", size=3) +
+    geom_point(aes(x=female_peak_age, y=pred$peak_F), color="#00441BFF", size=3) +
+    labs(title=deparse(substitute(gamlssModel))) +
+    theme(legend.title = element_blank())+
+    xlab(paste("Age at Scan", unit_text)) +
+    ylab(deparse(substitute(phenotype)))
+  
+  print(sampleCentileFan)
+}
+```
+
+## Global Mod Fitting
+
+Try using `stepGAICALL.A()`
+
+```{r}
+m1 <- gamlss(formula = GMV ~ pb(log_age) + sex_char + fs_version + pb(log_age):sex_char,
+                       sigma.formula = ~  pb(log_age) + sex_char,
+                       nu.formula = ~ 1,
+                       control = gamlss.control(n.cyc = 200), 
+                       family = BCCG, data=ukb_df, trace = FALSE)
+
+m2 <- stepGAICAll.A(m1, scope=list(lower=~1, upper=~pb(log_age) + sex_char + fs_version + pb(log_age):sex_char), k=2) #AIC
+
+m2
+summary(m2)
+```
+
+seeing if things change when i hard-code a sex*age interaction term
+
+```{r}
+m3 <- gamlss(formula = GMV ~ pb(log_age) + sex + fs_version + pb(sex.log_age),
+                       sigma.formula = ~  pb(log_age) + sex,
+                       nu.formula = ~ 1,
+                       control = gamlss.control(n.cyc = 200), 
+                       family = BCCG, data=ukb_df, trace = FALSE)
+m4 <- stepGAICAll.A(m3, scope=list(lower=~1, upper=~pb(log_age) + sex + fs_version + pb(sex.log_age)), k=2) #AIC
+
+summary(m4)
+```
+
+Seems like stepGAICAll handles combined sex.log_age term better than an interaction
+Try adding TBV
+```{r}
+m3.tbv <- gamlss(formula = GMV ~ pb(log_age) + sex + fs_version + pb(sex.log_age) + pb(TBV),
+                       sigma.formula = ~  pb(log_age) + sex,
+                       nu.formula = ~ 1,
+                       control = gamlss.control(n.cyc = 200), 
+                       family = BCCG, data=ukb_df, trace = FALSE)
+m4.tbv <- stepGAICAll.A(m3, scope=list(lower=~1, upper=~pb(log_age) + sex + fs_version + pb(sex.log_age) + pb(TBV)), k=2) #AIC
+summary(m4.tbv)
+```
+
+```{r}
+plot_singlestudy_centiles(m4, "GMV", ukb_df, sex_char)
+
+```
+
+Let's look at diagnostics
+```{r}
+plot(m4)
+wp(m4, xvar=log_age, n.inter=4) #leptokurtosis (tails fo fitted distribution too light)
+dtop(m4)
+rqres.plot(m4)
+
+plot(m4.tbv)
+wp(m4.tbv, xvar=log_age, n.inter=4) #U-shape: fitted skewness too low
+dtop(m4.tbv)
+rqres.plot(m4.tbv)
+```
