@@ -48,6 +48,6 @@ do
 	echo "Rscript --save $mod_script $data_csv $pheno $gamlss_dir" > $bash_script
 
 	#qsub bash script
-	#qsub -N ${pheno} -o $bash_dir/${pheno}_out.txt -e $bash_dir/${pheno}_err.txt $bash_script
+	qsub -N ${pheno} -o $bash_dir/${pheno}_out.txt -e $bash_dir/${pheno}_err.txt $bash_script
 
 done < $pheno_list
