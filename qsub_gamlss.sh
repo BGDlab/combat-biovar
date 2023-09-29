@@ -4,7 +4,7 @@
 
 #######################################################################################
 # SET PATHS
-base=/Users/megardn/Desktop/BGD_Repos/combat_biovar #base path
+base=/cbica/home/gardnerm/combat-biovar #base path
 data_csv=$base/data/ukb_CN_data.csv #path to csv with CLEANED DATA (no duplicates, etc)
 pheno_list=$base/phenotype_list.txt #path to .txt file listing phenotypes (global & regional)
 mod_script=$base/fit_ukb_mod.R #path to .R script
