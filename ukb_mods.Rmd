@@ -54,6 +54,10 @@ n_unique(ukb_df$participant) == nrow(ukb_df) #no duplicate subj
 
 #write data
 write_csv(ukb_df, file="data/ukb_CN_data.csv")
+
+col_list <- colnames(ukb_df)
+pheno_list <- col_list[grepl("^lh_|^rh_|^GMV$|^WMV$|^sGMV$|^Ventricles$", col_list)]
+writeLines(pheno_list, con = "phenotype_list.txt")
 ```
 
 ## EDA
@@ -199,7 +203,7 @@ m3.tbv <- gamlss(formula = GMV ~ pb(age_days) + sex + fs_version + pb(sex.age) +
                        nu.formula = ~ 1,
                        control = gamlss.control(n.cyc = 200), 
                        family = BCCG, data=ukb_df, trace = FALSE)
-m4.tbv <- stepGAICAll.A(m3, scope=list(lower=~1, upper=~pb(age_days) + sex + fs_version + pb(sex.age) + pb(TBV)), k=2) #AIC
+m4.tbv <- stepGAICAll.A(m3, scope=list(lower=~1, upper=~pb(age_days) + sex + fs_version + pb(sex.age) + pb(TBV)), k=2, glim.control(cyc=100)) #AIC
 summary(m4.tbv)
 ```
 
