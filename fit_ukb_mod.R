@@ -5,6 +5,7 @@ set.seed(12345)
 #LOAD PACKAGES
 library(gamlss)
 library(dplyr)
+library(data.table)
 
 #GET ARTS
 args <- commandArgs(trailingOnly = TRUE)
