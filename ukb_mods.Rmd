@@ -51,13 +51,39 @@ ukb_df <- cn_data %>%
 
 skim(ukb_df)
 n_unique(ukb_df$participant) == nrow(ukb_df) #no duplicate subj
+```
 
-#write data
-write_csv(ukb_df, file="data/ukb_CN_data.csv")
+Write lists of phenotypes
 
+```{r}
 col_list <- colnames(ukb_df)
 pheno_list <- col_list[grepl("^lh_|^rh_|^GMV$|^WMV$|^sGMV$|^Ventricles$", col_list)]
-writeLines(pheno_list, con = "phenotype_list.txt")
+length(pheno_list) #total number of models to run
+
+#split by measure type (Vol, SA, CT)
+vol_list <- col_list[grepl("^lh_Vol|^rh_Vol|^GMV$|^WMV$|^sGMV$|^Ventricles$", col_list)]
+writeLines(vol_list, con = "pheno_lists/Vol_list.txt")
+
+sa_list <- col_list[grepl("^lh_SA|^rh_SA", col_list)]
+writeLines(sa_list, con = "pheno_lists/SA_list.txt")
+
+ct_list <- col_list[grepl("^lh_CT|^rh_CT", col_list)]
+writeLines(ct_list, con = "pheno_lists/CT_list.txt")
+```
+
+Add brainwide phenotypes!
+Summing across regions for volumes (rather than summing GMV, sGMV, etc) for consistency with SA and CT
+
+```{r}
+vol_list_regions <- col_list[grepl("^lh_Vol|^rh_Vol", col_list)]
+
+ukb_df_totals <- ukb_df %>%
+  mutate(Vol_total=rowSums(select(., .dots=all_of(c(vol_list_regions)))),
+         SA_total=rowSums(select(., .dots=all_of(c(sa_list)))),
+         CT_total=rowSums(select(., .dots=all_of(c(ct_list)))))
+
+#write data
+write_csv(ukb_df_totals, file="data/ukb_CN_data.csv")
 ```
 
 ## EDA
@@ -223,3 +249,21 @@ wp(m4.tbv, xvar=age_days, n.inter=4) #U-shape: fitted skewness too low
 dtop(m4.tbv)
 rqres.plot(m4.tbv)
 ```
+
+# CUBIC Models
+Playing around wiht models fit on cubic using `fit_ukb_mod.R`
+
+scp-ing random model to look at (`lh_SA_middletemporal_mod.rds`)
+
+```{r}
+lh_SA_middletemporal_mod <- readRDS("ukb/gamlss_objs/lh_SA_middletemporal_mod.rds")
+summary(lh_SA_middletemporal_mod)
+
+
+
+
+
+
+```
+
+
