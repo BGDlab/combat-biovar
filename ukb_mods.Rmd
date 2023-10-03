@@ -61,8 +61,11 @@ pheno_list <- col_list[grepl("^lh_|^rh_|^GMV$|^WMV$|^sGMV$|^Ventricles$", col_li
 length(pheno_list) #total number of models to run
 
 #split by measure type (Vol, SA, CT)
-vol_list <- col_list[grepl("^lh_Vol|^rh_Vol|^GMV$|^WMV$|^sGMV$|^Ventricles$", col_list)]
-writeLines(vol_list, con = "pheno_lists/Vol_list.txt")
+vol_list_global <- c("GMV", "sGMV", "WMV", "Ventricles")
+writeLines(vol_list_global, con = "pheno_lists/Vol_list_global.txt")
+
+vol_list_regions <- col_list[grepl("^lh_Vol|^rh_Vol", col_list)]
+writeLines(vol_list_regions, con = "pheno_lists/Vol_list_regions.txt")
 
 sa_list <- col_list[grepl("^lh_SA|^rh_SA", col_list)]
 writeLines(sa_list, con = "pheno_lists/SA_list.txt")
@@ -101,6 +104,21 @@ ggplot(data=ukb_df, aes(x=age_days, y=GMV)) +
 ```
 
 Going to stick with age_days since distribution is fairly normal, not lifespan data
+
+```{r}
+ggplot(data=ukb_df_totals, aes(x=age_days, y=Vol_total)) +
+  geom_point(aes(color=sex), alpha=0.6, position="identity")
+
+ggplot(data=ukb_df_totals, aes(x=age_days, y=TBV)) +
+  geom_point(aes(color=sex), alpha=0.6, position="identity") #TBV includes ventricles, WMV, subcortical GMV
+
+ggplot(data=ukb_df_totals, aes(x=age_days, y=CT_total)) +
+  geom_point(aes(color=sex), alpha=0.6, position="identity")
+
+ggplot(data=ukb_df_totals, aes(x=age_days, y=SA_total)) +
+  geom_point(aes(color=sex), alpha=0.6, position="identity")
+```
+
 
 ## Basic Plot Function
 
@@ -259,11 +277,16 @@ scp-ing random model to look at (`lh_SA_middletemporal_mod.rds`)
 lh_SA_middletemporal_mod <- readRDS("ukb/gamlss_objs/lh_SA_middletemporal_mod.rds")
 summary(lh_SA_middletemporal_mod)
 
+formula(lh_SA_middletemporal_mod, what="sigma")
+coef(lh_SA_middletemporal_mod, what="sigma") %>%
+  names()
 
+sfit <- summary(lh_SA_middletemporal_mod)
 
+sfit$coef.table
 
-
-
+#to get a list of all the slots in the object
+str(sfit)
 ```
 
 
