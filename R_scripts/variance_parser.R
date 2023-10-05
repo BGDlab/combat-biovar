@@ -16,12 +16,24 @@ save_path <- args[2] #path to save outputs
 
 #iterate across gamlss objects
 model.files <- list.files(path = read_path, pattern = "mod.rds", full.names = TRUE)
-sigma.sex <- sapply(model.files, find.param, moment="sigma", string="sex", USE.NAMES=TRUE)
-#make dataframe
-sigma.sex.df <- sigma.sex %>%
-  as.data.frame() %>%
-  rename(contains_sex = ".") %>%
-  rownames_to_column(var = "file") %>%
-  mutate(mod_name = basename(file))
 
-write.csv(sigma.sex.df, file=paste0(save_path, "/sigma_sex_term.csv"))
+sigma.df <- data.frame("file_path" = model.files)
+sigma.df <- sigma.df %>%
+  mutate(region = sub("_mod\\.rds$", "", basename(file_path)))
+
+#look for sex-terms
+sigma.df$contains_sex <- lapply(sigma.df$file_path, find.param, moment="sigma", string="sex")
+
+#list all terms in sigma
+sigma.df$terms <- lapply(sigma.df$file_path, list.sigma.terms)
+sigma.df$sig_form <- lapply(sigma.df$file_path, get.moment.formula, moment="sigma")
+
+#get sexMale beta weight
+sigma.df$sexMale <- lapply(sigma.df$file_path, get.beta, moment="sigma", term="sexMale")
+
+#sigma dfs
+sigma.df$degrees <- lapply(sigma.df$file_path, get.sigma.df)
+sigma.df$nl_degrees <- lapply(sigma.df$file_path, get.sigma.nl.df)
+
+
+write.csv(sigma.df, file=paste0(save_path, "/sigma.csv"))

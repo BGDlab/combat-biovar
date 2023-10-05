@@ -275,18 +275,57 @@ scp-ing random model to look at (`lh_SA_middletemporal_mod.rds`)
 
 ```{r}
 lh_SA_middletemporal_mod <- readRDS("ukb/gamlss_objs/lh_SA_middletemporal_mod.rds")
-summary(lh_SA_middletemporal_mod)
+a <- summary(lh_SA_middletemporal_mod)
+dim(a)
 
-formula(lh_SA_middletemporal_mod, what="sigma")
+#sigma coefficients
 coef(lh_SA_middletemporal_mod, what="sigma") %>%
   names()
 
-sfit <- summary(lh_SA_middletemporal_mod)
+test <- confint(lh_SA_middletemporal_mod)
+colnames(test)
+rownames(test)
+test["sigma.sexMale", "97.5 %"]
+df.test <- as.data.frame(test)
+df.test$params <- rownames(df.test)
+# Remove the row names from the dataframe
+rownames(df.test) <- NULL
 
-sfit$coef.table
+df.test
+#using drop1 to get significance, gamlss book p 125 for df info
+#get df from OG model - not sure how this would be affected by using stepGAIC?
 
-#to get a list of all the slots in the object
-str(sfit)
+
+str(lh_SA_middletemporal_mod)
+lh_SA_middletemporal_mod$sigma.nl.df
+
+#start df with confidence intervals
+confint.matrix <- confint(lh_SA_middletemporal_mod)
+df <- as.data.frame(confint.matrix) %>%
+  rownames_to_column(var = "moment.param") %>%
+  mutate(
+    moment = sapply(strsplit(moment.param, "\\."), `[`, 1),
+    param = sub("^[^.]+\\.", "", moment.param)
+  )
+
+#now that we have the moments, add the rest of the summary info
+sum.table <- summary(lh_SA_middletemporal_mod)
+df2 <- as.data.frame(sum.table) %>%
+  rownames_to_column(var = "param")
+#check
+rownames(sum.table) == df$param
+
+find.param <- function(gamlss.rds.file, moment, string) {
+  #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  gamlss.obj <- readRDS(gamlss.rds.file)
+  sigma.coeff.list <- coef(gamlss.rds.file, what= moment) %>%
+    names()
+  any(sapply(sigma.coeff.list, function(x) grepl(string, x, ignore.case = TRUE)))
+}
+find.param(lh_SA_middletemporal_mod, "sigma", "sex")
+
+readRDS("ukb/gamlss_objs/rh_Vol_parsopercularis_mod.rds")
+
 ```
 
 
