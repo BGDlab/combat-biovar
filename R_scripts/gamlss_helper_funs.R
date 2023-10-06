@@ -74,11 +74,11 @@ mean.tb.sim <- function(df, sex_level, ageRange, measure){
   tb_list <- list()
   for (i in ageRange){
     tb.df <- df %>% 
-      as.data.frame %>%
       dplyr::filter(sex == sex_level) %>%
-      arrange(age_yrs) %>%
-      dplyr::filter(age_yrs >= (i-0.005) & age_yrs <= (i+0.005))
-    tb.val <- mean(tb.df[ , measure], na.rm = TRUE)
+      arrange(age_days) %>%
+      dplyr::filter(age_days >= (i-300) & age_days <= (i+300)) %>%
+      as.data.frame()
+    tb.val <- mean(tb.df[[measure]], na.rm = TRUE)
     tb_list <- append(tb_list, tb.val)
   }
   return(unlist(tb_list))
@@ -95,14 +95,20 @@ sim.data.ukb <- function(df){
                                fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
                                study=c(as.factor(rep(Mode(df$study), length(ageRange)))),
                                sex.age_yrs=c(rep(0, length(ageRange))))
-  dataToPredictM$TBV <- mean.tbv.sim(df, "Male", ageRange)
+  dataToPredictM$TBV <- mean.tb.sim(df, "Male", ageRange, "TBV")
+  dataToPredictM$Vol_total <- mean.tb.sim(df, "Male", ageRange, "Vol_total")
+  dataToPredictM$SA_total <- mean.tb.sim(df, "Male", ageRange, "SA_total")
+  dataToPredictM$CT_total <- mean.tb.sim(df, "Male", ageRange, "CT_total")
   
   dataToPredictF <- data.frame(age_yrs=ageRange,
                                sex=c(rep(as.factor("Female"), length(ageRange))),
                                fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
                                study=c(as.factor(rep(Mode(df$study), length(ageRange)))),
                                sex.age_yrs=ageRange)
-  dataToPredictF$TBV <- mean.tbv.sim(df, "Female", ageRange)
+  dataToPredictF$TBV <- mean.tb.sim(df, "Female", ageRange, "TBV")
+  dataToPredictF$Vol_total <- mean.tb.sim(df, "Female", ageRange, "Vol_total")
+  dataToPredictF$SA_total <- mean.tb.sim(df, "Female", ageRange, "SA_total")
+  dataToPredictF$CT_total <- mean.tb.sim(df, "Female", ageRange, "CT_total")
   
   # List of centiles for the fan plot
   desiredCentiles <- c(0.1, 0.25, 0.5, 0.75, 0.9)
