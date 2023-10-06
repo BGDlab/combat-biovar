@@ -1,0 +1,200 @@
+---
+title: "UKB Models"
+output: 
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_float: true
+date: '2023-09-23'
+---
+
+## Setup
+
+```{r setup, include=FALSE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+if(!require('pacman')) {
+  install.packages('pacman')
+}
+pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider)
+
+# #pull plotting functions from github
+# plot.func.url <- "https://raw.githubusercontent.com/BGDlab/GAMLSS/main/plotting_functions.R?token=GHSAT0AAAAAACGAYP4HZWCTHACGUM6KG2PSZIQUPBA"
+# Sys.setenv(GITHUB_PAT = "") #if needed to access private BGDlab GAMLSS repo
+# source_url(plot.func.url) #sometimes doesn't work....?
+
+source("/Users/megardn/Desktop/BGD_Repos/GAMLSS/plotting_functions.R")
+```
+
+## Load Data
+
+Load UKB Data from Jakob
+
+```{r}
+cn_data <- fread(file="data/lifespan_dataset_dkatlas_CNonly.csv")
+#table(cn_data$study)
+```
+
+## Data Org
+
+Filter
+
+```{r}
+ukb_df <- cn_data %>%
+  dplyr::filter(study == "UKB") %>%
+  mutate(age_yrs = round(age_days/365.25),
+         log_age = log(age_days, base=10),
+         TBV=(sGMV+GMV+WMV+Ventricles),
+         fs_version = as.factor(fs_version),
+         sex = as.factor(sex),
+         sex_int = as.numeric(case_when(sex == "Male" ~ 0,
+                                        sex == "Female" ~ 1)),
+         sex.age = sex_int * age_days) %>%
+  na.omit() #1 subj has 1 missing val
+
+skim(ukb_df)
+n_unique(ukb_df$participant) == nrow(ukb_df) #no duplicate subj
+```
+
+Write lists of phenotypes
+
+```{r}
+col_list <- colnames(ukb_df)
+pheno_list <- col_list[grepl("^lh_|^rh_|^GMV$|^WMV$|^sGMV$|^Ventricles$", col_list)]
+length(pheno_list) #total number of models to run
+
+#split by measure type (Vol, SA, CT)
+vol_list_global <- c("GMV", "sGMV", "WMV", "Ventricles")
+writeLines(vol_list_global, con = "pheno_lists/Vol_list_global.txt")
+
+vol_list_regions <- col_list[grepl("^lh_Vol|^rh_Vol", col_list)]
+writeLines(vol_list_regions, con = "pheno_lists/Vol_list_regions.txt")
+
+sa_list <- col_list[grepl("^lh_SA|^rh_SA", col_list)]
+writeLines(sa_list, con = "pheno_lists/SA_list.txt")
+
+ct_list <- col_list[grepl("^lh_CT|^rh_CT", col_list)]
+writeLines(ct_list, con = "pheno_lists/CT_list.txt")
+```
+
+Add brainwide phenotypes!
+Summing across regions for volumes (rather than summing GMV, sGMV, etc) for consistency with SA and CT
+
+```{r}
+vol_list_regions <- col_list[grepl("^lh_Vol|^rh_Vol", col_list)]
+
+ukb_df_totals <- ukb_df %>%
+  mutate(Vol_total=rowSums(select(., .dots=all_of(c(vol_list_regions)))),
+         SA_total=rowSums(select(., .dots=all_of(c(sa_list)))),
+         CT_total=rowSums(select(., .dots=all_of(c(ct_list)))))
+
+#write data
+write_csv(ukb_df_totals, file="data/ukb_CN_data.csv")
+```
+
+## EDA
+
+```{r}
+ggplot(data=ukb_df, aes(x=age_days)) +
+  geom_histogram(aes(fill=sex), alpha=0.6, position="identity")
+ggplot(data=ukb_df, aes(x=log_age)) +
+  geom_histogram(aes(fill=sex), alpha=0.6, position="identity")
+
+ggplot(data=ukb_df, aes(x=log_age, y=GMV)) +
+  geom_point(aes(color=sex), alpha=0.6)
+ggplot(data=ukb_df, aes(x=age_days, y=GMV)) +
+  geom_point(aes(color=sex), alpha=0.6)
+```
+
+Going to stick with age_days since distribution is fairly normal, not lifespan data
+
+```{r}
+ggplot(data=ukb_df_totals, aes(x=age_days, y=Vol_total)) +
+  geom_point(aes(color=sex), alpha=0.6, position="identity")
+
+ggplot(data=ukb_df_totals, aes(x=age_days, y=TBV)) +
+  geom_point(aes(color=sex), alpha=0.6, position="identity") #TBV includes ventricles, WMV, subcortical GMV
+
+ggplot(data=ukb_df_totals, aes(x=age_days, y=CT_total)) +
+  geom_point(aes(color=sex), alpha=0.6, position="identity")
+
+ggplot(data=ukb_df_totals, aes(x=age_days, y=SA_total)) +
+  geom_point(aes(color=sex), alpha=0.6, position="identity")
+```
+
+Look at variances
+```{r}
+plot.hist.by.sex <- function(data, pheno_list) {
+
+  # Create an empty list to store the ggplot objects
+  plots <- list()
+  
+  # Loop through the list of variables
+  for (pheno in pheno_list) {
+    # Check if the variable exists in the data frame
+    if (!pheno %in% names(data)) {
+      warning(paste("Variable '", pheno, "' not found in the data frame. Skipping..."))
+      next
+    }
+    
+    # Create a ggplot histogram for the variable
+    plot <- ggplot(data, aes(x = .data[[pheno]], fill= sex, color=sex)) +
+      geom_histogram(alpha=0.5, position="identity") +
+      labs(title = paste("Histogram of", pheno), x = pheno, y = "Frequency")
+    
+    # Add the plot to the list
+    plots[[pheno]] <- plot
+  }
+  
+  # Return the list of ggplot objects
+  return(plots)
+}
+```
+
+center
+```{r}
+ukb_centered <- ukb_df_totals %>%
+  group_by(sex) %>%
+  mutate_if(is.numeric, funs(scale(., center=TRUE, scale=FALSE))) %>%
+  ungroup()
+```
+
+```{r}
+# Generate histograms (mean-centered w/in sex)
+global_plots <- plot.hist.by.sex(ukb_centered, vol_list_global)
+
+# Print or display the histograms
+for (pheno in vol_list_global) {
+  print(global_plots[[pheno]])
+}
+```
+
+```{r}
+# Generate histograms (mean-centered w/in sex)
+region_vol_plots <- plot.hist.by.sex(ukb_centered, vol_list_regions)
+
+# Print or display the histograms
+for (pheno in vol_list_regions) {
+  print(region_vol_plots[[pheno]])
+}
+```
+
+```{r}
+# Generate histograms (mean-centered w/in sex)
+region_sa_plots <- plot.hist.by.sex(ukb_centered, sa_list)
+
+# Print or display the histograms
+for (pheno in sa_list) {
+  print(region_sa_plots[[pheno]])
+}
+```
+
+```{r}
+# Generate histograms (mean-centered w/in sex)
+region_ct_plots <- plot.hist.by.sex(ukb_centered, ct_list)
+
+# Print or display the histograms
+for (pheno in ct_list) {
+  print(region_ct_plots[[pheno]])
+}
+```
+
