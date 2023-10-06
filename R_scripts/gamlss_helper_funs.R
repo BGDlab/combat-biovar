@@ -13,6 +13,7 @@ library(dplyr)
 
 find.param <- function(gamlss.rds.file, moment, string) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  gamlss.rds.file <- as.character(gamlss.rds.file)
   gamlss.obj <- readRDS(gamlss.rds.file)
   sigma.coeff.list <- coef(gamlss.obj, what = moment) %>%
     names()
@@ -21,6 +22,7 @@ find.param <- function(gamlss.rds.file, moment, string) {
 
 get.beta <- function(gamlss.rds.file, moment, term) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  gamlss.rds.file <- as.character(gamlss.rds.file)
   gamlss.obj <- readRDS(gamlss.rds.file)
   beta <- coef(gamlss.obj, what = moment)[term] %>%
     unname()
@@ -29,6 +31,7 @@ get.beta <- function(gamlss.rds.file, moment, term) {
 
 list.sigma.terms <- function(gamlss.rds.file) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  gamlss.rds.file <- as.character(gamlss.rds.file)
   gamlss.obj <- readRDS(gamlss.rds.file)
   terms <- attr(gamlss.obj$sigma.terms, "term.labels")
   return(terms)
@@ -36,18 +39,21 @@ list.sigma.terms <- function(gamlss.rds.file) {
 
 get.sigma.df <- function(gamlss.rds.file) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  gamlss.rds.file <- as.character(gamlss.rds.file)
   gamlss.obj <- readRDS(gamlss.rds.file)
   gamlss.obj$sigma.df
 }
 
 get.sigma.nl.df <- function(gamlss.rds.file) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  gamlss.rds.file <- as.character(gamlss.rds.file)
   gamlss.obj <- readRDS(gamlss.rds.file)
   gamlss.obj$sigma.nl.df
 }
 
 get.moment.formula <- function(gamlss.rds.file, moment) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  gamlss.rds.file <- as.character(gamlss.rds.file)
   gamlss.obj <- readRDS(gamlss.rds.file)
   moment.form <- formula(gamlss.obj, what = moment)
 }
