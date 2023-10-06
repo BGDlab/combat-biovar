@@ -36,6 +36,15 @@ get.beta <- function(gamlss.rds.file, moment, term) {
   return(beta)
 }
 
+get.moment.betas <- function(gamlss.rds.file, moment) {
+  #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  gamlss.rds.file <- as.character(gamlss.rds.file)
+  gamlss.obj <- readRDS(gamlss.rds.file)
+  beta.list <- coef(gamlss.obj, what = moment) %>%
+    as.list()
+  return(beta.list)
+}
+
 list.sigma.terms <- function(gamlss.rds.file) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
   gamlss.rds.file <- as.character(gamlss.rds.file)

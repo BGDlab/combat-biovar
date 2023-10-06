@@ -234,7 +234,7 @@ m3.tbv <- gamlss(formula = GMV ~ pb(age_days) + sex + fs_version + pb(sex.age) +
                        nu.formula = ~ 1,
                        control = gamlss.control(n.cyc = 200), 
                        family = BCCG, data=ukb_df, trace = FALSE)
-m4.tbv <- stepGAICAll.A(m3, scope=list(lower=~1, upper=~pb(age_days) + sex + fs_version + pb(sex.age) + pb(TBV)), k=2, glim.control(cyc=100)) #AIC
+m4.tbv <- stepGAICAll.A(Ventricles_mod, scope=list(lower=~1, upper=~pb(age_days) + sex + fs_version + pb(sex.age) + pb(TBV)), k=2, glim.control(cyc=100)) #AIC
 summary(m4.tbv)
 ```
 
@@ -315,4 +315,49 @@ readRDS("ukb/gamlss_objs/rh_Vol_parsopercularis_mod.rds")
 
 ```
 
+### Sex-effects visualization
+
+load info parsed from models via  `var_parse.sh` (which calls `R_scripts/variance_parser.R`)
+
+```{r}
+sigma.df <- read.csv(file="ukb/sigma.csv", row.names=1)
+skim(sigma.df)
+```
+
+all contain sex in sigma
+
+```{r}
+sigma.df<- sigma.df %>%
+  mutate(mu_form = as.factor(sub(".*~", "", mu_form)),
+         sig_form = as.factor(sig_form),
+         nu_form = as.factor(nu_form),
+         measure_type = as.factor(case_when(grepl("Vol", region) ~ "Vol",
+                                  grepl("CT", region) ~ "CT",
+                                  grepl("SA", region) ~ "SA",
+                                  TRUE ~ "Global")))
+
+table(sigma.df$sig_form)
+table(sigma.df$mu_form)
+table(sigma.df$nu_form)
+```
+
+Weirdly only nu has variation in terms selected...?
+
+plot sex effects in sigma
+```{r}
+ggplot(sigma.df, aes(x=sexMale, fill=measure_type)) +
+  geom_histogram(alpha=0.6, position = "identity", color="white")
+```
+
+Normalize sexMale's beta weight by the overall value of all sigma terms
+
+```{r}
+#get betas
+file.list <- list.files(path="/Users/megardn/Desktop/BGD_Repos/combat_biovar/ukb/gamlss_objs", pattern="_mod.rds", full.names = TRUE)
+
+betas.mat <- sapply(file.list, get.moment.betas, moment="sigma", USE.NAMES=TRUE)
+colnames(betas.mat) <- map(colnames(betas.mat), basename)
+
+
+```
 
