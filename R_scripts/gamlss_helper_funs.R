@@ -2,6 +2,7 @@
 library(gamlss)
 library(dplyr)
 library(ggplot2)
+library(data.table)
 
 ### CONTENTS ###
 # find.param()
@@ -69,14 +70,15 @@ get.moment.formula <- function(gamlss.rds.file, moment) {
 ################
 
 mean.tb.sim <- function(df, sex_level, ageRange, measure){
-  tbv_list <- list()
+  measure <- as.character(measure)
+  tb_list <- list()
   for (i in ageRange){
-    tb.df <- df %>%
+    tb.df <- df %>% 
+      as.data.frame %>%
       dplyr::filter(sex == sex_level) %>%
       arrange(age_yrs) %>%
-      dplyr::filter(age_yrs >= (i-0.005) & age_yrs <= (i+0.005)) %>%
-      summarize(m = mean(deparse(substitute(measure)), na.rm = TRUE))
-    tb.val <-tb.df$m
+      dplyr::filter(age_yrs >= (i-0.005) & age_yrs <= (i+0.005))
+    tb.val <- mean(tb.df[ , measure], na.rm = TRUE)
     tb_list <- append(tb_list, tb.val)
   }
   return(unlist(tb_list))
