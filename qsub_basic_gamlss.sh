@@ -6,9 +6,9 @@
 # SET PATHS
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
 #base=/Users/megardn/Desktop/BGD_Repos/combat_biovar #base path (local)
-data_csv=$base/data/ukb_CN_data.csv #path to csv with CLEANED DATA (no duplicates, etc)
+data_csv=$base/data/ukb_CN_data_agefilt.csv #path to csv with CLEANED DATA (no duplicates, etc)
 pheno_path=$base/pheno_lists #path to .txt files listing phenotypes (global & regional)
-mod_script=$base/R_scripts/fit_ukb_mod.R #path to .R script
+mod_script=$base/R_scripts/fit_basic_mod.R #path to .R script
 
 #cd to where .Rprofile is stored (for propper package loading)
 cd $base
