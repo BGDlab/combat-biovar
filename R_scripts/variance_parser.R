@@ -22,14 +22,15 @@ print(model.files[1:3])
 
 sigma.df <- data.frame("file_path" = model.files)
 sigma.df <- sigma.df %>%
-  mutate(file_pat = as.character(file_path),
-	region = sub("_mod\\.rds$", "", basename(as.character(file_path))))
+  mutate(region = sub("_mod\\.rds$", "", basename(as.character(file_path))))
 
 #look for sex-terms
 sigma.df$contains_sex <- lapply(sigma.df$file_path, find.param, moment="sigma", string="sex")
 
-#get formula
+#get formulas
+sigma.df$mu_form <- lapply(sigma.df$file_path, get.moment.formula, moment="mu")
 sigma.df$sig_form <- lapply(sigma.df$file_path, get.moment.formula, moment="sigma")
+sigma.df$nu_form <- lapply(sigma.df$file_path, get.moment.formula, moment="nu")
 
 #get sexMale beta weight
 sigma.df$sexMale <- lapply(sigma.df$file_path, get.beta, moment="sigma", term="sexMale")
@@ -42,10 +43,12 @@ sigma.df$nl_degrees <- lapply(sigma.df$file_path, get.sigma.nl.df)
 sigma.df <- sigma.df %>%
   mutate(file_path = as.character(file_path),
  	contains_sex = as.logical(contains_sex),
-	sexMale = as.integer(sexMale),
-	degrees = as.integer(degrees),
-	nl_degrees = as.integer(nl_degrees),
+	sexMale = as.numeric(sexMale),
+	degrees = as.numeric(degrees),
+	nl_degrees = as.numeric(nl_degrees),
+	mu_form = as.character(mu_form),
 	sig_form = as.character(sig_form),
+	nu_form = as.character(nu_form),
 	region = as.character(region))
 
 write.csv(sigma.df, file=paste0(save_path, "/sigma.csv"))
