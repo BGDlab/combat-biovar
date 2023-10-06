@@ -74,6 +74,15 @@ get.moment.formula <- function(gamlss.rds.file, moment) {
   moment.form <- formula(gamlss.obj, what = moment)
 }
 
+get.and.drop1.p <- function(gamlss.rds.file, moment, term) {
+  #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  gamlss.rds.file <- as.character(gamlss.rds.file)
+  gamlss.obj <- readRDS(gamlss.rds.file)
+  t <- drop1(gamlss.obj, what = moment, scope = term)
+  pval <- t$"Pr(Chi)"[2]
+  return(pval)
+}
+
 ################
 # PLOTTING
 ################
