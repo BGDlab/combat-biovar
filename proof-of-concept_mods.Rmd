@@ -12,24 +12,36 @@ if(!require('pacman')) {
   install.packages('pacman')
 }
 pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider)
+
+source("./R_scripts/gamlss_helper_funs.R")
 ```
 
-## R Markdown
+## Load Data
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+```{r}
+ukb_df_totals <- read_csv(file="data/ukb_CN_data.csv")
+ukb_df_age.filt <- read_csv(file="data/ukb_CN_data_agefilt.csv")
 ```
 
-## Including Plots
+Designate *basic* model formula
 
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+basic.m1 <- gamlss(formula = GMV ~ poly(age_days, 3) + sex,
+                       sigma.formula = ~ poly(age_days, 3) + sex,
+                       nu.formula = ~ 1,
+                       family = BCCG, data=ukb_df_age.filt, trace = FALSE)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+plot
+
+```{r}
+plot_singlestudy_centiles(basic.m1, "GMV", ukb_df_age.filt, "sex")
+```
+
+Check sex's significance in variance
+
+```{r}
+drop1(basic.m1, what="sigma", scope = "sex")
+```
+
+

@@ -85,8 +85,8 @@ mean.tb.sim <- function(df, sex_level, ageRange, measure){
     tb.df <- df %>% 
       dplyr::filter(sex == sex_level) %>%
       arrange(age_days) %>%
-      dplyr::filter(age_days >= (i-300) & age_days <= (i+300)) %>%
-      as.data.frame()
+      dplyr::filter(age_days >= (i-183) & age_days <= (i+183)) %>%
+      as.data.frame() # +- 1.5 yrs
     tb.val <- mean(tb.df[[measure]], na.rm = TRUE)
     tb_list <- append(tb_list, tb.val)
   }
@@ -99,21 +99,19 @@ sim.data.ukb <- function(df){
   ageRange <- seq(minAge, maxAge, 25)  # generate an age range with increments of 25 (since scaling in days)
   
   #sim data
-  dataToPredictM <- data.frame(age_yrs=ageRange,
+  dataToPredictM <- data.frame(age_days=ageRange,
                                sex=c(rep(as.factor("Male"), length(ageRange))),
                                fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
-                               study=c(as.factor(rep(Mode(df$study), length(ageRange)))),
-                               sex.age_yrs=c(rep(0, length(ageRange))))
+                               sex.age=c(rep(0, length(ageRange))))
   dataToPredictM$TBV <- mean.tb.sim(df, "Male", ageRange, "TBV")
   dataToPredictM$Vol_total <- mean.tb.sim(df, "Male", ageRange, "Vol_total")
   dataToPredictM$SA_total <- mean.tb.sim(df, "Male", ageRange, "SA_total")
   dataToPredictM$CT_total <- mean.tb.sim(df, "Male", ageRange, "CT_total")
   
-  dataToPredictF <- data.frame(age_yrs=ageRange,
+  dataToPredictF <- data.frame(age_days=ageRange,
                                sex=c(rep(as.factor("Female"), length(ageRange))),
                                fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
-                               study=c(as.factor(rep(Mode(df$study), length(ageRange)))),
-                               sex.age_yrs=ageRange)
+                               sex.age=ageRange)
   dataToPredictF$TBV <- mean.tb.sim(df, "Female", ageRange, "TBV")
   dataToPredictF$Vol_total <- mean.tb.sim(df, "Female", ageRange, "Vol_total")
   dataToPredictF$SA_total <- mean.tb.sim(df, "Female", ageRange, "SA_total")
@@ -137,7 +135,7 @@ plot_singlestudy_centiles <- function(gamlssModel, phenotype, df, color_var)
   
   #extract vals
   ages <- sim$ageRange
-  age_col <- df$age_yrs
+  age_col <- df$age_days
   male_peak_age <- pred$peak_age_M
   female_peak_age <- pred$peak_age_F
   unit_text <- "(years)"
