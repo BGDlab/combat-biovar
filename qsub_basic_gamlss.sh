@@ -41,8 +41,9 @@ if ! [ -d $gamlss_dir ]
 # FIT MODELS
 
 #iterate through measure types (vol, SA, CT, global vols) for correct global corrections
-for pheno in "$pheno_path"/*
+for list in "$pheno_path"/*
 do
+	echo $list
 	#iterate through list of phenotypes
 	while read -r pheno
 	do
