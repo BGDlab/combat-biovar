@@ -27,9 +27,9 @@ sigma.df$sig.sex_drop1.p <- lapply(sigma.df$file_path, get.and.drop1.p, moment="
 sigma.df$sig.sex_beta <- lapply(sigma.df$file_path, get.beta, moment="sigma", term="sexMale")
 
 #extract values of sex term from summary table
-sigma.df$sig.sex_std.err <- get.summary.table.outputs(sigma.df$file_path, moment = 'sigma', select1 = 'sexMale', select2 = 'Std. Error')
-sigma.df$sig.sex_tval <- get.summary.table.outputs(sigma.df$file_path, moment = 'sigma', select1 = 'sexMale', select2 = 't value')
-sigma.df$sig.sex_p <- get.summary.table.outputs(sigma.df$file_path, moment = 'sigma', select1 = 'sexMale', select2 = 'Pr(>|t|)')
+sigma.df$sig.sex_std.err <- lapply(sigma.df$file_path, get.summary.table.outputs, moment = 'sigma', select1 = 'sexMale', select2 = 'Std. Error')
+sigma.df$sig.sex_tval <- lapply(sigma.df$file_path, get.summary.table.outputs, moment = 'sigma', select1 = 'sexMale', select2 = 't value')
+sigma.df$sig.sex_p <- lapply(sigma.df$file_path, get.summary.table.outputs, moment = 'sigma', select1 = 'sexMale', select2 = 'Pr(>|t|)')
 
 #make sure all values are correct class
 sigma.df <- sigma.df %>%
