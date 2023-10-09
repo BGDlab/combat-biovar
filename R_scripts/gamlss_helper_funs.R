@@ -86,9 +86,9 @@ get.and.drop1.p <- function(gamlss.rds.file, moment, term) {
 get.summary.table.outputs<- function(gamlss.rds.file, moment, select1=NA, select2=NA) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
   gamlss.rds.file <- as.character(gamlss.rds.file)
-  selection <- as.character(paste0(moment, ".coef.table"))
   gamlss.obj <- readRDS(gamlss.rds.file)
-  sum.table <- get(selection, summary(gamlss.rds.file, save=TRUE))
+  selection <- as.character(paste0(moment, ".coef.table"))
+  sum.table <- get(selection, summary(gamlss.obj, save=TRUE))
   if (!is.na(select1)){
     select1 <- as.character(select1)
     select2 <- as.character(select2)
