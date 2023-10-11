@@ -162,8 +162,43 @@ sigma.sex.df2 %>%
   ggtitle("t-statistic for effect of male sex on sigma")
 ```
 
-```{r}
+## Simulate Sites
+Dividing each subject into 3 sites (A, B, and C) with M:F ratios of 1:1, 4:1, and 1:4
 
+```{r}
+sim.site.list <- c("Site_A", "Site_B", "Site_C")
+n_female <- table(ukb_df_age.filt$sex)["Female"]
+n_male <- table(ukb_df_age.filt$sex)["Male"]
+
+# Sample probabilities
+male_prob <- c(0.5, 0.125, 0.375)
+female_prob <- c(0.5, 0.375, 0.125)
+
+# Separate samples for males and females
+sampled_males <- sample(sim.site.list, size = n_male, replace = TRUE, prob = male_prob)
+sampled_females <- sample(sim.site.list, size = n_female, replace = TRUE, prob = female_prob)
+
+ukb_df_sites <- ukb_df_age.filt %>%
+  mutate(sim.site = as.factor(ifelse(sex == "Male", sampled_males, sampled_females)))
+table(ukb_df_sites$sim.site, ukb_df_sites$sex)
+sum(is.na(ukb_df_sites$sim.site)) #all subj assigned to sites
 ```
 
+Center and visualize distributions
 
+```{r}
+ukb_sites_centered <- ukb_df_sites %>%
+  group_by(sex) %>%
+  mutate_if(is.numeric, funs(scale(., center=TRUE, scale=FALSE))) %>%
+  ungroup()
+```
+
+```{r}
+# Generate histograms (mean-centered w/in sex)
+global_site_plots <- plot.hist.by.sex(ukb_sites_centered, vol_list_global, facet_fac = "sim.site")
+
+# Print or display the histograms
+for (pheno in vol_list_global) {
+  print(global_site_plots[[pheno]])
+}
+```
