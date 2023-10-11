@@ -38,12 +38,8 @@ rvol.df <- ukb_df_sites %>%
 #fake batches
 batch <- as.factor(ukb_df_sites$sim.site)
 
-#covariates
-covar.mat <- ukb_df_sites %>%
-  dplyr::select(c(age_days, sex)) %>%
-  mutate(age_days = as.numeric(age_days)) %>%
-  as.matrix()
-#weirdly converts age_days to a character, idk if that will be a problem
+#covariates - using model.matrix to dummycode sex as numeric
+covar.mat <- model.matrix( ~ age_days + sex, data=ukb_df_sites)
 
 nrow(rvol.df) == length(batch)
 nrow(rvol.df) == nrow(covar.mat)
@@ -53,13 +49,12 @@ nrow(rvol.df) == nrow(covar.mat)
 
 simple combat with linear model for covariates
 ```{r}
-cf.lm <- comfam(rvol.df, batch, covar.mat, lm, formula = y ~ age_days + sex)
+cf.lm <- comfam(rvol.df, batch, covar.mat, lm, formula = y ~ age_days + sexMale)
 ```
 
-Getting warning - Warning: prediction from a rank-deficient fit may be misleading
 
 combat with age as smooth
 ```{r}
-cf.gam <- comfam(rvol.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sex)
+cf.gam <- comfam(rvol.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sexMale)
 ```
 
