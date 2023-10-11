@@ -152,33 +152,6 @@ ggplot(data=ukb_df_totals, aes(x=age_days, y=SA_total)) +
 ```
 
 Look at variances
-```{r}
-plot.hist.by.sex <- function(data, pheno_list) {
-
-  # Create an empty list to store the ggplot objects
-  plots <- list()
-  
-  # Loop through the list of variables
-  for (pheno in pheno_list) {
-    # Check if the variable exists in the data frame
-    if (!pheno %in% names(data)) {
-      warning(paste("Variable '", pheno, "' not found in the data frame. Skipping..."))
-      next
-    }
-    
-    # Create a ggplot histogram for the variable
-    plot <- ggplot(data, aes(x = .data[[pheno]], fill= sex, color=sex)) +
-      geom_histogram(alpha=0.5, position="identity") +
-      labs(title = paste("Histogram of", pheno), x = pheno, y = "Frequency")
-    
-    # Add the plot to the list
-    plots[[pheno]] <- plot
-  }
-  
-  # Return the list of ggplot objects
-  return(plots)
-}
-```
 
 center
 ```{r}

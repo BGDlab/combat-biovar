@@ -192,3 +192,33 @@ plot_singlestudy_centiles <- function(gamlssModel, phenotype, df, color_var)
   print(sampleCentileFan)
 }
 
+plot.hist.by.sex <- function(data, pheno_list, facet_fac = NA) {
+  
+  # Create an empty list to store the ggplot objects
+  plots <- list()
+  
+  # Loop through the list of variables
+  for (pheno in pheno_list) {
+    # Check if the variable exists in the data frame
+    if (!pheno %in% names(data)) {
+      warning(paste("Variable '", pheno, "' not found in the data frame. Skipping..."))
+      next
+    }
+    
+    # Create a ggplot histogram for the variable
+    plot <- ggplot(data, aes(x = .data[[pheno]], fill= sex, color=sex)) +
+      geom_histogram(alpha=0.5, position="identity") +
+      labs(title = paste("Histogram of", pheno), x = pheno, y = "Frequency")
+    
+    # add facet wrapping if needed
+    if (!is.na(facet_fac)) {
+      plot <- plot + facet_wrap(~ .data[[facet_fac]])
+    }
+    
+    # Add the plot to the list
+    plots[[pheno]] <- plot
+  }
+  
+  # Return the list of ggplot objects
+  return(plots)
+}
