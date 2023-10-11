@@ -166,13 +166,14 @@ sigma.sex.df2 %>%
 Dividing each subject into 3 sites (A, B, and C) with M:F ratios of 1:1, 4:1, and 1:4
 
 ```{r}
+set.seed(1010101)
 sim.site.list <- c("Site_A", "Site_B", "Site_C")
 n_female <- table(ukb_df_age.filt$sex)["Female"]
 n_male <- table(ukb_df_age.filt$sex)["Male"]
 
 # Sample probabilities
-male_prob <- c(0.5, 0.125, 0.375)
-female_prob <- c(0.5, 0.375, 0.125)
+male_prob <- c(0.33, 0.0825, 0.5875)
+female_prob <- c(0.33, 0.5875, 0.0825)
 
 # Separate samples for males and females
 sampled_males <- sample(sim.site.list, size = n_male, replace = TRUE, prob = male_prob)
@@ -180,8 +181,19 @@ sampled_females <- sample(sim.site.list, size = n_female, replace = TRUE, prob =
 
 ukb_df_sites <- ukb_df_age.filt %>%
   mutate(sim.site = as.factor(ifelse(sex == "Male", sampled_males, sampled_females)))
+
+#write out
+write_csv(ukb_df_sites, file="data/ukb_CN_data_simsites.csv")
+```
+
+```{r}
+table(ukb_df_sites$sim.site)
 table(ukb_df_sites$sim.site, ukb_df_sites$sex)
 sum(is.na(ukb_df_sites$sim.site)) #all subj assigned to sites
+anova(lm(age_days ~ sim.site, ukb_df_sites))
+ukb_df_sites %>%
+  group_by(sim.site) %>%
+  summarise(min = min(age_days), max = max(age_days), mean = mean(age_days))
 ```
 
 Center and visualize distributions
@@ -202,3 +214,6 @@ for (pheno in vol_list_global) {
   print(global_site_plots[[pheno]])
 }
 ```
+## ComBat
+
+And now, to combat the data across the simulated sites!

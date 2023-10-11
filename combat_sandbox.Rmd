@@ -1,0 +1,65 @@
+---
+title: "Combat Sandbox"
+output: html_document
+date: '2023-10-06'
+---
+
+## Setup
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+if(!require('pacman')) {
+  install.packages('pacman')
+}
+pacman::p_load(devtools, data.table, readr, ggplot2, tidyverse, mgcv)
+#install.packages("devtools")
+devtools::install_github("andy1764/ComBatFamily", build_vignettes = FALSE) #per discussion with Andrew, sent vignettes separately
+library(ComBatFamily)
+```
+
+
+#Prep data
+
+Using additional instructions from J Fortin's [initial repo](https://github.com/Jfortin1/neuroCombat_Rpackage/tree/2ccab2b42c59163717f012c70a54d20e8757b1c7). 
+
+Just using regional volume measures for now.
+
+```{r}
+ukb_df_sites <- read_csv(file="data/ukb_CN_data_simsites.csv")
+vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
+```
+
+```{r}
+#regional volume data to harmonize
+rvol.df <- ukb_df_sites %>%
+  dplyr::select(all_of(vol_list_regions))
+
+#fake batches
+batch <- as.factor(ukb_df_sites$sim.site)
+
+#covariates
+covar.mat <- ukb_df_sites %>%
+  dplyr::select(c(age_days, sex)) %>%
+  mutate(age_days = as.numeric(age_days)) %>%
+  as.matrix()
+#weirdly converts age_days to a character, idk if that will be a problem
+
+nrow(rvol.df) == length(batch)
+nrow(rvol.df) == nrow(covar.mat)
+```
+
+## ComBat
+
+simple combat with linear model for covariates
+```{r}
+cf.lm <- comfam(rvol.df, batch, covar.mat, lm, formula = y ~ age_days + sex)
+```
+
+Getting warning - Warning: prediction from a rank-deficient fit may be misleading
+
+combat with age as smooth
+```{r}
+cf.gam <- comfam(rvol.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sex)
+```
+

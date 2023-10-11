@@ -23,6 +23,7 @@ pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, 
 # source_url(plot.func.url) #sometimes doesn't work....?
 
 source("/Users/megardn/Desktop/BGD_Repos/GAMLSS/plotting_functions.R")
+source("/Users/megardn/Desktop/BGD_Repos/combat_biovar/R_scripts/gamlss_helper_funs.R")
 ```
 
 ## Load Data
@@ -169,6 +170,21 @@ global_plots <- plot.hist.by.sex(ukb_centered, vol_list_global)
 for (pheno in vol_list_global) {
   print(global_plots[[pheno]])
 }
+
+ukb_centered %>%
+  dplyr::filter(sex == "Male") %>%
+  select(GMV) %>%
+  var()
+
+ukb_centered %>%
+  dplyr::filter(sex == "Female") %>%
+  select(GMV) %>%
+  var()
+
+ukb_centered %>%
+  #dplyr::filter(sex == "Male") %>%
+  select(GMV) %>%
+  var()
 ```
 
 ```{r}
