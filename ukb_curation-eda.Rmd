@@ -65,15 +65,19 @@ length(pheno_list) #total number of models to run
 #split by measure type (Vol, SA, CT)
 vol_list_global <- c("GMV", "sGMV", "WMV", "Ventricles")
 writeLines(vol_list_global, con = "pheno_lists/Vol_list_global.txt")
+saveRDS(vol_list_global, file="R_scripts/vol_list_global.rds")
 
 vol_list_regions <- col_list[grepl("^lh_Vol|^rh_Vol", col_list)]
 writeLines(vol_list_regions, con = "pheno_lists/Vol_list_regions.txt")
+saveRDS(vol_list_regions, file="R_scripts/Vol_list_regions.rds")
 
 sa_list <- col_list[grepl("^lh_SA|^rh_SA", col_list)]
 writeLines(sa_list, con = "pheno_lists/SA_list.txt")
+saveRDS(sa_list, file="R_scripts/SA_list.rds")
 
 ct_list <- col_list[grepl("^lh_CT|^rh_CT", col_list)]
 writeLines(ct_list, con = "pheno_lists/CT_list.txt")
+saveRDS(ct_list, file="R_scripts/CT_list.rds")
 ```
 
 Add brainwide phenotypes!

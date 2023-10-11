@@ -3,6 +3,9 @@ library(gamlss)
 library(dplyr)
 library(ggplot2)
 library(data.table)
+library(broom.mixed)
+
+#note - some of these functions do not seem to work on CUBIC, as they rely on saving environment variables
 
 ### CONTENTS ###
 # find.param()
@@ -78,25 +81,21 @@ get.and.drop1.p <- function(gamlss.rds.file, moment, term) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
   gamlss.rds.file <- as.character(gamlss.rds.file)
   gamlss.obj <- readRDS(gamlss.rds.file)
+  #summary(gamlss.obj)
   t <- drop1(gamlss.obj, what = moment, scope = term)
   pval <- t$"Pr(Chi)"[2]
   return(pval)
 }
 
-get.summary.table.outputs<- function(gamlss.rds.file, moment, select1=NA, select2=NA) {
+get.summary<- function(gamlss.rds.file) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
   gamlss.rds.file <- as.character(gamlss.rds.file)
   gamlss.obj <- readRDS(gamlss.rds.file)
-  selection <- as.character(paste0(moment, ".coef.table"))
-  sum.table <- get(selection, summary(gamlss.obj, save=TRUE))
-  if (!is.na(select1)){
-    select1 <- as.character(select1)
-    select2 <- as.character(select2)
-    v <- sum.table[select1 ,select2]
-    return(v)
-  } else {
-    return(sum.table)
-  }
+  sum.table <- broom.mixed::tidy(gamlss.obj) %>%
+    as.data.frame() %>%
+    rename(t_stat = statistic)
+  sum.table$pheno <- sub("_mod\\.rds$", "", basename(gamlss.rds.file)) #append model name
+  return(sum.table)
 }
 
 ################

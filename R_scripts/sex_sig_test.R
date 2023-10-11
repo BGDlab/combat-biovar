@@ -8,6 +8,8 @@ library(tibble)
 
 source("R_scripts/gamlss_helper_funs.R")
 
+#note - some of these functions do not seem to work on CUBIC, as they rely on saving environment variables
+
 #GET ARGS
 args <- commandArgs(trailingOnly = TRUE)
 read_path <- args[1] #path to bfp models

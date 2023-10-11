@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider)
+pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, tidymodels, broom.mixed, ggseg)
 
 source("./R_scripts/gamlss_helper_funs.R")
 ```
@@ -21,6 +21,11 @@ source("./R_scripts/gamlss_helper_funs.R")
 ```{r}
 ukb_df_totals <- read_csv(file="data/ukb_CN_data.csv")
 ukb_df_age.filt <- read_csv(file="data/ukb_CN_data_agefilt.csv")
+
+vol_list_global <- readRDS(file="R_scripts/vol_list_global.rds")
+vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
+sa_list <- readRDS(file="R_scripts/SA_list.rds")
+ct_list <- readRDS(file="R_scripts/CT_list.rds")
 ```
 
 Designate *basic* model formula
@@ -30,6 +35,7 @@ basic.m1 <- gamlss(formula = GMV ~ poly(age_days, 3) + sex,
                        sigma.formula = ~ poly(age_days, 3) + sex,
                        nu.formula = ~ 1,
                        family = BCCG, data=ukb_df_age.filt, trace = FALSE)
+summary(basic.m1)
 ```
 
 plot
@@ -41,7 +47,123 @@ plot_singlestudy_centiles(basic.m1, "GMV", ukb_df_age.filt, "sex")
 Check sex's significance in variance
 
 ```{r}
-drop1(basic.m1, what="sigma", scope = "sex")
+K <- drop1(basic.m1, what="sigma", scope = "sex")
+class(K)
+K["Pr(Chi)"]
+K$"Pr(Chi)"[2]
+
+test.mu <- drop1(basic.m1, what="mu", scope = "sex")
+test.sig <- drop1(basic.m1, what="sigma", scope = "sex")
+
+#write for testing
+saveRDS(basic.m1, file="/Users/megardn/Desktop/BGD_Repos/combat_biovar/gamlss_basic_test_mod.rds")
+
+get.and.drop1.p("/Users/megardn/Desktop/BGD_Repos/combat_biovar/gamlss_basic_test_mod.rds", moment="sigma", term="sex")
+
+test.model.list <- c()
+test.model.list[[1]] <- basic.m1
+lapply(test.model.list, drop1, what="mu", scope = "sex")
+```
+
+## Significance Testing
+
+scp'd models from cubic to parse
+
+```{r}
+read_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/ukb_basic/gamlss_objs" #path to bfp models
+```
+
+```{r}
+#iterate across gamlss objects
+model.files <- list.files(path = read_path, pattern = "mod.rds", full.names = TRUE)
+
+sigma.df <- data.frame("file_path" = model.files)
+sigma.df <- sigma.df %>%
+  mutate(region = sub("_mod\\.rds$", "", basename(as.character(file_path))))
+
+#test significance of sex term in sigma
+sigma.df$sig.sex_drop1.p <- lapply(sigma.df$file_path, get.and.drop1.p, moment="sigma", term="sex")
+
+#extract values of sex term from summary table
+summary.list <- lapply(sigma.df$file_path, get.summary)
+summary.df <- bind_rows(summary.list)
+sigma.sex.df <- summary.df %>%
+  dplyr::filter(parameter == "sigma" & term == "sexMale") %>%
+  mutate(pheno_cat = as.factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA)),
+    sig = case_when(p.value < 0.05 ~ TRUE,
+                    p.value >= 0.05 ~ FALSE),
+    sig_bf.corr = case_when(pheno %in% vol_list_global & p.value < (0.05/length(vol_list_global)) ~ TRUE,
+                            pheno %in% vol_list_global & p.value >= (0.05/length(vol_list_global)) ~ FALSE,
+                            !(pheno %in% vol_list_global) & p.value < (0.05/length(ct_list)) ~ TRUE,
+                            !(pheno %in% vol_list_global) & p.value >= (0.05/length(ct_list)) ~ FALSE,
+                            TRUE ~ NA),
+    label = sub("_[^_]*_", "_", pheno)) #for plotting
+
+#add more info from parcellations
+dk.parc <- dk$data %>%
+  as.data.frame() %>%
+  na.omit() %>%
+  dplyr::select(c(hemi, region, label)) %>%
+  distinct()
+
+sigma.sex.df2 <- left_join(sigma.sex.df, dk.parc, by="label")
+```
+
+Visualize
+
+```{r}
+table(sigma.sex.df2$sig)
+table(sigma.sex.df2$sig_bf.corr)
+```
+
+```{r, fig.width=11}
+sigma.sex.df2 %>%
+  dplyr::filter(sig_bf.corr == TRUE) %>%
+  ggplot() +
+  geom_col(aes(x=reorder(pheno,t_stat), y=t_stat, fill=pheno_cat)) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ggtitle("Significant effects of male sex on sigma across phenotype-specific brain charts")
+
+sigma.sex.df2 %>%
+  dplyr::filter(sig_bf.corr == TRUE) %>%
+  ggplot() +
+  geom_col(aes(x=label, y=t_stat, fill=pheno_cat)) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ggtitle("Significant effects of male sex on sigma across phenotype-specific brain charts")
+
+sigma.sex.df2 %>%
+  dplyr::filter(sig_bf.corr == TRUE) %>%
+  ggplot() +
+  geom_col(aes(x=region, y=t_stat, fill=hemi)) + 
+  facet_wrap(~pheno_cat) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ggtitle("Significant effects of male sex on sigma across phenotype-specific brain charts")
+```
+
+Plot on brains!
+
+```{r}
+sigma.sex.df2 %>%
+  dplyr::filter(sig_bf.corr == TRUE) %>%
+  group_by(pheno_cat) %>%
+  ggplot() +
+  geom_brain(atlas = dk, 
+             position = position_brain(hemi ~ side),
+             aes(fill = t_stat)) +
+  scale_fill_gradient2() +
+  facet_wrap(~pheno_cat) +
+  theme_void() +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
+  ggtitle("t-statistic for effect of male sex on sigma")
+```
+
+```{r}
+
 ```
 
 
