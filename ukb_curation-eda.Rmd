@@ -131,8 +131,8 @@ Restricting to ages 50-80, since that's when there's roughly ~100 ppts per sex
 ```{r}
 ukb_df_age.filt <- ukb_df_totals %>%
   dplyr::filter(age_yrs >= 50 & age_yrs <= 80)
-#write data
-write_csv(ukb_df_age.filt, file="data/ukb_CN_data_agefilt.csv")
+# #write data
+# write_csv(ukb_df_age.filt, file="data/ukb_CN_data_agefilt.csv")
 ```
 
 ## EDA
@@ -239,7 +239,7 @@ ukb_df_sites <- ukb_df_age.filt %>%
   mutate(sim.site = as.factor(ifelse(sex == "Male", sampled_males, sampled_females)))
 
 #write out
-write_csv(ukb_df_sites, file="data/ukb_CN_data_simsites.csv")
+write_csv(ukb_df_sites, file="data/ukb_to_model/ukb_CN_data_simsites.csv")
 ```
 
 ```{r}
