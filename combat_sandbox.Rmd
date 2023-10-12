@@ -4,7 +4,7 @@ output: html_document
 date: '2023-10-06'
 ---
 
-Playing around with different combat configs using the UKB data, which has been assigned to 3 simulated study sites (see `proof-of-concept_mods.Rmd`)
+Playing around with different combat configs using the UKB data, which has been assigned to 3 simulated study sites (see `ukb_curation-eda.Rmd`)
 
 ## Setup
 
@@ -29,13 +29,13 @@ Just using regional volume measures for now.
 
 ```{r}
 ukb_df_sites <- read_csv(file="data/ukb_CN_data_simsites.csv")
-vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
+pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
 ```
 
 ```{r}
-#regional volume data to harmonize
-rvol.df <- ukb_df_sites %>%
-  dplyr::select(all_of(vol_list_regions))
+#phenotypes to harmonize
+pheno.df <- ukb_df_sites %>%
+  dplyr::select(all_of(pheno_list))
 
 #fake batches
 batch <- as.factor(ukb_df_sites$sim.site)
@@ -43,75 +43,75 @@ batch <- as.factor(ukb_df_sites$sim.site)
 #covariates - using model.matrix to dummycode sex as numeric
 covar.mat <- model.matrix( ~ age_days + sex, data=ukb_df_sites)
 
-nrow(rvol.df) == length(batch)
-nrow(rvol.df) == nrow(covar.mat)
+nrow(pheno.df) == length(batch)
+nrow(pheno.df) == nrow(covar.mat)
 ```
 
 ## ComBat
 
 simple combat with no covariate preservation
 ```{r}
-cf <- comfam(rvol.df, batch)
+cf <- comfam(pheno.df, batch)
 cf$dat.combat
-cf$dat.combat[, "sim.site"] <- batch
 ```
 
 simple combat with linear model for covariates
 ```{r}
-cf.lm <- comfam(rvol.df, batch, covar.mat, lm, formula = y ~ age_days + sexMale)
+cf.lm <- comfam(pheno.df, batch, covar.mat, lm, formula = y ~ age_days + sexMale)
 cf.lm$dat.combat
 ```
-plot
+add site
 ```{r}
-dim(cf.lm$dat.combat)[1] == length(batch)
 #add back site
-cf.lm$dat.combat[, "sim.site"] <- batch
-
-ggplot() + 
- #geom_histogram(aes(x=cf.lm$dat.combat$GMV, y=after_stat(density), fill=cf.lm$dat.combat$sim.site, color=cf.lm$dat.combat$sim.site), alpha = .2)+
- geom_density(aes(x=cf.lm$dat.combat$lh_Vol_superiorparietal, fill=cf.lm$dat.combat$sim.site, color=cf.lm$dat.combat$sim.site), alpha=.4) +
-  geom_vline(aes(xintercept=cf.lm_summary$sd_below.lh_v_sp, color=cf.lm_summary$sim.site)) +
-  geom_vline(aes(xintercept=cf.lm_summary$sd_above.lh_v_sp, color=cf.lm_summary$sim.site))
+#cf.lm$dat.combat[, "sim.site"] <- batch
 ```
 
 
 Try setting site A (which has even sex distribution) as ref
 
 ```{r}
-cf.lm2 <- comfam(rvol.df, batch, covar.mat, lm, formula = y ~ age_days + sexMale, ref.batch = "Site_A")
-cf.lm2$dat.combat
-cf.lm2$dat.combat[, "sim.site"] <- batch
+cf.lm_refA <- comfam(pheno.df, batch, covar.mat, lm, formula = y ~ age_days + sexMale, ref.batch = "Site_A")
+cf.lm_refA$dat.combat
+# cf.lm_refA$dat.combat[, "sim.site"] <- batch
 ```
 
 
 combat gam with age as smooth
 ```{r}
-cf.gam <- comfam(rvol.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sexMale)
-cf.gam$dat.combat[, "sim.site"] <- batch
+cf.gam <- comfam(pheno.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sexMale)
+# cf.gam$dat.combat[, "sim.site"] <- batch
 ```
 
 ```{r}
-cf.gam2 <- comfam(rvol.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sexMale, ref.batch = "Site_A")
-cf.gam2$dat.combat[, "sim.site"] <- batch
+cf.gam_refA <- comfam(pheno.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sexMale, ref.batch = "Site_A")
+# cf.gam_refA$dat.combat[, "sim.site"] <- batch
 ```
 
 combat gamlss!
 
 ```{r}
-cf.gamlss <- comfam(rvol.df, batch, covar.mat, gamlss, y ~ age_days + sexMale,
+cf.gamlss <- comfam(pheno.df, batch, covar.mat, gamlss, y ~ age_days + sexMale,
               sigma.formula = ~ age_days + sexMale, 
               control = gamlss.control(trace = FALSE))
-cf.gamlss$dat.combat[, "sim.site"] <- batch
+# cf.gamlss$dat.combat[, "sim.site"] <- batch
 ```
 
 ```{r}
-cf.gamlss2 <- comfam(rvol.df, batch, covar.mat, gamlss, y ~ age_days + sexMale,
+cf.gamlss_refA <- comfam(pheno.df, batch, covar.mat, gamlss, y ~ age_days + sexMale,
               sigma.formula = ~ age_days + sexMale, 
               control = gamlss.control(trace = FALSE),
               ref.batch = "Site_A")
-cf.gamlss2$dat.combat[, "sim.site"] <- batch
+# cf.gamlss_refA$dat.combat[, "sim.site"] <- batch
 ```
 
+Add back batch and covariance
+```{r}
+cf.list <- list(cf, cf.lm, cf.lm_refA, cf.gam, cf.gam_refA, cf.gamlss, cf.gamlss_refA)
+length(cf.list)
+
+combat.df.list <- lapply(cf.list, post_combat_concat, og_df = ukb_df_sites)
+names(combat.df.list) <- c("cf", "cf.lm", "cf.lm_refA", "cf.gam", "cf.gam_refA", "cf.gamlss", "cf.gamlss_refA")
+```
 
 ## Compare Variances
 
@@ -124,53 +124,27 @@ sum_df <- ukb_df_sites %>%
   group_by(sim.site) %>%
   summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal),
             var.lh_v_sp = var(lh_Vol_superiorparietal))
-#no covars
-cf_summary <- cf$dat.combat %>%
-  group_by(sim.site) %>%
-  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
 
-#simple lm
-cf.lm_summary <- cf.lm$dat.combat %>%
+for (i in names(combat.df.list)){
+  df <- combat.df.list[[i]] %>%
   group_by(sim.site) %>%
   summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
-
-#simple lm with ref site
-cf.lm2_summary <- cf.lm2$dat.combat %>%
-  group_by(sim.site) %>%
-  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
-
-#simple gam
-cf.gam_summary <- cf.gam$dat.combat %>%
-  group_by(sim.site) %>%
-  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
-
-#simple gam with ref site
-cf.gam2_summary <- cf.gam2$dat.combat %>%
-  group_by(sim.site) %>%
-  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
-
-#simple gam
-cf.gamlss_summary <- cf.gamlss$dat.combat %>%
-  group_by(sim.site) %>%
-  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
-
-#simple gam with ref site
-cf.gamlss2_summary <- cf.gamlss2$dat.combat %>%
-  group_by(sim.site) %>%
-  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
+  assign(paste0(i, "_summary"), df)
+}
 ```
+
 compile
 
 ```{r}
-var_comp_df <- data.frame(sim.site = sim.site.list,
+var_comp_df <- data.frame(sim.site = c("Site_A", "Site_B", "Site_C"),
                           raw_data = sum_df$var.lh_v_sp,
                           cf = cf_summary$var.lh_v_sp,
                           cf.lm = cf.lm_summary$var.lh_v_sp,
-                          cf.lm2 = cf.lm2_summary$var.lh_v_sp,
+                          cf.lm_refA = cf.lm_refA_summary$var.lh_v_sp,
                           cf.gam = cf.gam_summary$var.lh_v_sp,
-                          cf.gam2 = cf.gam2_summary$var.lh_v_sp,
+                          cf.gam_refA = cf.gam_refA_summary$var.lh_v_sp,
                           cf.gamlss = cf.gamlss_summary$var.lh_v_sp,
-                          cf.gamlss2 = cf.gamlss2_summary$var.lh_v_sp)
+                          cf.gamlss_refA = cf.gamlss_refA_summary$var.lh_v_sp)
 
 var_comp_long <- var_comp_df %>%
   pivot_longer(!sim.site, names_to="type", values_to = "variance")
