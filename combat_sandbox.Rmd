@@ -4,6 +4,8 @@ output: html_document
 date: '2023-10-06'
 ---
 
+Playing around with different combat configs using the UKB data, which has been assigned to 3 simulated study sites (see `proof-of-concept_mods.Rmd`)
+
 ## Setup
 
 
@@ -12,7 +14,7 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(devtools, data.table, readr, ggplot2, tidyverse, mgcv)
+pacman::p_load(devtools, data.table, readr, ggplot2, tidyverse, mgcv, gamlss)
 #install.packages("devtools")
 devtools::install_github("andy1764/ComBatFamily", build_vignettes = FALSE) #per discussion with Andrew, sent vignettes separately
 library(ComBatFamily)
@@ -47,14 +49,137 @@ nrow(rvol.df) == nrow(covar.mat)
 
 ## ComBat
 
+simple combat with no covariate preservation
+```{r}
+cf <- comfam(rvol.df, batch)
+cf$dat.combat
+cf$dat.combat[, "sim.site"] <- batch
+```
+
 simple combat with linear model for covariates
 ```{r}
 cf.lm <- comfam(rvol.df, batch, covar.mat, lm, formula = y ~ age_days + sexMale)
+cf.lm$dat.combat
+```
+plot
+```{r}
+dim(cf.lm$dat.combat)[1] == length(batch)
+#add back site
+cf.lm$dat.combat[, "sim.site"] <- batch
+
+ggplot() + 
+ #geom_histogram(aes(x=cf.lm$dat.combat$GMV, y=after_stat(density), fill=cf.lm$dat.combat$sim.site, color=cf.lm$dat.combat$sim.site), alpha = .2)+
+ geom_density(aes(x=cf.lm$dat.combat$lh_Vol_superiorparietal, fill=cf.lm$dat.combat$sim.site, color=cf.lm$dat.combat$sim.site), alpha=.4) +
+  geom_vline(aes(xintercept=cf.lm_summary$sd_below.lh_v_sp, color=cf.lm_summary$sim.site)) +
+  geom_vline(aes(xintercept=cf.lm_summary$sd_above.lh_v_sp, color=cf.lm_summary$sim.site))
 ```
 
 
-combat with age as smooth
+Try setting site A (which has even sex distribution) as ref
+
+```{r}
+cf.lm2 <- comfam(rvol.df, batch, covar.mat, lm, formula = y ~ age_days + sexMale, ref.batch = "Site_A")
+cf.lm2$dat.combat
+cf.lm2$dat.combat[, "sim.site"] <- batch
+```
+
+
+combat gam with age as smooth
 ```{r}
 cf.gam <- comfam(rvol.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sexMale)
+cf.gam$dat.combat[, "sim.site"] <- batch
 ```
 
+```{r}
+cf.gam2 <- comfam(rvol.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sexMale, ref.batch = "Site_A")
+cf.gam2$dat.combat[, "sim.site"] <- batch
+```
+
+combat gamlss!
+
+```{r}
+cf.gamlss <- comfam(rvol.df, batch, covar.mat, gamlss, y ~ age_days + sexMale,
+              sigma.formula = ~ age_days + sexMale, 
+              control = gamlss.control(trace = FALSE))
+cf.gamlss$dat.combat[, "sim.site"] <- batch
+```
+
+```{r}
+cf.gamlss2 <- comfam(rvol.df, batch, covar.mat, gamlss, y ~ age_days + sexMale,
+              sigma.formula = ~ age_days + sexMale, 
+              control = gamlss.control(trace = FALSE),
+              ref.batch = "Site_A")
+cf.gamlss2$dat.combat[, "sim.site"] <- batch
+```
+
+
+## Compare Variances
+
+Randomly picked `lh_Vol_superiorparietal` to compare
+
+Get variances
+```{r}
+#raw data
+sum_df <- ukb_df_sites %>%
+  group_by(sim.site) %>%
+  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal),
+            var.lh_v_sp = var(lh_Vol_superiorparietal))
+#no covars
+cf_summary <- cf$dat.combat %>%
+  group_by(sim.site) %>%
+  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
+
+#simple lm
+cf.lm_summary <- cf.lm$dat.combat %>%
+  group_by(sim.site) %>%
+  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
+
+#simple lm with ref site
+cf.lm2_summary <- cf.lm2$dat.combat %>%
+  group_by(sim.site) %>%
+  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
+
+#simple gam
+cf.gam_summary <- cf.gam$dat.combat %>%
+  group_by(sim.site) %>%
+  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
+
+#simple gam with ref site
+cf.gam2_summary <- cf.gam2$dat.combat %>%
+  group_by(sim.site) %>%
+  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
+
+#simple gam
+cf.gamlss_summary <- cf.gamlss$dat.combat %>%
+  group_by(sim.site) %>%
+  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
+
+#simple gam with ref site
+cf.gamlss2_summary <- cf.gamlss2$dat.combat %>%
+  group_by(sim.site) %>%
+  summarise(sd_below.lh_v_sp = mean(lh_Vol_superiorparietal) - sd(lh_Vol_superiorparietal), sd_above.lh_v_sp = mean(lh_Vol_superiorparietal) + sd(lh_Vol_superiorparietal), var.lh_v_sp = var(lh_Vol_superiorparietal))
+```
+compile
+
+```{r}
+var_comp_df <- data.frame(sim.site = sim.site.list,
+                          raw_data = sum_df$var.lh_v_sp,
+                          cf = cf_summary$var.lh_v_sp,
+                          cf.lm = cf.lm_summary$var.lh_v_sp,
+                          cf.lm2 = cf.lm2_summary$var.lh_v_sp,
+                          cf.gam = cf.gam_summary$var.lh_v_sp,
+                          cf.gam2 = cf.gam2_summary$var.lh_v_sp,
+                          cf.gamlss = cf.gamlss_summary$var.lh_v_sp,
+                          cf.gamlss2 = cf.gamlss2_summary$var.lh_v_sp)
+
+var_comp_long <- var_comp_df %>%
+  pivot_longer(!sim.site, names_to="type", values_to = "variance")
+
+ggplot(var_comp_long) +
+  geom_col(aes(x=type, y=variance, fill=sim.site, color=sim.site), position = "dodge")
+
+ggplot(var_comp_long) +
+  geom_col(aes(x=type, y=variance), position = "dodge") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_wrap(~sim.site)
+```
