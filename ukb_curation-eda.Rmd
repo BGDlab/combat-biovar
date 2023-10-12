@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider)
+pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider)
 
 # #pull plotting functions from github
 # plot.func.url <- "https://raw.githubusercontent.com/BGDlab/GAMLSS/main/plotting_functions.R?token=GHSAT0AAAAAACGAYP4HZWCTHACGUM6KG2PSZIQUPBA"
@@ -62,6 +62,7 @@ Write lists of phenotypes
 col_list <- colnames(ukb_df)
 pheno_list <- col_list[grepl("^lh_|^rh_|^GMV$|^WMV$|^sGMV$|^Ventricles$", col_list)]
 length(pheno_list) #total number of models to run
+saveRDS(pheno_list, file="R_scripts/pheno_list.rds")
 
 #split by measure type (Vol, SA, CT)
 vol_list_global <- c("GMV", "sGMV", "WMV", "Ventricles")
@@ -88,9 +89,9 @@ Summing across regions for volumes (rather than summing GMV, sGMV, etc) for cons
 vol_list_regions <- col_list[grepl("^lh_Vol|^rh_Vol", col_list)]
 
 ukb_df_totals <- ukb_df %>%
-  mutate(Vol_total=rowSums(select(., .dots=all_of(c(vol_list_regions)))),
-         SA_total=rowSums(select(., .dots=all_of(c(sa_list)))),
-         CT_total=rowSums(select(., .dots=all_of(c(ct_list)))))
+  mutate(Vol_total=rowSums(dplyr::select(., .dots=all_of(c(vol_list_regions)))),
+         SA_total=rowSums(dplyr::select(., .dots=all_of(c(sa_list)))),
+         CT_total=rowSums(dplyr::select(., .dots=all_of(c(ct_list)))))
 
 #write data
 write_csv(ukb_df_totals, file="data/ukb_CN_data.csv")
@@ -173,17 +174,17 @@ for (pheno in vol_list_global) {
 
 ukb_centered %>%
   dplyr::filter(sex == "Male") %>%
-  select(GMV) %>%
+  dplyr::select(GMV) %>%
   var()
 
 ukb_centered %>%
   dplyr::filter(sex == "Female") %>%
-  select(GMV) %>%
+  dplyr::select(GMV) %>%
   var()
 
 ukb_centered %>%
   #dplyr::filter(sex == "Male") %>%
-  select(GMV) %>%
+  dplyr::select(GMV) %>%
   var()
 ```
 
@@ -311,7 +312,3 @@ ggplot() +
   geom_vline(aes(xintercept=centered.site_sum_df$sd_below.gmv, color=centered.site_sum_df$sim.site)) +
   geom_vline(aes(xintercept=centered.site_sum_df$sd_above.gmv, color=centered.site_sum_df$sim.site))
 ```
-
-## ComBat
-
-And now, to combat the data across the simulated sites!
