@@ -64,8 +64,8 @@ cf.lm <- comfam(pheno.df, batch, covar.mat, lm, formula = y ~ age_days + sexMale
 Try setting site A (which has even sex distribution) as ref
 
 ```{r}
-cf.lm_refA <- comfam(pheno.df, batch, covar.mat, lm, formula = y ~ age_days + sexMale, ref.batch = "Site_A")
-# cf.lm_refA$dat.combat
+cf.lm-refA <- comfam(pheno.df, batch, covar.mat, lm, formula = y ~ age_days + sexMale, ref.batch = "Site_A")
+# cf.lm-refA$dat.combat
 ```
 
 
@@ -75,7 +75,7 @@ cf.gam <- comfam(pheno.df, batch, covar.mat, gam, formula = y ~ s(age_days) + se
 ```
 
 ```{r}
-cf.gam_refA <- comfam(pheno.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sexMale, ref.batch = "Site_A")
+cf.gam-refA <- comfam(pheno.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sexMale, ref.batch = "Site_A")
 ```
 
 combat gamlss!
@@ -87,7 +87,7 @@ cf.gamlss <- comfam(pheno.df, batch, covar.mat, gamlss, y ~ age_days + sexMale,
 ```
 
 ```{r}
-cf.gamlss_refA <- comfam(pheno.df, batch, covar.mat, gamlss, y ~ age_days + sexMale,
+cf.gamlss-refA <- comfam(pheno.df, batch, covar.mat, gamlss, y ~ age_days + sexMale,
               sigma.formula = ~ age_days + sexMale, 
               control = gamlss.control(trace = FALSE),
               ref.batch = "Site_A")
@@ -95,18 +95,18 @@ cf.gamlss_refA <- comfam(pheno.df, batch, covar.mat, gamlss, y ~ age_days + sexM
 
 Add back batch and covariance
 ```{r}
-cf.list <- list(cf, cf.lm, cf.lm_refA, cf.gam, cf.gam_refA, cf.gamlss, cf.gamlss_refA)
+cf.list <- list(cf, cf.lm, cf.lm-refA, cf.gam, cf.gam-refA, cf.gamlss, cf.gamlss-refA)
 length(cf.list)
 
 combat.df.list <- lapply(cf.list, post_combat_concat, og_df = ukb_df_sites)
-names(combat.df.list) <- c("cf", "cf.lm", "cf.lm_refA", "cf.gam", "cf.gam_refA", "cf.gamlss", "cf.gamlss_refA")
+names(combat.df.list) <- c("cf", "cf.lm", "cf.lm-refA", "cf.gam", "cf.gam-refA", "cf.gamlss", "cf.gamlss-refA")
 ```
 
 write out
 ```{r}
 for (i in names(combat.df.list)){
-  df <- combat.df.list[[i]] %>%
-  write_csv(df, file=paste0("data/ukb_to_model/ukb_", as.character(i), "_data.csv"))
+  df <- combat.df.list[[i]]
+  write_csv(df, file=paste0("data/ukb_to_model/ukb_", i, "_data.csv"))
 }
 ```
 
@@ -137,11 +137,11 @@ var_comp_df <- data.frame(sim.site = c("Site_A", "Site_B", "Site_C"),
                           raw_data = sum_df$var.lh_v_sp,
                           cf = cf_summary$var.lh_v_sp,
                           cf.lm = cf.lm_summary$var.lh_v_sp,
-                          cf.lm_refA = cf.lm_refA_summary$var.lh_v_sp,
+                          cf.lm-refA = cf.lm-refA_summary$var.lh_v_sp,
                           cf.gam = cf.gam_summary$var.lh_v_sp,
-                          cf.gam_refA = cf.gam_refA_summary$var.lh_v_sp,
+                          cf.gam-refA = cf.gam-refA_summary$var.lh_v_sp,
                           cf.gamlss = cf.gamlss_summary$var.lh_v_sp,
-                          cf.gamlss_refA = cf.gamlss_refA_summary$var.lh_v_sp)
+                          cf.gamlss-refA = cf.gamlss-refA_summary$var.lh_v_sp)
 
 var_comp_long <- var_comp_df %>%
   pivot_longer(!sim.site, names_to="type", values_to = "variance")
