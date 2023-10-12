@@ -52,39 +52,30 @@ nrow(pheno.df) == nrow(covar.mat)
 simple combat with no covariate preservation
 ```{r}
 cf <- comfam(pheno.df, batch)
-cf$dat.combat
+# cf$dat.combat
 ```
 
 simple combat with linear model for covariates
 ```{r}
 cf.lm <- comfam(pheno.df, batch, covar.mat, lm, formula = y ~ age_days + sexMale)
-cf.lm$dat.combat
+# cf.lm$dat.combat
 ```
-add site
-```{r}
-#add back site
-#cf.lm$dat.combat[, "sim.site"] <- batch
-```
-
 
 Try setting site A (which has even sex distribution) as ref
 
 ```{r}
 cf.lm_refA <- comfam(pheno.df, batch, covar.mat, lm, formula = y ~ age_days + sexMale, ref.batch = "Site_A")
-cf.lm_refA$dat.combat
-# cf.lm_refA$dat.combat[, "sim.site"] <- batch
+# cf.lm_refA$dat.combat
 ```
 
 
 combat gam with age as smooth
 ```{r}
 cf.gam <- comfam(pheno.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sexMale)
-# cf.gam$dat.combat[, "sim.site"] <- batch
 ```
 
 ```{r}
 cf.gam_refA <- comfam(pheno.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sexMale, ref.batch = "Site_A")
-# cf.gam_refA$dat.combat[, "sim.site"] <- batch
 ```
 
 combat gamlss!
@@ -93,7 +84,6 @@ combat gamlss!
 cf.gamlss <- comfam(pheno.df, batch, covar.mat, gamlss, y ~ age_days + sexMale,
               sigma.formula = ~ age_days + sexMale, 
               control = gamlss.control(trace = FALSE))
-# cf.gamlss$dat.combat[, "sim.site"] <- batch
 ```
 
 ```{r}
@@ -101,7 +91,6 @@ cf.gamlss_refA <- comfam(pheno.df, batch, covar.mat, gamlss, y ~ age_days + sexM
               sigma.formula = ~ age_days + sexMale, 
               control = gamlss.control(trace = FALSE),
               ref.batch = "Site_A")
-# cf.gamlss_refA$dat.combat[, "sim.site"] <- batch
 ```
 
 Add back batch and covariance
@@ -111,6 +100,14 @@ length(cf.list)
 
 combat.df.list <- lapply(cf.list, post_combat_concat, og_df = ukb_df_sites)
 names(combat.df.list) <- c("cf", "cf.lm", "cf.lm_refA", "cf.gam", "cf.gam_refA", "cf.gamlss", "cf.gamlss_refA")
+```
+
+write out
+```{r}
+for (i in names(combat.df.list)){
+  df <- combat.df.list[[i]] %>%
+  write_csv(df, file=paste0("data/ukb_to_model/ukb_", as.character(i), "_data.csv"))
+}
 ```
 
 ## Compare Variances
