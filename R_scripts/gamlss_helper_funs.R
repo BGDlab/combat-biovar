@@ -99,6 +99,21 @@ get.summary<- function(gamlss.rds.file) {
 }
 
 ################
+# COMBAT
+################
+
+post_combat_concat <- function(comfam_obj, og_df){
+  #check for correct lengths
+  stopifnot(nrow( comfam_obj$dat.combat) == length(comfam_obj$batch$batch))
+  stopifnot(nrow( comfam_obj$dat.combat) == nrow(og_df))
+  
+  comfam_obj$dat.combat[, "sim.site"] <- comfam_obj$batch$batch
+  comfam_obj$dat.combat[, "age_days"] <- og_df[["age_days"]] #update in the future for more flexible naming & covar addition
+  comfam_obj$dat.combat[, "sex"] <- og_df[["sex"]]
+  return(as.data.frame(comfam_obj$dat.combat))
+}
+
+################
 # PLOTTING
 ################
 
