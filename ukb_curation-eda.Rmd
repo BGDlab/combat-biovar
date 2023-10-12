@@ -217,3 +217,101 @@ for (pheno in ct_list) {
 }
 ```
 
+## Simulate Sites
+Dividing each subject into 3 sites (A, B, and C) with M:F ratios of 1:1, 1:4, and 4:1
+
+```{r}
+set.seed(1010101)
+sim.site.list <- c("Site_A", "Site_B", "Site_C")
+n_female <- table(ukb_df_age.filt$sex)["Female"]
+n_male <- table(ukb_df_age.filt$sex)["Male"]
+
+# Sample probabilities
+male_prob <- c(0.33, 0.0825, 0.5875)
+female_prob <- c(0.33, 0.5875, 0.0825)
+
+# Separate samples for males and females
+sampled_males <- sample(sim.site.list, size = n_male, replace = TRUE, prob = male_prob)
+sampled_females <- sample(sim.site.list, size = n_female, replace = TRUE, prob = female_prob)
+
+ukb_df_sites <- ukb_df_age.filt %>%
+  mutate(sim.site = as.factor(ifelse(sex == "Male", sampled_males, sampled_females)))
+
+#write out
+write_csv(ukb_df_sites, file="data/ukb_CN_data_simsites.csv")
+```
+
+```{r}
+table(ukb_df_sites$sim.site)
+table(ukb_df_sites$sim.site, ukb_df_sites$sex)
+sum(is.na(ukb_df_sites$sim.site)) #all subj assigned to sites
+anova(lm(age_days ~ sim.site, ukb_df_sites))
+```
+
+Need to come up with cleaner way to do this...
+
+```{r}
+site_sum_df <- ukb_df_sites %>%
+  group_by(sim.site) %>%
+  summarise(proportion_male = mean(sex == "Male"),
+            min_age = min(age_days), max_age = max(age_days), mean_age = mean(age_days), 
+            var_gmv = var(GMV), var_wmv=var(WMV), var_sgmv=var(sGMV), var_ven = var(Ventricles),
+            sd_below.gmv = mean(GMV) - sd(GMV), sd_above.gmv = mean(GMV) + sd(GMV))
+```
+
+Center and visualize distributions
+
+```{r}
+ukb_sites_sex.centered <- ukb_df_sites %>%
+  group_by(sex) %>%
+  mutate_if(is.numeric, funs(scale(., center=TRUE, scale=FALSE))) %>%
+  ungroup()
+```
+
+```{r}
+# Generate histograms (mean-centered w/in sex)
+global_site_plots <- plot.hist.by.sex(ukb_sites_sex.centered, vol_list_global, facet_fac = "sim.site")
+
+# Print or display the histograms
+for (pheno in vol_list_global) {
+  print(global_site_plots[[pheno]])
+}
+```
+
+Look at uncentered distributions across sites
+```{r}
+ggplot(ukb_df_sites, aes(x=GMV)) + 
+ geom_histogram(aes(y=after_stat(density)))+
+ geom_density(alpha=.2) +
+  geom_vline(aes(xintercept=(mean(GMV)+sd(GMV)))) +
+  geom_vline(aes(xintercept=(mean(GMV)-sd(GMV))))
+  
+
+ggplot(ukb_df_sites, aes(x=GMV)) + 
+ geom_histogram(aes(y=after_stat(density)))+
+ geom_density(alpha=.2) +
+  geom_vline(aes(xintercept=(mean(GMV)+sd(GMV)))) +
+  geom_vline(aes(xintercept=(mean(GMV)-sd(GMV)))) +
+  facet_wrap(~sim.site)
+```
+
+```{r}
+centered.site_df <- ukb_df_sites %>%
+  group_by(sim.site) %>%
+  mutate_if(is.numeric, funs(scale(., center=TRUE, scale=FALSE))) %>%
+  ungroup()
+
+centered.site_sum_df <- centered.site_df %>%
+  group_by(sim.site) %>%
+  summarise(sd_below.gmv = mean(GMV) - sd(GMV), sd_above.gmv = mean(GMV) + sd(GMV))
+
+ggplot() + 
+ #geom_histogram(aes(x=centered.site_df$GMV, y=after_stat(density), fill=centered.site_df$sim.site, color=centered.site_df$sim.site), alpha = .2)+
+ geom_density(aes(x=centered.site_df$GMV, fill=centered.site_df$sim.site, color=centered.site_df$sim.site), alpha=.4) +
+  geom_vline(aes(xintercept=centered.site_sum_df$sd_below.gmv, color=centered.site_sum_df$sim.site)) +
+  geom_vline(aes(xintercept=centered.site_sum_df$sd_above.gmv, color=centered.site_sum_df$sim.site))
+```
+
+## ComBat
+
+And now, to combat the data across the simulated sites!
