@@ -28,7 +28,7 @@ Using additional instructions from J Fortin's [initial repo](https://github.com/
 Just using regional volume measures for now.
 
 ```{r}
-ukb_df_sites <- read_csv(file="data/ukb_CN_data_simsites.csv")
+ukb_df_sites <- read_csv(file="data/ukb_to_model/ukb_CN_data_simsites.csv")
 pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
 ```
 

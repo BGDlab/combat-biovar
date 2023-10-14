@@ -22,5 +22,6 @@ model <- gamlss(formula = as.formula(paste0(pheno,"~ poly(age_days, 3) + sex")),
 
 #SAVE
 csv_name <- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(as.character(args[1])))
+csv_rename <- gsub("_", "-", csv_name)
 
-saveRDS(model,paste0(save_path, "/", pheno, "_", csv_name, "_mod.rds"))
+saveRDS(model,paste0(save_path, "/", pheno, "_", csv_rename, "_mod.rds"))
