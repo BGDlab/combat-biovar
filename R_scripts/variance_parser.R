@@ -6,8 +6,16 @@ library(gamlss)
 library(dplyr)
 library(data.table)
 library(tibble)
+library(ggseg)
 
 source("R_scripts/gamlss_helper_funs.R")
+
+#pheno lists
+vol_list_global <- readRDS(file="R_scripts/vol_list_global.rds")
+# vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
+# sa_list <- readRDS(file="R_scripts/SA_list.rds")
+ct_list <- readRDS(file="R_scripts/CT_list.rds")
+pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
 
 #GET ARGS
 args <- commandArgs(trailingOnly = TRUE)
@@ -20,35 +28,53 @@ model.files <- list.files(path = read_path, pattern = "mod.rds", full.names = TR
 print("First Few Modfiles")
 print(model.files[1:3])
 
-sigma.df <- data.frame("file_path" = model.files)
-sigma.df <- sigma.df %>%
-  mutate(region = sub("_mod\\.rds$", "", basename(as.character(file_path))))
+#extract values of sex term from summary table
+summary.list <- lapply(model.files, get.summary)
 
-#look for sex-terms
-sigma.df$contains_sex <- lapply(sigma.df$file_path, find.param, moment="sigma", string="sex")
+#dataframe
+summary.df <- bind_rows(summary.list)
 
-#get formulas
-sigma.df$mu_form <- lapply(sigma.df$file_path, get.moment.formula, moment="mu")
-sigma.df$sig_form <- lapply(sigma.df$file_path, get.moment.formula, moment="sigma")
-sigma.df$nu_form <- lapply(sigma.df$file_path, get.moment.formula, moment="nu")
+#get phenotype value
+summary.df <- summary.df %>%
+  mutate(pheno = sapply(mod_name, function(b) {
+    pheno <- ""
+    for (a in pheno_list) {
+      if (grepl(a, b)) {
+        pheno <- a
+        break
+      }
+    }
+    return(pheno)
+  }))
 
-#get sexMale beta weight
-sigma.df$sexMale <- lapply(sigma.df$file_path, get.beta, moment="sigma", term="sexMale")
+#remaining cols
+sigma.sex.df <- summary.df %>%
+  dplyr::filter(parameter == "sigma" & term == "sexMale") %>%
+  mutate(
+    dataset = sub(".*_(.*)", "\\1", mod_name),
+    pheno_cat = as.factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA)),
+    sig = case_when(p.value < 0.05 ~ TRUE,
+                    p.value >= 0.05 ~ FALSE),
+    sig_bf.corr = case_when(pheno %in% vol_list_global & p.value < (0.05/length(vol_list_global)) ~ TRUE,
+                            pheno %in% vol_list_global & p.value >= (0.05/length(vol_list_global)) ~ FALSE,
+                            !(pheno %in% vol_list_global) & p.value < (0.05/length(ct_list)) ~ TRUE,
+                            !(pheno %in% vol_list_global) & p.value >= (0.05/length(ct_list)) ~ FALSE,
+                            TRUE ~ NA),
+    label = sub("_[^_]*_", "_", pheno)) %>% #for plotting
+    dplyr::select(!mod_name)
 
-#sigma dfs
-sigma.df$degrees <- lapply(sigma.df$file_path, get.sigma.df)
-sigma.df$nl_degrees <- lapply(sigma.df$file_path, get.sigma.nl.df)
+#add more info from parcellations
+dk.parc <- dk$data %>%
+  as.data.frame() %>%
+  na.omit() %>%
+  dplyr::select(c(hemi, region, label)) %>%
+  distinct()
 
-#make sure all values are correct class
-sigma.df <- sigma.df %>%
-  mutate(file_path = as.character(file_path),
- 	contains_sex = as.logical(contains_sex),
-	sexMale = as.numeric(sexMale),
-	degrees = as.numeric(degrees),
-	nl_degrees = as.numeric(nl_degrees),
-	mu_form = as.character(mu_form),
-	sig_form = as.character(sig_form),
-	nu_form = as.character(nu_form),
-	region = as.character(region))
+sigma.sex.df2 <- left_join(sigma.sex.df, dk.parc, by="label")
 
-write.csv(sigma.df, file=paste0(save_path, "/sigma.csv"))
+write.csv(sigma.sex.df2, file=paste0(save_path, "/sigma.csv"))
