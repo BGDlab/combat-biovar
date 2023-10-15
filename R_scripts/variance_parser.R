@@ -6,7 +6,6 @@ library(gamlss)
 library(dplyr)
 library(data.table)
 library(tibble)
-library(ggseg)
 
 source("R_scripts/gamlss_helper_funs.R")
 
@@ -68,13 +67,4 @@ sigma.sex.df <- summary.df %>%
     label = sub("_[^_]*_", "_", pheno)) %>% #for plotting
     dplyr::select(!mod_name)
 
-#add more info from parcellations
-dk.parc <- dk$data %>%
-  as.data.frame() %>%
-  na.omit() %>%
-  dplyr::select(c(hemi, region, label)) %>%
-  distinct()
-
-sigma.sex.df2 <- left_join(sigma.sex.df, dk.parc, by="label")
-
-write.csv(sigma.sex.df2, file=paste0(save_path, "/sigma.csv"))
+write.csv(sigma.sex.df, file=paste0(save_path, "/sigma.csv"))
