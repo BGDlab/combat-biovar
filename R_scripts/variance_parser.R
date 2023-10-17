@@ -6,7 +6,6 @@ library(gamlss)
 library(dplyr)
 library(data.table)
 library(tibble)
-library(ggseg)
 
 source("R_scripts/gamlss_helper_funs.R")
 
@@ -66,7 +65,6 @@ sigma.sex.df <- summary.df %>%
                             !(pheno %in% vol_list_global) & p.value >= (0.05/length(ct_list)) ~ FALSE,
                             TRUE ~ NA),
     label = sub("_[^_]*_", "_", pheno)) #for plotting
-
 
 #test significance of sex term in sigma
 drop1.list <- sapply(model.files, USE.NAMES=TRUE, get.and.drop1.p, moment="sigma", term="sexMale")
