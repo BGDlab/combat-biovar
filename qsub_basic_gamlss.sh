@@ -5,8 +5,8 @@
 
 #######################################################################################
 # SET PATHS
-#base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
-base=/Users/megardn/Desktop/BGD_Repos/combat_biovar #base path (local)
+base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
+#base=/Users/megardn/Desktop/BGD_Repos/combat_biovar #base path (local)
 #data_csv=$base/data/ukb_CN_data_agefilt.csv #path to csv with CLEANED DATA (no duplicates, etc)
 pheno_path=$base/pheno_lists #path to .txt files listing phenotypes (global & regional)
 mod_script=$base/R_scripts/fit_basic_mod.R #path to .R script
@@ -66,7 +66,7 @@ then
 			echo "Rscript --save $mod_script $1 $pheno $gamlss_dir" > $bash_script
 
 			#qsub bash script
-			#qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
+			qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
 
 		done < $list
 	done
@@ -91,7 +91,7 @@ then
 				echo "Rscript --save $mod_script $csv_file $pheno $gamlss_dir" > $bash_script
 
 				#qsub bash script
-				#qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
+				qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
 
 			done < $list
 		done
