@@ -64,7 +64,16 @@ sigma.sex.df <- summary.df %>%
                             !(pheno %in% vol_list_global) & p.value < (0.05/length(ct_list)) ~ TRUE,
                             !(pheno %in% vol_list_global) & p.value >= (0.05/length(ct_list)) ~ FALSE,
                             TRUE ~ NA),
-    label = sub("_[^_]*_", "_", pheno)) %>% #for plotting
-    dplyr::select(!mod_name)
+    label = sub("_[^_]*_", "_", pheno)) #for plotting
 
-write.csv(sigma.sex.df, file=paste0(save_path, "/sigma.csv"))
+#test significance of sex term in sigma
+drop1.list <- sapply(model.files, USE.NAMES=TRUE, get.and.drop1.p, moment="sigma", term="sexMale")
+#convert to df
+drop1.df <- data.frame(mod_name = unname(names(drop1.list)), drop1.pval = unlist(unname(drop1.list)))
+drop1.df <- drop1.df %>%
+  mutate(mod_name = basename(mod_name)) %>%
+  mutate(mod_name = sub("_mod.rds$", "", mod_name))
+
+sigma.sex.df2 <- merge(sigma.sex.df, drop1.df, by="mod_name")
+
+write.csv(sigma.sex.df2, file=paste0(save_path, "/sigma.csv"))

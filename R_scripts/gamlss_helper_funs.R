@@ -94,7 +94,7 @@ get.summary<- function(gamlss.rds.file) {
   sum.table <- broom.mixed::tidy(gamlss.obj) %>%
     as.data.frame() %>%
     rename(t_stat = statistic)
-  sum.table$pheno <- sub("_mod\\.rds$", "", basename(gamlss.rds.file)) #append model name
+  sum.table$mod_name <- sub("_mod\\.rds$", "", basename(gamlss.rds.file)) #append model name
   return(sum.table)
 }
 
@@ -109,7 +109,7 @@ post_combat_concat <- function(comfam_obj, og_df){
   
   comfam_obj$dat.combat[, "sim.site"] <- comfam_obj$batch$batch
   comfam_obj$dat.combat[, "age_days"] <- og_df[["age_days"]] #update in the future for more flexible naming & covar addition
-  comfam_obj$dat.combat[, "sex"] <- og_df[["sex"]]
+  comfam_obj$dat.combat[, "sexMale"] <- og_df[["sexMale"]]
   return(as.data.frame(comfam_obj$dat.combat))
 }
 
@@ -139,18 +139,18 @@ sim.data.ukb <- function(df){
   
   #sim data
   dataToPredictM <- data.frame(age_days=ageRange,
-                               sex=c(rep(as.factor("Male"), length(ageRange))),
+                               sexMale=c(rep(1, length(ageRange))),
                                fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
-                               sex.age=c(rep(0, length(ageRange))))
+                               sex.age=ageRange)
   dataToPredictM$TBV <- mean.tb.sim(df, "Male", ageRange, "TBV")
   dataToPredictM$Vol_total <- mean.tb.sim(df, "Male", ageRange, "Vol_total")
   dataToPredictM$SA_total <- mean.tb.sim(df, "Male", ageRange, "SA_total")
   dataToPredictM$CT_total <- mean.tb.sim(df, "Male", ageRange, "CT_total")
   
   dataToPredictF <- data.frame(age_days=ageRange,
-                               sex=c(rep(as.factor("Female"), length(ageRange))),
+                               sexMale=c(rep(0, length(ageRange))),
                                fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
-                               sex.age=ageRange)
+                               sex.age=c(rep(0, length(ageRange))))
   dataToPredictF$TBV <- mean.tb.sim(df, "Female", ageRange, "TBV")
   dataToPredictF$Vol_total <- mean.tb.sim(df, "Female", ageRange, "Vol_total")
   dataToPredictF$SA_total <- mean.tb.sim(df, "Female", ageRange, "SA_total")
