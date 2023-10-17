@@ -14,8 +14,8 @@ pheno <- as.character(args[2])
 save_path <- args[3]
 
 #FIT BASIC MODEL
-model <- gamlss(formula = as.formula(paste0(pheno,"~ poly(age_days, 3) + sex")),
-                     sigma.formula = ~ poly(age_days, 3) + sex,
+model <- gamlss(formula = as.formula(paste0(pheno,"~ poly(age_days, 3) + sexMale")),
+                     sigma.formula = ~ poly(age_days, 3) + sexMale,
                      nu.formula = ~ 1,
                      control = gamlss.control(n.cyc = 200), 
                      family = BCCG, data=df, trace = FALSE)

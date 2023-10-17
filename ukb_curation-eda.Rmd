@@ -47,9 +47,10 @@ ukb_df <- cn_data %>%
          TBV=(sGMV+GMV+WMV+Ventricles),
          fs_version = as.factor(fs_version),
          sex = as.factor(sex),
-         sex_int = as.numeric(case_when(sex == "Male" ~ 0,
-                                        sex == "Female" ~ 1)),
-         sex.age = sex_int * age_days) %>%
+         sexMale = as.numeric(case_when(sex == "Male" ~ 1,
+                                        sex == "Female" ~ 0,
+                                        TRUE ~ NA)),
+         sex.age = sexMale * age_days) %>%
   na.omit() #1 subj has 1 missing val
 
 skim(ukb_df)

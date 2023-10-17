@@ -20,7 +20,7 @@ source("./R_scripts/gamlss_helper_funs.R")
 
 ```{r}
 ukb_df_totals <- read_csv(file="data/ukb_CN_data.csv")
-ukb_df_age.filt <- read_csv(file="data/ukb_CN_data_agefilt.csv")
+ukb_df_age.filt <- read_csv(file="data/ukb_to_model/ukb_CN_data_simsites.csv")
 
 vol_list_global <- readRDS(file="R_scripts/vol_list_global.rds")
 vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
@@ -70,7 +70,7 @@ lapply(test.model.list, drop1, what="mu", scope = "sex")
 scp'd models from cubic to parse
 
 ```{r}
-read_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/ukb_basic/gamlss_objs" #path to bfp models
+read_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/ukb_basic/" #path to bfp models
 ```
 
 ```{r}
@@ -162,3 +162,24 @@ sigma.sex.df2 %>%
   ggtitle("t-statistic for effect of male sex on sigma")
 ```
 
+Troubleshooting drop1
+
+```{r}
+model.test <- readRDS("~/Desktop/BGD_Repos/combat_biovar/ukb_basic/lh_SA_superiortemporal_ukb-CN-data-simsites_mod.rds")
+drop1(model.test, what = "sigma")
+model.test.drop <- gamlss(formula = lh_SA_superiortemporal ~ poly(age_days, 3) + sex,
+                       sigma.formula = ~ poly(age_days, 3),
+                       nu.formula = ~ 1,
+                       family = BCCG, data=ukb_df_age.filt, trace = FALSE)
+drop1(model.test.drop, what = "sigma")
+
+ukb_df_age.filt <- ukb_df_age.filt %>%
+  mutate(sexMale = as.numeric(case_when(sex == "Male" ~ 1,
+                                        sex == "Female" ~ 0,
+                                        TRUE ~ NA)))
+model.test.refit <- gamlss(formula = lh_SA_superiortemporal ~ poly(age_days, 3) + sexMale,
+                       sigma.formula = ~ poly(age_days, 3) + sexMale,
+                       nu.formula = ~ 1,
+                       family = BCCG, data=ukb_df_age.filt, trace = FALSE)
+drop1(model.test.refit, what = "sigma", scope = "sexMale")
+```
