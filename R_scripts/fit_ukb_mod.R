@@ -16,15 +16,13 @@ save_path <- args[4]
 
 #FIT BASE MODEL
 base_model <- gamlss(formula = as.formula(paste0(pheno,"~ pb(age_days) + sex + fs_version + pb(sex.age) + pb(", glob_pheno,")")),
-             sigma.formula = ~  pb(age_days) + sex,
-             nu.formula = ~ 1,
+             sigma.formula = as.formula(paste0("~ pb(age_days) + sex + pb(sex.age) + fs_version + pb(", glob_pheno,")")),
+             nu.formula = as.formula(paste0("~ pb(age_days) + sex + pb(sex.age) + fs_version + pb(", glob_pheno,")")),
              control = gamlss.control(n.cyc = 200), 
              family = BCCG, data=ukb_df, trace = FALSE)
 
-#USE stepGAICAll.A to fit best model
-best_model <- stepGAICAll.A(base_model, 
-                            scope=list(lower=~1, upper=as.formula(paste0("~ pb(age_days) + sex + fs_version + pb(sex.age) + pb(", glob_pheno,")"))), 
-                            k=2, glim.control(cyc=100)) #AIC
-
 #SAVE
-saveRDS(best_model,paste0(save_path, "/", pheno, "_mod.rds"))
+csv_name <- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(as.character(args[1])))
+csv_rename <- gsub("_", "-", csv_name)
+
+saveRDS(base_model,paste0(save_path, "/", pheno, "_", csv_rename, "_mod.rds"))
