@@ -63,10 +63,12 @@ then
 			#write bash script
 			bash_script=$bash_dir/${pheno}_${csv_name}_basic_fit.sh
 			touch $bash_script
-			echo "Rscript --save $mod_script $1 $pheno $gamlss_dir" > $bash_script
+			echo "singularity run --cleanenv \ \n
+				/cbica/home/gardnerm/software/containers/r_gamlss_0.0.2.sif \ \n
+				Rscript --save $mod_script $1 $pheno $gamlss_dir" > $bash_script
 
 			#qsub bash script
-			qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
+			#qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
 
 		done < $list
 	done
@@ -88,12 +90,12 @@ then
 				#write bash script
 				bash_script=$bash_dir/${pheno}_${csv_name}_basic_fit.sh
 				touch $bash_script
-				echo "singularity run --cleanenv \
-				/cbica/home/gardnerm/software/containers/r_gamlss_0.0.2.sif \
+				echo "singularity run --cleanenv \ \n
+				/cbica/home/gardnerm/software/containers/r_gamlss_0.0.2.sif \ \n
 				Rscript --save $mod_script $csv_file $pheno $gamlss_dir" > $bash_script
 
 				#qsub bash script
-				qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
+				#qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
 
 			done < $list
 		done
