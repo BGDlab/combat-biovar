@@ -11,8 +11,8 @@ source("R_scripts/gamlss_helper_funs.R")
 
 #pheno lists
 vol_list_global <- readRDS(file="R_scripts/vol_list_global.rds")
-# vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
-# sa_list <- readRDS(file="R_scripts/SA_list.rds")
+vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
+sa_list <- readRDS(file="R_scripts/SA_list.rds")
 ct_list <- readRDS(file="R_scripts/CT_list.rds")
 pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
 
@@ -46,6 +46,9 @@ summary.df <- summary.df %>%
     return(pheno)
   }))
 
+#troubleshooting
+#write.csv(summary.df, file=paste0(save_path, "/summary_df.csv"))
+
 #remaining cols
 sigma.sex.df <- summary.df %>%
   dplyr::filter(parameter == "sigma" & term == "sexMale") %>%
@@ -56,7 +59,7 @@ sigma.sex.df <- summary.df %>%
     pheno %in% vol_list_regions ~ "Regional Volume",
     pheno %in% sa_list ~ "Regional SA",
     pheno %in% ct_list ~ "Regional CT",
-    TRUE ~ NA)),
+    TRUE ~ NA_character_)),
     sig.sum = case_when(p.value < 0.05 ~ TRUE,
                     p.value >= 0.05 ~ FALSE),
     sig.sum_bf.corr = case_when(pheno %in% vol_list_global & p.value < (0.05/length(vol_list_global)) ~ TRUE,
