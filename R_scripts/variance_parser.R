@@ -57,9 +57,9 @@ sigma.sex.df <- summary.df %>%
     pheno %in% sa_list ~ "Regional SA",
     pheno %in% ct_list ~ "Regional CT",
     TRUE ~ NA)),
-    sig = case_when(p.value < 0.05 ~ TRUE,
+    sig.sum = case_when(p.value < 0.05 ~ TRUE,
                     p.value >= 0.05 ~ FALSE),
-    sig_bf.corr = case_when(pheno %in% vol_list_global & p.value < (0.05/length(vol_list_global)) ~ TRUE,
+    sig.sum_bf.corr = case_when(pheno %in% vol_list_global & p.value < (0.05/length(vol_list_global)) ~ TRUE,
                             pheno %in% vol_list_global & p.value >= (0.05/length(vol_list_global)) ~ FALSE,
                             !(pheno %in% vol_list_global) & p.value < (0.05/length(ct_list)) ~ TRUE,
                             !(pheno %in% vol_list_global) & p.value >= (0.05/length(ct_list)) ~ FALSE,
@@ -75,5 +75,12 @@ drop1.df <- drop1.df %>%
   mutate(mod_name = sub("_mod.rds$", "", mod_name))
 
 sigma.sex.df2 <- merge(sigma.sex.df, drop1.df, by="mod_name")
+
+sigma.sex.df2 <- sigma.sex.df2 %>%
+  mutate(sig.drop_bf.corr = case_when(pheno %in% vol_list_global & drop1.pval < (0.05/length(vol_list_global)) ~ TRUE,
+                                     pheno %in% vol_list_global & drop1.pval >= (0.05/length(vol_list_global)) ~ FALSE,
+                                     !(pheno %in% vol_list_global) & drop1.pval < (0.05/length(ct_list)) ~ TRUE,
+                                     !(pheno %in% vol_list_global) & drop1.pval >= (0.05/length(ct_list)) ~ FALSE,
+                                     TRUE ~ NA))
 
 write.csv(sigma.sex.df2, file=paste0(save_path, "/sigma.csv"))
