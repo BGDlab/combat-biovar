@@ -10,6 +10,8 @@ base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
 #data_csv=$base/data/ukb_CN_data_agefilt.csv #path to csv with CLEANED DATA (no duplicates, etc)
 pheno_path=$base/pheno_lists #path to .txt files listing phenotypes (global & regional)
 mod_script=$base/R_scripts/fit_basic_mod.R #path to .R script
+
+cd $base #to source functions correctly
 #######################################################################################
 # GET ARGS
 if [ $# -lt 1 ]
