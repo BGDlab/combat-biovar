@@ -16,6 +16,31 @@ library(broom.mixed)
 # get.moment.formula()
 ################
 
+drop1_all <- function(mod_obj, list){
+  df <- data.frame("Term"=character(),
+                   "Df"=double(),
+                   "AIC"=double(),
+                   "LRT"=double(),
+                   "Pr(Chi)"=double(),
+                   "Moment"=character())
+  
+  for (m in list){
+    print(m)
+    drop.obj<-drop1(mod_obj, what = m)
+    df2 <- drop.obj %>%
+      as.data.frame() %>%
+      mutate(Moment=attributes(drop.obj)$heading[2]) %>%
+      tibble::rownames_to_column("Term")
+    df <- rbind(df, df2)
+  }
+  return(df)
+}
+
+
+################
+# LOADING GAMLSS MODELS FROM .RDS
+################
+
 ################
 # find.param(gamlss.rds.file, moment, string)
 ### Use: read gamlss objects from RDS file and see whether the formula for a specific moment includes vars containing specified string
@@ -75,16 +100,6 @@ get.moment.formula <- function(gamlss.rds.file, moment) {
   gamlss.rds.file <- as.character(gamlss.rds.file)
   gamlss.obj <- readRDS(gamlss.rds.file)
   moment.form <- formula(gamlss.obj, what = moment)
-}
-
-get.and.drop1.p <- function(gamlss.rds.file, moment, term) {
-  #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
-  gamlss.rds.file <- as.character(gamlss.rds.file)
-  gamlss.obj <- readRDS(gamlss.rds.file)
-  #summary(gamlss.obj)
-  t <- drop1(gamlss.obj, what = moment, scope = term)
-  pval <- t$"Pr(Chi)"[2]
-  return(pval)
 }
 
 get.summary<- function(gamlss.rds.file) {
