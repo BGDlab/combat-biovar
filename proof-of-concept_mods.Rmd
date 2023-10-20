@@ -114,7 +114,7 @@ dk.parc <- dk$data %>%
 sigma.sex.df2 <- left_join(sigma.sex.df, dk.parc, by="label")
 ```
 
-Visualize
+###Visualize
 
 ```{r}
 table(sigma.sex.df2$sig)
@@ -162,6 +162,8 @@ sigma.sex.df2 %>%
   ggtitle("t-statistic for effect of male sex on sigma")
 ```
 
+##Troubleshooting
+
 Troubleshooting drop1
 
 ```{r}
@@ -182,4 +184,20 @@ model.test.refit <- gamlss(formula = lh_SA_superiortemporal ~ poly(age_days, 3) 
                        nu.formula = ~ 1,
                        family = BCCG, data=ukb_df_age.filt, trace = FALSE)
 drop1(model.test.refit, what = "sigma", scope = "sexMale")
+
+
+model.test.refit2 <- gamlss(formula = lh_SA_superiortemporal ~ poly(age_days, 3) + sex,
+                       sigma.formula = ~ poly(age_days, 3) + sex,
+                       nu.formula = ~ 1,
+                       family = BCCG, data=ukb_df_age.filt, trace = FALSE)
+
+
+drop.test.obj<-drop1(model.test.refit2, what = "nu")
+df <- drop.test.obj %>%
+  as.data.frame() %>%
+  mutate(what=attributes(drop.test.obj)$heading[2]) %>%
+  add_rownames(var = "term")
+
+
+f <- drop1_all(model.test.refit2, name="TEST")
 ```

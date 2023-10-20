@@ -16,8 +16,13 @@ library(broom.mixed)
 # get.moment.formula()
 ################
 
-drop1_all <- function(mod_obj, list = c("mu", "sigma")){
-  n <- deparse(substitute(mod_obj))
+drop1_all <- function(mod_obj, list = c("mu", "sigma"), name = NA){
+  if (is.na(name)){
+    n <- deparse(substitute(mod_obj))
+  } else {
+    n <- name
+  }
+  
   df <- data.frame("Model"=character(),
                    "Term"=character(),
                    "Df"=double(),
@@ -27,7 +32,7 @@ drop1_all <- function(mod_obj, list = c("mu", "sigma")){
                    "Moment"=character())
   
   for (m in list){
-    print(m)
+    print(paste("drop1 from", m))
     drop.obj<-drop1(mod_obj, what = m)
     df2 <- drop.obj %>%
       as.data.frame() %>%

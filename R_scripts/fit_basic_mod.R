@@ -7,6 +7,8 @@ library(gamlss)
 library(dplyr)
 library(data.table)
 
+source("R_scripts/gamlss_helper_funs.R")
+
 #GET ARTS
 args <- commandArgs(trailingOnly = TRUE)
 df <- fread(args[1], stringsAsFactors = TRUE, na.strings = "")
@@ -25,3 +27,7 @@ csv_name <- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(as.charact
 csv_rename <- gsub("_", "-", csv_name)
 
 saveRDS(model,paste0(save_path, "/", pheno, "_", csv_rename, "_mod.rds"))
+
+#DROP1 SIGNIFICANCE TESTING
+drop1_df <- drop1_all(model, name=pheno)
+fwrite(drop1_df, file=paste0(save_path, "/", pheno, "_", csv_rename, "_drop.csv"))
