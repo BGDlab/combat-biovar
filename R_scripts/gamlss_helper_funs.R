@@ -16,8 +16,10 @@ library(broom.mixed)
 # get.moment.formula()
 ################
 
-drop1_all <- function(mod_obj, list){
-  df <- data.frame("Term"=character(),
+drop1_all <- function(mod_obj, list = c("mu", "sigma")){
+  n <- deparse(substitute(mod_obj))
+  df <- data.frame("Model"=character(),
+                   "Term"=character(),
                    "Df"=double(),
                    "AIC"=double(),
                    "LRT"=double(),
@@ -29,13 +31,13 @@ drop1_all <- function(mod_obj, list){
     drop.obj<-drop1(mod_obj, what = m)
     df2 <- drop.obj %>%
       as.data.frame() %>%
-      mutate(Moment=attributes(drop.obj)$heading[2]) %>%
+      mutate(Moment=attributes(drop.obj)$heading[2],
+             Model= n) %>%
       tibble::rownames_to_column("Term")
     df <- rbind(df, df2)
   }
   return(df)
 }
-
 
 ################
 # LOADING GAMLSS MODELS FROM .RDS
