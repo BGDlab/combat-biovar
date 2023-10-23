@@ -63,7 +63,7 @@ do
 	#COMBAT LM W/ REF SITE
 	elif [ $config = "cf.lm_refA" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $data_csv $batch $save_path $config $covar_list 'lm, formula = y ~ age_days + sexMale, ref.batch = "Site_A"'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $data_csv $batch $save_path $config $covar_list 'lm, formula = y ~ age_days + sexMale, ref.batch = \"Site_A\"'" > $bash_script
 
 	#COMBAT GAM
 	elif [ $config = "cf.gam" ]
@@ -73,7 +73,7 @@ do
 	#COMBAT GAM W/ REF SITE
 	elif [ $config = "cf.gam_refA" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $data_csv $batch $save_path $config $covar_list 'gam, formula = y ~ s(age_days) + sexMale, ref.batch = "Site_A"'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $data_csv $batch $save_path $config $covar_list 'gam, formula = y ~ s(age_days) + sexMale, ref.batch = \"Site_A\"'" > $bash_script
 
 	#COMBAT GAMLSS
 	elif [ $config = "cf.gamlss" ]
@@ -83,7 +83,7 @@ do
 	#COMBAT GAMLSS W/ REF SITE
 	elif [ $config = "cf.gamlss_refA" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $data_csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale, ref.batch = "Site_A"'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $data_csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale, ref.batch = \"Site_A\"'" > $bash_script
 	fi
 
 #qsub bash script
