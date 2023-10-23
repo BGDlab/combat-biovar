@@ -91,8 +91,21 @@ for (l in list_of_feature_lists){
   } else if (length(args) == 5){
     cf.obj <- comfam(pheno.df, batch, covar.df)
   } else if(length(args) == 6) {
-    cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.args, ")")))
-    #cf.obj <- comfam(paste0(pheno.df, batch, covar.df, cf.args))
+    #check for ref.batch
+    if (grepl("ref\\.batch\\s*=\\s*", cf.args)) {
+      # Split the string into two parts
+      cf.args_split <- unlist(strsplit(cf.args, "ref.batch", fixed = TRUE))
+      
+      # The split_string will contain two elements - ONLY WORKS if ref.batch is LAST argument passed
+      cf.arg1 <- cf.args_split[1]
+      ref_batch <- gsub("=", "", cf.args_split[2])
+      ref_batch <- trimws(ref_batch)
+      
+      #Combat
+      cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.arg1, "ref.batch =", as.character(ref_batch),")")))
+    } else {
+      cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.args, ")")))
+    }
   }
   
   #save cf.obj
