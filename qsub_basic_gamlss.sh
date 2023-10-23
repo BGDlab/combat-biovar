@@ -72,7 +72,7 @@ then
 #if input directory of .csvs
 elif [ -d $1 ]
 then
-	for csv_file in "$1"/*
+	for csv_file in "$1"/*.csv #select JUST csvs - need to test this
 	do
 		csv_name=$(basename $csv_file .csv)
 		csv_name=${csv_name//_/\-}

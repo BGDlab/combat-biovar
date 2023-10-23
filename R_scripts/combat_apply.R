@@ -51,7 +51,7 @@ sa_list <- readRDS(file="R_scripts/SA_list.rds")
 ct_list <- readRDS(file="R_scripts/CT_list.rds")
 #combine
 list_of_feature_lists <- list(vol_list_global, vol_list_regions, sa_list, ct_list)
-names(list_of_feature_lists) <- c("Vol_Global", "Vol_Regional", "SA", "CT")
+names(list_of_feature_lists) <- c("VolGlob", "VolReg", "SA", "CT")
 
 #DEF BATCHES & COVARS
 batch <- as.factor(raw.df[[batch.col]])
@@ -94,7 +94,7 @@ for (l in list_of_feature_lists){
   }
   
   #save cf.obj
-  saveRDS(cf.obj, file=paste0(save_path, "/", save_name,"_", names(list_of_feature_lists[i]), "_cf_obj.rds"))
+  saveRDS(cf.obj, file=paste0(save_path, "/combat_objs/", save_name,"_", names(list_of_feature_lists[i]), "_cf_obj.rds"))
   
   #row number
   cf.obj.df <- cf.obj$dat.combat %>%

@@ -71,7 +71,6 @@ cf.lm_refA <- comfam(pheno.df, batch, covar.mat, lm, formula = y ~ age_days + se
 # cf.lm_refA$dat.combat
 ```
 
-
 combat gam with age as smooth
 ```{r}
 cf.gam <- comfam(pheno.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sexMale)
