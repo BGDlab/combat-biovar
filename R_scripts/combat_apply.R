@@ -6,7 +6,7 @@
 ## 3. path to save output csv
 ## 4. filename for output csv
 ## 5. list of columns to be included as covariates (OPTIONAL)
-## 6. Additional combat arguments, including model, formula, ref.batch, ... (OPTIONAL)
+## 6. Additional comfam() arguments, including model, formula, ref.batch, ... (OPTIONAL)
 
 set.seed(12345)
 
@@ -37,10 +37,10 @@ if (length(args) < 4){
   covar.list <- NULL
 } else if(length(args)==5) {
   print("Applying basic lm covariate correction")
-  covar.list <- as.list(args[5])
+  covar.list <- as.character(unlist(strsplit(args[5], ",")))
 } else if (length(args)==6) {
   print("Applying additional combat args")
-  covar.list <- as.list(args[5])
+  covar.list <- as.character(unlist(strsplit(args[5], ",")))
   cf.args <- args[6]
 }
 
@@ -51,17 +51,18 @@ sa_list <- readRDS(file="R_scripts/SA_list.rds")
 ct_list <- readRDS(file="R_scripts/CT_list.rds")
 #combine
 list_of_feature_lists <- list(vol_list_global, vol_list_regions, sa_list, ct_list)
+names(list_of_feature_lists) <- c("Vol_Global", "Vol_Regional", "SA", "CT")
 
 #DEF BATCHES & COVARS
 batch <- as.factor(raw.df[[batch.col]])
 
 if (!is.null(covar.list)){
-#covar df only works with numeric variables (otherwise need to use matrix to dummy-code). sticking with just df for now, can update later
-stopifnot(all(sapply(covar.list, is.numeric)))
-
 covar.df <- raw.df %>%
   dplyr::select(all_of(covar.list))
+
 stopifnot(length(batch) == nrow(covar.df))
+#covar df only works with numeric variables (otherwise need to use matrix to dummy-code). sticking with just df for now, can update later
+stopifnot(all(sapply(covar.df, is.numeric)))
 }
 
 ##########################################################################
@@ -69,10 +70,15 @@ stopifnot(length(batch) == nrow(covar.df))
 #COMBAT
 
 #initialize df for combat method
-cf <- data.frame()
+cf <- data.frame(matrix(NA, ncol=1, nrow=(nrow(raw.df))))[-1] %>%
+  mutate(id = row_number())
+
+i=0
 
 #ITERATE ACROSS FEATURE LISTS
 for (l in list_of_feature_lists){
+  i=i+1
+  print(names(list_of_feature_lists[i]))
   pheno.df <- raw.df %>%
     dplyr::select(all_of(l))
   
@@ -83,18 +89,30 @@ for (l in list_of_feature_lists){
   if (length(args) < 6){
     cf.obj <- comfam(pheno.df, batch, covar.df)
   } else if(length(args)==6) {
-    cf.obj <- comfam(pheno.df, batch, covar.df, cf.args)
+    cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.args, ")")))
+    #cf.obj <- comfam(paste0(pheno.df, batch, covar.df, cf.args))
   }
   
+  #save cf.obj
+  saveRDS(cf.obj, file=paste0(save_path, "/", save_name,"_", names(list_of_feature_lists[i]), "_cf_obj.rds"))
+  
+  #row number
+  cf.obj.df <- cf.obj$dat.combat %>%
+    mutate(id = row_number())
+  
   #add in combatted values
-  cf <- merge(cf, cf.obj$dat.combat, by = 'row.names')
+  cf <- base::merge(cf, cf.obj.df, 
+              by = "id")
+  
 }
 
 #merge back in batch and covars
 cf[, "batch"] <- batch
 
 if (!is.null(covar.list)){
-  cf <- merge(cf, covar.df, by = 'row.names')
+  covar.df <- covar.df %>%
+    mutate(id = row_number())
+  cf <- base::merge(cf, covar.df, by = "id")
 }
 
 ##########################################################################
