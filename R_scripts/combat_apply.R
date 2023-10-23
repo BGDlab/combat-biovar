@@ -86,9 +86,11 @@ for (l in list_of_feature_lists){
   stopifnot(nrow(pheno.df) == length(batch))
   
   #run combat w/ or w/o additional args
-  if (length(args) < 6){
+  if (length(args) < 5){
+    cf.obj <- comfam(pheno.df, batch)
+  } else if (length(args) == 5){
     cf.obj <- comfam(pheno.df, batch, covar.df)
-  } else if(length(args)==6) {
+  } else if(length(args) == 6) {
     cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.args, ")")))
     #cf.obj <- comfam(paste0(pheno.df, batch, covar.df, cf.args))
   }

@@ -78,12 +78,12 @@ do
 	#COMBAT GAMLSS
 	elif [ $config = "cf.gamlss" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $data_csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ s(age_days) + sexMale'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $data_csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale'" > $bash_script
 
 	#COMBAT GAMLSS W/ REF SITE
 	elif [ $config = "cf.gamlss_refA" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $data_csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ s(age_days) + sexMale, ref.batch = "Site_A"'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $data_csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale, ref.batch = "Site_A"'" > $bash_script
 	fi
 
 #qsub bash script
