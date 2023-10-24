@@ -55,6 +55,7 @@ names(list_of_feature_lists) <- c("VolGlob", "VolReg", "SA", "CT")
 
 #DEF BATCHES & COVARS
 batch <- as.factor(raw.df[[batch.col]])
+print(table(batch))
 
 if (!is.null(covar.list)){
 covar.df <- raw.df %>%
@@ -102,7 +103,8 @@ for (l in list_of_feature_lists){
       ref_batch <- trimws(ref_batch)
       
       #Combat
-      cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.arg1, "ref.batch =", as.character(ref_batch),")")))
+	print(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", cf.arg1, " ref.batch = '", as.factor(ref_batch),"')")))
+      cf.obj <- eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", cf.arg1, " ref.batch = '", as.factor(ref_batch),"')")))
     } else {
       cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.args, ")")))
     }
