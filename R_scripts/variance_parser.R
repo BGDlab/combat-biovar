@@ -69,21 +69,26 @@ sigma.sex.df <- summary.df %>%
                             TRUE ~ NA),
     label = sub("_[^_]*_", "_", pheno)) #for plotting
 
-#test significance of sex term in sigma
-drop1.list <- sapply(model.files, USE.NAMES=TRUE, get.and.drop1.p, moment="sigma", term="sexMale")
-#convert to df
-drop1.df <- data.frame(mod_name = unname(names(drop1.list)), drop1.pval = unlist(unname(drop1.list)))
+#iterate across drop1 csvs
+csv.files <- list.files(path = read_path, pattern = ".csv", full.names = TRUE)
+drop1.df <- do.call(rbind, lapply(csv.files, fread))
+
 drop1.df <- drop1.df %>%
-  mutate(mod_name = basename(mod_name)) %>%
-  mutate(mod_name = sub("_mod.rds$", "", mod_name))
-
-sigma.sex.df2 <- merge(sigma.sex.df, drop1.df, by="mod_name")
-
-sigma.sex.df2 <- sigma.sex.df2 %>%
+  rename(drop1.pval = "Pr(Chi)") %>%
   mutate(sig.drop_bf.corr = case_when(pheno %in% vol_list_global & drop1.pval < (0.05/length(vol_list_global)) ~ TRUE,
-                                     pheno %in% vol_list_global & drop1.pval >= (0.05/length(vol_list_global)) ~ FALSE,
-                                     !(pheno %in% vol_list_global) & drop1.pval < (0.05/length(ct_list)) ~ TRUE,
-                                     !(pheno %in% vol_list_global) & drop1.pval >= (0.05/length(ct_list)) ~ FALSE,
-                                     TRUE ~ NA))
+                                      pheno %in% vol_list_global & drop1.pval >= (0.05/length(vol_list_global)) ~ FALSE,
+                                      !(pheno %in% vol_list_global) & drop1.pval < (0.05/length(ct_list)) ~ TRUE,
+                                      !(pheno %in% vol_list_global) & drop1.pval >= (0.05/length(ct_list)) ~ FALSE,
+                                      TRUE ~ NA))
 
-write.csv(sigma.sex.df2, file=paste0(save_path, "/sigma.csv"))
+write.csv(drop1.df, file=paste0(save_path, "/drop1_tests.csv"))
+
+#merge in sigma results
+drop1.sigma <- drop1.df %>%
+  dplyr::filter(Moment == "sigma" & Term == "sexMale") %>%
+  rename(mod_name = Model,
+         term = Term) #for easier merging
+
+sigma.sex.df2 <- base::merge(sigma.sex.df, drop1.df, by=c("mod_name", "term"))
+
+write.csv(sigma.sex.df2, file=paste0(save_path, "/sigma_sex.csv"))
