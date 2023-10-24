@@ -121,16 +121,32 @@ for (l in list_of_feature_lists){
   
 }
 
-#merge back in batch and covars
-cf[, "batch"] <- batch
+#merge back into the rest of the raw dataset (demographics, etc.)
+pheno_list <- unname(unlist(list_of_feature_lists)) #features that were combatted
 
-if (!is.null(covar.list)){
-  covar.df <- covar.df %>%
-    mutate(id = row_number())
-  cf <- base::merge(cf, covar.df, by = "id")
-}
+nonpheno.df <- raw.df %>%
+  dplyr::select(!any_of(pheno_list)) %>%
+  mutate(id = row_number())
+
+cf.merged <- base::merge(cf, nonpheno.df, by = "id")
+
+#recalculate TBV, Vol_total, SA_total, & CT_total on combatted data
+final.df <- cf.merged %>%
+  mutate(TBV=rowSums(dplyr::select(., .dots=all_of(c(vol_list_global)))),
+         Vol_total=rowSums(dplyr::select(., .dots=all_of(c(vol_list_regions)))),
+         SA_total=rowSums(dplyr::select(., .dots=all_of(c(sa_list)))),
+         CT_total=rowSums(dplyr::select(., .dots=all_of(c(ct_list)))))
+
+#old version only added back batch and covars - maybe useful in some instances
+# cf[, "batch"] <- batch
+# 
+# if (!is.null(covar.list)){
+#   covar.df <- covar.df %>%
+#     mutate(id = row_number())
+#   cf <- base::merge(cf, covar.df, by = "id")
+# }
 
 ##########################################################################
 
 #WRITE OUT
-fwrite(cf, file=paste0(save_path, "/", save_name, "_data.csv"))
+fwrite(final.df, file=paste0(save_path, "/", save_name, "_data.csv"))
