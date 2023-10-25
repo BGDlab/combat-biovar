@@ -51,7 +51,6 @@ summary.df <- summary.df %>%
 
 #remaining cols
 sigma.sex.df <- summary.df %>%
-  dplyr::filter(parameter == "sigma" & term == "sexMale") %>%
   mutate(
     dataset = sub(".*_(.*)", "\\1", mod_name),
     pheno_cat = as.factor(case_when(
@@ -82,11 +81,10 @@ drop1.df <- drop1.df %>%
                                       !(Model %in% vol_list_global) & drop1.pval >= (0.05/length(ct_list)) ~ FALSE,
                                       TRUE ~ NA))
 
-write.csv(drop1.df, file=paste0(save_path, "/drop1_tests.csv"))
+#write.csv(drop1.df, file=paste0(save_path, "/drop1_tests.csv"))
 
 #merge in sigma results
 drop1.sigma <- drop1.df %>%
-  dplyr::filter(Moment == "sigma" & Term == "sexMale") %>%
   rename(pheno = Model,
          term = Term,
          dataset = Dataset,
@@ -97,4 +95,4 @@ print(paste("sum col names:", names(sigma.sex.df)))
 
 sigma.sex.df2 <- base::merge(sigma.sex.df, drop1.sigma, by=c("pheno", "term", "dataset", "parameter"))
 
-write.csv(sigma.sex.df2, file=paste0(save_path, "/sigma_sex.csv"))
+write.csv(sigma.sex.df2, file=paste0(save_path, "/gamlss_summary.csv"))
