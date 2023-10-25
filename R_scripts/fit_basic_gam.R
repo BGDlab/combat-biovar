@@ -26,4 +26,8 @@ saveRDS(model,paste0(save_path, "/", pheno, "_", csv_rename, "_gam.rds"))
 
 #SIGNIFICANCE TESTING
 df <- anova.gam(model)$pTerms.table
+df <- data.frame(term = row.names(df), df) %>%
+  mutate(dataset = csv_rename,
+         phenotype = pheno)
+
 fwrite(df, file=paste0(save_path, "/", pheno, "_", csv_rename, "_gam_sig.csv"))

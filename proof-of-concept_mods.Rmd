@@ -65,45 +65,20 @@ test.model.list[[1]] <- basic.m1
 lapply(test.model.list, drop1, what="mu", scope = "sex")
 ```
 
-## Significance Testing
+## Review Significance testing
 
-scp'd models from cubic to parse
+scp'd csvs from cubic
 
 ```{r}
-read_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/ukb_basic/" #path to bfp models
+drop1.df <- fread("ukb_basic/drop1_tests.csv", stringsAsFactors = TRUE) %>%
+  dplyr::select(-V1)
+sex.df <- fread("ukb_basic/sex_summary.csv", stringsAsFactors = TRUE)%>%
+  dplyr::select(-V1)
+sum.df <- fread("ukb_basic/gamlss_summary.csv", stringsAsFactors = TRUE)%>%
+  dplyr::select(-V1)
 ```
 
 ```{r}
-#iterate across gamlss objects
-model.files <- list.files(path = read_path, pattern = "mod.rds", full.names = TRUE)
-
-sigma.df <- data.frame("file_path" = model.files)
-sigma.df <- sigma.df %>%
-  mutate(region = sub("_mod\\.rds$", "", basename(as.character(file_path))))
-
-#test significance of sex term in sigma
-sigma.df$sig.sex_drop1.p <- lapply(sigma.df$file_path, get.and.drop1.p, moment="sigma", term="sex")
-
-#extract values of sex term from summary table
-summary.list <- lapply(sigma.df$file_path, get.summary)
-summary.df <- bind_rows(summary.list)
-sigma.sex.df <- summary.df %>%
-  dplyr::filter(parameter == "sigma" & term == "sexMale") %>%
-  mutate(pheno_cat = as.factor(case_when(
-    pheno %in% vol_list_global ~ "Global Volume",
-    pheno %in% vol_list_regions ~ "Regional Volume",
-    pheno %in% sa_list ~ "Regional SA",
-    pheno %in% ct_list ~ "Regional CT",
-    TRUE ~ NA)),
-    sig = case_when(p.value < 0.05 ~ TRUE,
-                    p.value >= 0.05 ~ FALSE),
-    sig_bf.corr = case_when(pheno %in% vol_list_global & p.value < (0.05/length(vol_list_global)) ~ TRUE,
-                            pheno %in% vol_list_global & p.value >= (0.05/length(vol_list_global)) ~ FALSE,
-                            !(pheno %in% vol_list_global) & p.value < (0.05/length(ct_list)) ~ TRUE,
-                            !(pheno %in% vol_list_global) & p.value >= (0.05/length(ct_list)) ~ FALSE,
-                            TRUE ~ NA),
-    label = sub("_[^_]*_", "_", pheno)) #for plotting
-
 #add more info from parcellations
 dk.parc <- dk$data %>%
   as.data.frame() %>%
@@ -111,33 +86,61 @@ dk.parc <- dk$data %>%
   dplyr::select(c(hemi, region, label)) %>%
   distinct()
 
-sigma.sex.df2 <- left_join(sigma.sex.df, dk.parc, by="label")
+sex.df <- left_join(sex.df, dk.parc, by="label")
+sum.df <- left_join(sum.df, dk.parc, by="label")
 ```
+
+Does the number of regions w significant age effects on mu change depending on combat version?
+
+```{r}
+drop1.df %>%
+  dplyr::filter(Term=="poly(age_days, 3)" & Moment == "mu") %>%
+  group_by(Dataset) %>%
+  summarize(n_sig_regions = sum(sig.drop_bf.corr),
+            n_regions = n())
+```
+
+No.
+
+Does the number of regions w significant sex effects on mu change depending on combat version?
+
+```{r}
+drop1.df %>%
+  dplyr::filter(Term=="sexMale" & Moment == "mu") %>%
+  group_by(Dataset) %>%
+  summarize(n_sig_regions = sum(sig.drop_bf.corr),
+            n_regions = n())
+
+sum.df %>%
+  dplyr::filter(term=="sexMale" & parameter == "mu") %>%
+  group_by(dataset) %>%
+  summarize(n_sig_regions = sum(sig.sum_bf.corr),
+            n_regions = n())
+```
+
+Slightly. Only combat w/o covariates or lm combat without a ref site are noticeably off. Consistent across drop1 and summary outputs
 
 ###Visualize
 
-```{r}
-table(sigma.sex.df2$sig)
-table(sigma.sex.df2$sig_bf.corr)
-```
+Non-combatted results
 
 ```{r, fig.width=11}
-sigma.sex.df2 %>%
-  dplyr::filter(sig_bf.corr == TRUE) %>%
+sex.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & dataset ==	"ukb-CN-data-simsites") %>%
   ggplot() +
   geom_col(aes(x=reorder(pheno,t_stat), y=t_stat, fill=pheno_cat)) + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   ggtitle("Significant effects of male sex on sigma across phenotype-specific brain charts")
 
-sigma.sex.df2 %>%
-  dplyr::filter(sig_bf.corr == TRUE) %>%
+sex.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & dataset == "ukb-CN-data-simsites") %>%
   ggplot() +
   geom_col(aes(x=label, y=t_stat, fill=pheno_cat)) + 
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   ggtitle("Significant effects of male sex on sigma across phenotype-specific brain charts")
 
-sigma.sex.df2 %>%
-  dplyr::filter(sig_bf.corr == TRUE) %>%
+sex.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & dataset == "ukb-CN-data-simsites") %>%
   ggplot() +
   geom_col(aes(x=region, y=t_stat, fill=hemi)) + 
   facet_wrap(~pheno_cat) +
@@ -148,8 +151,8 @@ sigma.sex.df2 %>%
 Plot on brains!
 
 ```{r}
-sigma.sex.df2 %>%
-  dplyr::filter(sig_bf.corr == TRUE) %>%
+sex.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & dataset == "ukb-CN-data-simsites") %>%
   group_by(pheno_cat) %>%
   ggplot() +
   geom_brain(atlas = dk, 
@@ -200,4 +203,29 @@ df <- drop.test.obj %>%
 
 
 f <- drop1_all(model.test.refit2, name="TEST")
+```
+
+```{r}
+# Your input string
+input_string <- "xxxx ref.batch = yyyy"
+
+# Check if the input string contains "ref.batch =" using a regular expression
+if (grepl("ref\\.batch\\s*=\\s*", input_string)) {
+  # Your code for splitting the string
+  # Split the string into two parts
+  split_string <- unlist(strsplit(input_string, "ref.batch", fixed = TRUE))
+  
+  # The split_string will contain two elements
+  part1 <- split_string[1]
+  part2 <- gsub("=", "", split_string[2])
+  
+  # Trim any leading/trailing white spaces in part2
+  part2 <- trimws(part2)
+  
+  # Output the two parts
+  print(part1)
+  print(part2)
+} else {
+  cat("The input string does not contain 'ref.batch ='\n")
+}
 ```
