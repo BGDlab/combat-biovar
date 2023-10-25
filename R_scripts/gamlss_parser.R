@@ -46,8 +46,6 @@ summary.df <- summary.df %>%
     return(pheno)
   }))
 
-#troubleshooting
-#write.csv(summary.df, file=paste0(save_path, "/summary_df.csv"))
 
 #remaining cols
 sigma.sex.df <- summary.df %>%
@@ -68,6 +66,8 @@ sigma.sex.df <- summary.df %>%
                             TRUE ~ NA),
     label = sub("_[^_]*_", "_", pheno)) #for plotting
 
+write.csv(sigma.sex.df, file=paste0(save_path, "/gamlss_summary.csv"))
+
 #iterate across drop1 csvs
 csv.files <- list.files(path = read_path, pattern = ".csv", full.names = TRUE)
 drop1.df <- do.call(rbind, lapply(csv.files, fread))
@@ -81,10 +81,10 @@ drop1.df <- drop1.df %>%
                                       !(Model %in% vol_list_global) & drop1.pval >= (0.05/length(ct_list)) ~ FALSE,
                                       TRUE ~ NA))
 
-#write.csv(drop1.df, file=paste0(save_path, "/drop1_tests.csv"))
+write.csv(drop1.df, file=paste0(save_path, "/drop1_tests.csv"))
 
-#merge in sigma results
-drop1.sigma <- drop1.df %>%
+#merge sex results - can't merge age b/c polynomials are handled differently by drop1 and summary
+drop1.df <- drop1.df %>%
   rename(pheno = Model,
          term = Term,
          dataset = Dataset,
@@ -95,4 +95,4 @@ print(paste("sum col names:", names(sigma.sex.df)))
 
 sigma.sex.df2 <- base::merge(sigma.sex.df, drop1.sigma, by=c("pheno", "term", "dataset", "parameter"))
 
-write.csv(sigma.sex.df2, file=paste0(save_path, "/gamlss_summary.csv"))
+write.csv(sigma.sex.df2, file=paste0(save_path, "/sex_summary.csv"))
