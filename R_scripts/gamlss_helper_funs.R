@@ -16,11 +16,16 @@ library(broom.mixed)
 # get.moment.formula()
 ################
 
-drop1_all <- function(mod_obj, list = c("mu", "sigma"), name = NA){
+drop1_all <- function(mod_obj, list = c("mu", "sigma"), name = NA, dataset = NA){
   if (is.na(name)){
     n <- deparse(substitute(mod_obj))
   } else {
     n <- name
+  }
+  if (is.na(dataset)){
+    d <- NA_character_
+  } else {
+    d <- dataset
   }
   
   df <- data.frame("Model"=character(),
@@ -29,7 +34,8 @@ drop1_all <- function(mod_obj, list = c("mu", "sigma"), name = NA){
                    "AIC"=double(),
                    "LRT"=double(),
                    "Pr(Chi)"=double(),
-                   "Moment"=character())
+                   "Moment"=character(),
+                   "Dataset"=character())
   
   for (m in list){
     print(paste("drop1 from", m))
@@ -37,7 +43,8 @@ drop1_all <- function(mod_obj, list = c("mu", "sigma"), name = NA){
     df2 <- drop.obj %>%
       as.data.frame() %>%
       mutate(Moment=attributes(drop.obj)$heading[2],
-             Model= n) %>%
+             Model=n,
+             Dataset=d) %>%
       tibble::rownames_to_column("Term")
     df <- rbind(df, df2)
   }
