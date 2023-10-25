@@ -87,8 +87,9 @@ write.csv(drop1.df, file=paste0(save_path, "/drop1_tests.csv"))
 drop1.sigma <- drop1.df %>%
   dplyr::filter(Moment == "sigma" & Term == "sexMale") %>%
   rename(mod_name = Model,
-         term = Term) #for easier merging
+         term = Term,
+         dataset = Dataset) #for easier merging
 
-sigma.sex.df2 <- base::merge(sigma.sex.df, drop1.df, by=c("mod_name", "term"))
+sigma.sex.df2 <- base::merge(sigma.sex.df, drop1.df, by=c("mod_name", "term", "dataset"))
 
 write.csv(sigma.sex.df2, file=paste0(save_path, "/sigma_sex.csv"))
