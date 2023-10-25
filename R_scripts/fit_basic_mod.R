@@ -29,5 +29,5 @@ csv_rename <- gsub("_", "-", csv_name)
 saveRDS(model,paste0(save_path, "/", pheno, "_", csv_rename, "_mod.rds"))
 
 #DROP1 SIGNIFICANCE TESTING
-drop1_df <- drop1_all(model, name=pheno)
+drop1_df <- drop1_all(model, name=pheno, dataset=csv_rename)
 fwrite(drop1_df, file=paste0(save_path, "/", pheno, "_", csv_rename, "_drop.csv"))
