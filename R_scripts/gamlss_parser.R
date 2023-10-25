@@ -90,9 +90,6 @@ drop1.df <- drop1.df %>%
          dataset = Dataset,
 	 parameter = Moment) #for easier merging
 
-print(paste("drop1 col names:", names(drop1.sigma)))
-print(paste("sum col names:", names(sigma.sex.df)))
-
-sigma.sex.df2 <- base::merge(sigma.sex.df, drop1.sigma, by=c("pheno", "term", "dataset", "parameter"))
+sigma.sex.df2 <- base::merge(sigma.sex.df, drop1.df, by=c("pheno", "term", "dataset", "parameter"))
 
 write.csv(sigma.sex.df2, file=paste0(save_path, "/sex_summary.csv"))
