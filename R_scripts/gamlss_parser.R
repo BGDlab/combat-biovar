@@ -74,20 +74,20 @@ drop1.df <- do.call(rbind, lapply(csv.files, fread))
 
 drop1.df <- drop1.df %>%
   rename(drop1.pval = "Pr(Chi)") %>%
-  mutate(sig.drop_bf.corr = case_when(pheno %in% vol_list_global & drop1.pval < (0.05/length(vol_list_global)) ~ TRUE,
-                                      pheno %in% vol_list_global & drop1.pval >= (0.05/length(vol_list_global)) ~ FALSE,
-                                      !(pheno %in% vol_list_global) & drop1.pval < (0.05/length(ct_list)) ~ TRUE,
-                                      !(pheno %in% vol_list_global) & drop1.pval >= (0.05/length(ct_list)) ~ FALSE,
+  mutate(sig.drop_bf.corr = case_when(Model %in% vol_list_global & drop1.pval < (0.05/length(vol_list_global)) ~ TRUE,
+                                      Model %in% vol_list_global & drop1.pval >= (0.05/length(vol_list_global)) ~ FALSE,
+                                      !(Model %in% vol_list_global) & drop1.pval < (0.05/length(ct_list)) ~ TRUE,
+                                      !(Model %in% vol_list_global) & drop1.pval >= (0.05/length(ct_list)) ~ FALSE,
                                       TRUE ~ NA))
 
 #write.csv(drop1.df, file=paste0(save_path, "/drop1_tests.csv"))
 
 #merge in sigma results
 drop1.sigma <- drop1.df %>%
-  rename(mod_name = Model,
+  rename(pheno = Model,
          term = Term,
          dataset = Dataset) #for easier merging
 
-sigma.sex.df2 <- base::merge(sigma.sex.df, drop1.df, by=c("mod_name", "term", "dataset"))
+sigma.sex.df2 <- base::merge(sigma.sex.df, drop1.df, by=c("pheno", "term", "dataset"))
 
 write.csv(sigma.sex.df2, file=paste0(save_path, "/gamlss_summary.csv"))
