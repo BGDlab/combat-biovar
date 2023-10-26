@@ -1,12 +1,14 @@
 #script for applying different versions of combat to different feature types
+#added optional pipe to qsub gamlss object fitting
 
 #expects 4 - 6 arguments:
 ## 1. dataframe of data to be combatted
-## 2. name of column containing batch identifier
+## 2. name of column containing batch identifier, or path to a csv containing batch identifier
 ## 3. path to save output csv
 ## 4. filename for output csv
-## 5. list of columns to be included as covariates (OPTIONAL)
-## 6. Additional comfam() arguments, including model, formula, ref.batch, ... (OPTIONAL)
+## 5. logical indicator of whether to pass data fit_ukb_basic.R
+## 6. list of columns to be included as covariates (OPTIONAL)
+## 7. Additional comfam() arguments, including model, formula, ref.batch, ... (OPTIONAL)
 
 set.seed(12345)
 
@@ -40,20 +42,21 @@ if (endsWith(batch.arg, '.csv')){
 
 save_path <- as.character(args[3]) #path to save outputs
 save_name <- as.character(args[4])
+pass <- as.logical(args[5])
 
 # see if optional args provided for combatting
-if (length(args) < 4){
+if (length(args) < 5){
   stop("Too few arguments!", call.=FALSE)
-} else if(length(args)==4) {
+} else if(length(args)==5) {
   print("Warning: No additional combat args provided, proceeding without covariate correction")
   covar.list <- NULL
-} else if(length(args)==5) {
+} else if(length(args)==6) {
   print("Applying basic lm covariate correction")
-  covar.list <- as.character(unlist(strsplit(args[5], ",")))
-} else if (length(args)==6) {
+  covar.list <- as.character(unlist(strsplit(args[6], ",")))
+} else if (length(args)==7) {
   print("Applying additional combat args")
-  covar.list <- as.character(unlist(strsplit(args[5], ",")))
-  cf.args <- args[6]
+  covar.list <- as.character(unlist(strsplit(args[6], ",")))
+  cf.args <- args[7]
 }
 
 #GET FEATURE LISTS
@@ -97,11 +100,11 @@ for (l in list_of_feature_lists){
   stopifnot(nrow(pheno.df) == length(batch))
   
   #run combat w/ or w/o additional args
-  if (length(args) < 5){
+  if (length(args) < 6){
     cf.obj <- comfam(pheno.df, batch)
-  } else if (length(args) == 5){
+  } else if (length(args) == 6){
     cf.obj <- comfam(pheno.df, batch, covar.df)
-  } else if(length(args) == 6) {
+  } else if(length(args) == 7) {
     #check for ref.batch
     if (grepl("ref\\.batch\\s*=\\s*", cf.args)) {
       # Split the string into two parts
@@ -160,4 +163,15 @@ final.df <- cf.merged %>%
 ##########################################################################
 
 #WRITE OUT
-fwrite(final.df, file=paste0(save_path, "/", save_name, "_data.csv"))
+datafile <- paste0(save_path, "/", save_name, "_data.csv")
+fwrite(final.df, file=datafile)
+
+##########################################################################
+# QSUB MODEL FIT
+if (isTRUE(pass)) {
+  print("submitting jobs to fit gamlss models")
+  cmd <- paste('/cbica/home/gardnerm/combat-biovar/qsub_gamlss.sh', datafile)
+  cat(cmd)
+  system(cmd)
+}
+print("DONE")
