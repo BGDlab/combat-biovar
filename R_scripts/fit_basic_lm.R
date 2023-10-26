@@ -21,8 +21,8 @@ model <- lm(as.formula(paste0(pheno,"age_days + sexMale")), data=df)
 csv_name <- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(as.character(args[1])))
 csv_rename <- gsub("_", "-", csv_name)
 
-saveRDS(model,paste0(save_path, "/", pheno, "_", csv_rename, "_gam.rds"))
+saveRDS(model,paste0(save_path, "/", pheno, "_", csv_rename, "_lm.rds"))
 
 #SIGNIFICANCE TESTING
-df <- anova.gam(model)$pTerms.table
-fwrite(df, file=paste0(save_path, "/", pheno, "_", csv_rename, "_gam_sig.csv"))
+df <- summary(model)$pTerms.table
+fwrite(df, file=paste0(save_path, "/", pheno, "_", csv_rename, "_lm_sig.csv"))

@@ -25,7 +25,19 @@ library(ComBatFamily)
 #GET ARGS
 args <- commandArgs(trailingOnly = TRUE)
 raw.df <- fread(args[1], stringsAsFactors = TRUE, na.strings = "")
-batch.col <- as.character(args[2])
+
+batch.arg <- args[2]
+#if batch arg is csv, merge csv into raw.df and designate last col as batch ID
+if (endsWith(batch.arg, '.csv')){
+  batch.df <- fread(batch.arg, stringsAsFactors = TRUE, na.strings = "")
+  batch <- as.factor(batch.df[,ncol(batch.df)])
+  raw.df <- base::merge(raw.df, batch.df)
+} else {
+  #if batch arg is a column name, select that column name from raw.df
+  batch.col <- as.character(batch.arg)
+  batch <- as.factor(raw.df[[batch.col]])
+}
+
 save_path <- as.character(args[3]) #path to save outputs
 save_name <- as.character(args[4])
 
@@ -53,8 +65,7 @@ ct_list <- readRDS(file="R_scripts/CT_list.rds")
 list_of_feature_lists <- list(vol_list_global, vol_list_regions, sa_list, ct_list)
 names(list_of_feature_lists) <- c("VolGlob", "VolReg", "SA", "CT")
 
-#DEF BATCHES & COVARS
-batch <- as.factor(raw.df[[batch.col]])
+#DEF COVARS
 
 if (!is.null(covar.list)){
 covar.df <- raw.df %>%
