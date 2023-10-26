@@ -77,7 +77,7 @@ cf.gam <- comfam(pheno.df, batch, covar.mat, gam, formula = y ~ s(age_days) + se
 ```
 
 ```{r}
-cf.gam_refA <- comfam(pheno.df, batch, covar.mat, gam, formula = y ~ s(age_days) + sexMale, ref.batch = "Site_A")
+cf.gam_refA <- comfam(pheno.df, batch, covar.mat, gam, ref.batch = "Site_A", formula = y ~ s(age_days) + sexMale)
 ```
 
 combat gamlss!
