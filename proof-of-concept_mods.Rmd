@@ -26,6 +26,7 @@ vol_list_global <- readRDS(file="R_scripts/vol_list_global.rds")
 vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
 sa_list <- readRDS(file="R_scripts/SA_list.rds")
 ct_list <- readRDS(file="R_scripts/CT_list.rds")
+pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
 ```
 
 Designate *basic* model formula
@@ -65,7 +66,7 @@ test.model.list[[1]] <- basic.m1
 lapply(test.model.list, drop1, what="mu", scope = "sex")
 ```
 
-## Review Significance testing
+## Review Results
 
 scp'd csvs from cubic
 
@@ -90,39 +91,7 @@ sex.df <- left_join(sex.df, dk.parc, by="label")
 sum.df <- left_join(sum.df, dk.parc, by="label")
 ```
 
-Does the number of regions w significant age effects on mu change depending on combat version?
-
-```{r}
-drop1.df %>%
-  dplyr::filter(Term=="poly(age_days, 3)" & Moment == "mu") %>%
-  group_by(Dataset) %>%
-  summarize(n_sig_regions = sum(sig.drop_bf.corr),
-            n_regions = n())
-```
-
-No.
-
-Does the number of regions w significant sex effects on mu change depending on combat version?
-
-```{r}
-drop1.df %>%
-  dplyr::filter(Term=="sexMale" & Moment == "mu") %>%
-  group_by(Dataset) %>%
-  summarize(n_sig_regions = sum(sig.drop_bf.corr),
-            n_regions = n())
-
-sum.df %>%
-  dplyr::filter(term=="sexMale" & parameter == "mu") %>%
-  group_by(dataset) %>%
-  summarize(n_sig_regions = sum(sig.sum_bf.corr),
-            n_regions = n())
-```
-
-Slightly. Only combat w/o covariates or lm combat without a ref site are noticeably off. Consistent across drop1 and summary outputs
-
-###Visualize
-
-Non-combatted results
+## Raw Data Results
 
 ```{r, fig.width=11}
 sex.df %>%
@@ -164,6 +133,154 @@ sex.df %>%
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
   ggtitle("t-statistic for effect of male sex on sigma")
 ```
+
+### Combat Effects
+
+#### Site Effects
+Loading combatted data (scp'd from cubic: `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/data/ukb_to_model/*.csv' ./data/ukb_to_model`) to see how values change with different combat methods
+```{r}
+data.csvs <- list.files(path = "data/ukb_to_model", pattern = ".csv", full.names = TRUE)
+combined_data <- data.frame()
+
+for (file in data.csvs) {
+  # Read each CSV file
+  data <- fread(file)
+  
+  # Add a "Source_File" column with the file name
+  data <- data %>%
+    mutate(Source_File = as.factor(basename(file)))
+  
+  # Bind the data to the combined dataframe
+  combined_data <- bind_rows(combined_data, data, .id = "File_ID")
+}
+
+table(combined_data$Source_File)
+```
+
+```{r}
+var.df <- combined_data %>%
+  group_by(Source_File, sim.site) %>%
+  summarize(across(all_of(pheno_list), var))
+
+var.long <- pivot_longer(var.df, cols=c(-Source_File, -sim.site), names_to = "feature", values_to = "variance")
+```
+
+```{r}
+var.long %>%
+  dplyr::filter(!(feature %in% vol_list_global)) %>%
+  ggplot() +
+  geom_density(aes(x=variance, fill=sim.site), alpha = 0.4, position="identity") +
+  facet_wrap(~Source_File)
+
+var.long %>%
+  dplyr::filter(!(feature %in% vol_list_global) & (Source_File == "cf.lm_data.csv" | Source_File == "cf.gamlss_data.csv" | Source_File == "ukb_CN_data_simsites.csv")) %>%
+  ggplot() +
+  geom_density(aes(x=variance, fill=Source_File), alpha = 0.5, position="identity") +
+  facet_wrap(~sim.site)
+```
+
+```{r}
+var.by.sex <- combined_data %>%
+  group_by(Source_File, sex) %>%
+  summarize(across(all_of(pheno_list), var))
+
+var.by.sex.long <- pivot_longer(var.by.sex, cols=c(-Source_File, -sex), names_to = "feature", values_to = "variance")
+```
+
+```{r}
+var.by.sex.long %>%
+  dplyr::filter(!(feature %in% vol_list_global) & (Source_File == "cf.lm_data.csv" | Source_File == "cf.gamlss_data.csv" | Source_File == "ukb_CN_data_simsites.csv")) %>%
+  ggplot() +
+  geom_density(aes(x=variance, fill=sex), alpha = 0.5, position="identity") +
+  facet_wrap(~Source_File)
+```
+
+#### Mu
+
+Does the number of regions w significant age effects on mu change depending on combat version?
+
+```{r}
+drop1.df %>%
+  dplyr::filter(Term=="poly(age_days, 3)" & Moment == "mu") %>%
+  group_by(Dataset) %>%
+  summarize(n_sig_regions = sum(sig.drop_bf.corr),
+            n_regions = n())
+```
+
+No.
+
+Does the number of regions w significant sex effects on mu change depending on combat version?
+
+```{r}
+drop1.df %>%
+  dplyr::filter(Term=="sexMale" & Moment == "mu") %>%
+  group_by(Dataset) %>%
+  summarize(n_sig_regions = sum(sig.drop_bf.corr),
+            n_regions = n())
+
+sum.df %>%
+  dplyr::filter(term=="sexMale" & parameter == "mu") %>%
+  group_by(dataset) %>%
+  summarize(n_sig_regions = sum(sig.sum_bf.corr),
+            n_regions = n())
+```
+
+Slightly. Only combat w/o covariates or lm combat without a ref site are noticeably off. Consistent across drop1 and summary outputs
+
+```{r}
+sex.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "mu" & pheno_cat != "Global Volume") %>%
+  group_by(dataset, pheno_cat) %>%
+  ggplot() +
+  geom_brain(atlas = dk, 
+             position = position_brain(hemi ~ side),
+             aes(fill = t_stat)) +
+  scale_fill_gradient2() +
+  facet_grid(dataset~pheno_cat) + 
+  theme_void() +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
+  ggtitle("t-statistic for effect of male sex on mu")
+```
+
+#### Sigma
+
+```{r}
+sex.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & pheno_cat != "Global Volume") %>%
+  ggplot() +
+  geom_col(aes(x=label, y=t_stat, fill=dataset)) +
+  facet_wrap(~pheno_cat, scales = "free_x") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  #theme_void() +
+  #theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
+  ggtitle("t-statistic for effect of male sex on sigma")
+
+sex.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & pheno_cat != "Global Volume") %>%
+  dplyr::filter(dataset == "cf.lm-data" | dataset == "cf.gamlss-data" | dataset == "ukb-CN-data-simsites") %>%
+  ggplot() +
+  geom_col(aes(x=label, y=t_stat, fill=dataset), position = "dodge") +
+  facet_wrap(~pheno_cat, scales = "free_x") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  #theme_void() +
+  #theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
+  ggtitle("t-statistic for effect of male sex on sigma")
+
+sex.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & pheno_cat != "Global Volume") %>%
+  group_by(dataset, pheno_cat) %>%
+  ggplot() +
+  geom_brain(atlas = dk, 
+             position = position_brain(hemi ~ side),
+             aes(fill = t_stat)) +
+  scale_fill_gradient2() +
+  facet_grid(dataset~pheno_cat) + 
+  theme_void() +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
+  ggtitle("t-statistic for effect of male sex on sigma")
+```
+
+
 
 ##Troubleshooting
 
