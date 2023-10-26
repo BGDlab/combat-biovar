@@ -73,7 +73,7 @@ scp'd csvs from cubic
 ```{r}
 drop1.df <- fread("ukb_basic/drop1_tests.csv", stringsAsFactors = TRUE) %>%
   dplyr::select(-V1)
-sex.df <- fread("ukb_basic/sex_summary.csv", stringsAsFactors = TRUE)%>%
+sex.df <- fread("ukb_basic/sex_summary.csv", stringsAsFactors = TRUE) %>%
   dplyr::select(-V1)
 sum.df <- fread("ukb_basic/gamlss_summary.csv", stringsAsFactors = TRUE)%>%
   dplyr::select(-V1)
