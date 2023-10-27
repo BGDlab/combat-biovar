@@ -16,6 +16,7 @@ pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, 
 source("./R_scripts/gamlss_helper_funs.R")
 ```
 
+# Analysis Outline
 ## Load Data
 
 ```{r}
@@ -29,6 +30,7 @@ ct_list <- readRDS(file="R_scripts/CT_list.rds")
 pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
 ```
 
+## Basic Models
 Designate *basic* model formula
 
 ```{r}
@@ -45,28 +47,7 @@ plot
 plot_singlestudy_centiles(basic.m1, "GMV", ukb_df_age.filt, "sex")
 ```
 
-Check sex's significance in variance
-
-```{r}
-K <- drop1(basic.m1, what="sigma", scope = "sex")
-class(K)
-K["Pr(Chi)"]
-K$"Pr(Chi)"[2]
-
-test.mu <- drop1(basic.m1, what="mu", scope = "sex")
-test.sig <- drop1(basic.m1, what="sigma", scope = "sex")
-
-#write for testing
-saveRDS(basic.m1, file="/Users/megardn/Desktop/BGD_Repos/combat_biovar/gamlss_basic_test_mod.rds")
-
-get.and.drop1.p("/Users/megardn/Desktop/BGD_Repos/combat_biovar/gamlss_basic_test_mod.rds", moment="sigma", term="sex")
-
-test.model.list <- c()
-test.model.list[[1]] <- basic.m1
-lapply(test.model.list, drop1, what="mu", scope = "sex")
-```
-
-## Review Results
+# Review Results
 
 scp'd csvs from cubic
 
@@ -207,7 +188,7 @@ drop1.df %>%
             n_regions = n())
 ```
 
-No.
+No.ln
 
 Does the number of regions w significant sex effects on mu change depending on combat version?
 
@@ -278,71 +259,4 @@ sex.df %>%
   theme_void() +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
   ggtitle("t-statistic for effect of male sex on sigma")
-```
-
-
-
-##Troubleshooting
-
-Troubleshooting drop1
-
-```{r}
-model.test <- readRDS("~/Desktop/BGD_Repos/combat_biovar/ukb_basic/lh_SA_superiortemporal_ukb-CN-data-simsites_mod.rds")
-drop1(model.test, what = "sigma")
-model.test.drop <- gamlss(formula = lh_SA_superiortemporal ~ poly(age_days, 3) + sex,
-                       sigma.formula = ~ poly(age_days, 3),
-                       nu.formula = ~ 1,
-                       family = BCCG, data=ukb_df_age.filt, trace = FALSE)
-drop1(model.test.drop, what = "sigma")
-
-ukb_df_age.filt <- ukb_df_age.filt %>%
-  mutate(sexMale = as.numeric(case_when(sex == "Male" ~ 1,
-                                        sex == "Female" ~ 0,
-                                        TRUE ~ NA)))
-model.test.refit <- gamlss(formula = lh_SA_superiortemporal ~ poly(age_days, 3) + sexMale,
-                       sigma.formula = ~ poly(age_days, 3) + sexMale,
-                       nu.formula = ~ 1,
-                       family = BCCG, data=ukb_df_age.filt, trace = FALSE)
-drop1(model.test.refit, what = "sigma", scope = "sexMale")
-
-
-model.test.refit2 <- gamlss(formula = lh_SA_superiortemporal ~ poly(age_days, 3) + sex,
-                       sigma.formula = ~ poly(age_days, 3) + sex,
-                       nu.formula = ~ 1,
-                       family = BCCG, data=ukb_df_age.filt, trace = FALSE)
-
-
-drop.test.obj<-drop1(model.test.refit2, what = "nu")
-df <- drop.test.obj %>%
-  as.data.frame() %>%
-  mutate(what=attributes(drop.test.obj)$heading[2]) %>%
-  add_rownames(var = "term")
-
-
-f <- drop1_all(model.test.refit2, name="TEST")
-```
-
-```{r}
-# Your input string
-input_string <- "xxxx ref.batch = yyyy"
-
-# Check if the input string contains "ref.batch =" using a regular expression
-if (grepl("ref\\.batch\\s*=\\s*", input_string)) {
-  # Your code for splitting the string
-  # Split the string into two parts
-  split_string <- unlist(strsplit(input_string, "ref.batch", fixed = TRUE))
-  
-  # The split_string will contain two elements
-  part1 <- split_string[1]
-  part2 <- gsub("=", "", split_string[2])
-  
-  # Trim any leading/trailing white spaces in part2
-  part2 <- trimws(part2)
-  
-  # Output the two parts
-  print(part1)
-  print(part2)
-} else {
-  cat("The input string does not contain 'ref.batch ='\n")
-}
 ```

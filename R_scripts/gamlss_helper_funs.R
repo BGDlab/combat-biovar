@@ -4,6 +4,7 @@ library(dplyr)
 library(ggplot2)
 library(data.table)
 library(broom.mixed)
+library(broom)
 
 #note - some of these functions do not seem to work on CUBIC, as they rely on saving environment variables
 
@@ -116,7 +117,7 @@ get.moment.formula <- function(gamlss.rds.file, moment) {
   moment.form <- formula(gamlss.obj, what = moment)
 }
 
-get.summary<- function(gamlss.rds.file) {
+get.gamlss.summary<- function(gamlss.rds.file) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
   gamlss.rds.file <- as.character(gamlss.rds.file)
   gamlss.obj <- readRDS(gamlss.rds.file)
@@ -124,6 +125,18 @@ get.summary<- function(gamlss.rds.file) {
     as.data.frame() %>%
     rename(t_stat = statistic)
   sum.table$mod_name <- sub("_mod\\.rds$", "", basename(gamlss.rds.file)) #append model name
+  return(sum.table)
+}
+
+#more generic version of get.gamlss.summary()
+get.summary<- function(rds.file) {
+  #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  rds.file <- as.character(rds.file)
+  obj <- readRDS(rds.file)
+  sum.table <- broom::tidy(obj) %>%
+    as.data.frame() %>%
+    rename(t_stat = statistic)
+  sum.table$mod_name <- sub("\\.rds$", "", basename(rds.file)) #append model name (agnostic of ending str)
   return(sum.table)
 }
 

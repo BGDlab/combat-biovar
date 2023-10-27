@@ -1,11 +1,13 @@
 
+#compile outputs from fit_basic_gam.R
+
 set.seed(12345)
 
 #LOAD PACKAGES
-library(gamlss)
+library(mgcv)
 library(dplyr)
 library(data.table)
-library(tibble)
+library(broom)
 
 source("R_scripts/gamlss_helper_funs.R")
 
@@ -21,14 +23,14 @@ args <- commandArgs(trailingOnly = TRUE)
 read_path <- args[1] #path to bfp models
 save_path <- args[2] #path to save outputs
 
-#iterate across gamlss objects
-model.files <- list.files(path = read_path, pattern = "mod.rds", full.names = TRUE)
+#iterate across gam objects
+model.files <- list.files(path = read_path, pattern = "gam.rds", full.names = TRUE)
 
 print("First Few Modfiles")
 print(model.files[1:3])
 
 #extract values of sex term from summary table
-summary.list <- lapply(model.files, get.gamlss.summary)
+summary.list <- lapply(model.files, get.summary)
 
 #dataframe
 summary.df <- bind_rows(summary.list)
@@ -48,7 +50,7 @@ summary.df <- summary.df %>%
 
 
 #remaining cols
-sigma.sex.df <- summary.df %>%
+summary.df2 <- summary.df %>%
   mutate(
     dataset = sub(".*_(.*)", "\\1", mod_name),
     pheno_cat = as.factor(case_when(
@@ -66,28 +68,27 @@ sigma.sex.df <- summary.df %>%
                             TRUE ~ NA),
     label = sub("_[^_]*_", "_", pheno)) #for plotting
 
-write.csv(sigma.sex.df, file=paste0(save_path, "/gamlss_summary.csv"))
+write.csv(summary.df2, file=paste0(save_path, "/gam_summary.csv"))
 
-#iterate across drop1 csvs
+#iterate across anova csvs
 csv.files <- list.files(path = read_path, pattern = ".csv", full.names = TRUE)
-drop1.df <- do.call(rbind, lapply(csv.files, fread))
+anova.df <- do.call(rbind, lapply(csv.files, fread))
 
-drop1.df <- drop1.df %>%
-  rename(drop1.pval = "Pr(Chi)") %>%
-  mutate(sig.drop_bf.corr = case_when(Model %in% vol_list_global & drop1.pval < (0.05/length(vol_list_global)) ~ TRUE,
-                                      Model %in% vol_list_global & drop1.pval >= (0.05/length(vol_list_global)) ~ FALSE,
-                                      !(Model %in% vol_list_global) & drop1.pval < (0.05/length(ct_list)) ~ TRUE,
-                                      !(Model %in% vol_list_global) & drop1.pval >= (0.05/length(ct_list)) ~ FALSE,
+anova.df <- anova.df %>%
+  mutate(sig.drop_bf.corr = case_when(phenotype %in% vol_list_global & p.value < (0.05/length(vol_list_global)) ~ TRUE,
+                                      phenotype %in% vol_list_global & p.value >= (0.05/length(vol_list_global)) ~ FALSE,
+                                      !(phenotype %in% vol_list_global) & p.value < (0.05/length(ct_list)) ~ TRUE,
+                                      !(phenotype %in% vol_list_global) & p.value >= (0.05/length(ct_list)) ~ FALSE,
                                       TRUE ~ NA))
 
-write.csv(drop1.df, file=paste0(save_path, "/drop1_tests.csv"))
+write.csv(anova.df, file=paste0(save_path, "/anova_gam_tests.csv"))
 
-#merge sex results - can't merge age b/c polynomials are handled differently by drop1 and summary
-drop1.df <- drop1.df %>%
+#merge sex results - can't merge age b/c polynomials are handled differently by anova and summary
+anova.df <- anova.df %>%
   rename(pheno = Model,
          term = Term,
          dataset = Dataset) #for easier merging
 
-sigma.sex.df2 <- base::merge(sigma.sex.df, drop1.df, by=c("pheno", "term", "dataset"))
+final.df <- base::merge(summary.df2, anova.df, by=c("pheno", "term", "dataset"))
 
-write.csv(sigma.sex.df2, file=paste0(save_path, "/sex_summary.csv"))
+write.csv(final.df, file=paste0(save_path, "/sex_summary.csv"))

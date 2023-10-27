@@ -5,7 +5,7 @@
 ## 1. dataframe of data to be combatted
 ## 2. name of column containing batch identifier, or path to a csv containing batch identifier
 ## 3. path to save output csv
-## 4. filename for output csv
+## 4. combat config name to append to output csv's filename
 ## 5. logical indicator of whether to pass data fit_ukb_basic.R
 ## 6. list of columns to be included as covariates (OPTIONAL)
 ## 7. Additional comfam() arguments, including model, formula, ref.batch, ... (OPTIONAL)
@@ -13,7 +13,6 @@
 set.seed(12345)
 
 #LOAD PACKAGES
-#library(devtools) #may need to install ComBatFamily
 library(data.table) 
 library(readr)
 library(ggplot2) 
@@ -41,7 +40,7 @@ if (endsWith(batch.arg, '.csv')){
 }
 
 save_path <- as.character(args[3]) #path to save outputs
-save_name <- as.character(args[4])
+config_name <- as.character(args[4])
 pass <- as.logical(args[5])
 
 # see if optional args provided for combatting
@@ -161,9 +160,14 @@ final.df <- cf.merged %>%
 # }
 
 ##########################################################################
-
 #WRITE OUT
-datafile <- paste0(save_path, "/", save_name, "_data.csv")
+
+#extract csv name from input data
+csv_basename <- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(as.character(args[1])))
+csv_basename <- gsub("_", "-", csv_basename)
+
+#append config name
+datafile <- paste0(save_path, "/", csv_basename, "_", config_name, "_data.csv")
 fwrite(final.df, file=datafile)
 
 ##########################################################################

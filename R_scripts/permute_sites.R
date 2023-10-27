@@ -11,7 +11,8 @@ library(stringr)
 #GET ARGUMENTS
 args <- commandArgs(trailingOnly = TRUE)
 df <- fread(args[1], stringsAsFactors = TRUE, na.strings = "")
-save_path <- fread(args[1], stringsAsFactors = TRUE, na.strings = "")
+save_path <- fread(args[2], stringsAsFactors = TRUE, na.strings = "")
+pass <- as.logical(args[3]) #whether or not to automatically pass to qsub_combat.sh
 
 #extract csv name
 csv_basename <- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(as.character(args[1])))
@@ -41,6 +42,15 @@ for(i in 1:5) {
   
   #save out csv w permutation number in filename
   n_perm <- str_pad(i, 3, pad = "0")
-  fname <- paste0(csv_basename, "_perm-key_", n_perm)
-  fwrite(new_df, file=paste0(save_path, "/", fname, ".csv"))
+  fname <- paste0(save_path, "/", csv_basename, "_perm-key_", n_perm, ".csv")
+  fwrite(new_df, file=fname)
+  
+  #automatically send to combat (and on to gamlss fitting)
+  if (isTRUE(pass)) {
+    print("submitting jobs to run combat")
+    cmd <- paste('/cbica/home/gardnerm/combat-biovar/qsub_combat.sh -c', fname, '-p TRUE')
+    cat(cmd)
+    system(cmd)
+  }
+  
 }
