@@ -133,7 +133,7 @@ get.summary<- function(rds.file) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
   rds.file <- as.character(rds.file)
   obj <- readRDS(rds.file)
-  sum.table <- broom::tidy(obj) %>%
+  sum.table <- broom::tidy(obj, parametric = TRUE) %>%
     as.data.frame() %>%
     rename(t_stat = statistic)
   sum.table$mod_name <- sub("\\.rds$", "", basename(rds.file)) #append model name (agnostic of ending str)

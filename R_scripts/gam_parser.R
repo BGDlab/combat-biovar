@@ -85,10 +85,8 @@ write.csv(anova.df, file=paste0(save_path, "/anova_gam_tests.csv"))
 
 #merge sex results - can't merge age b/c polynomials are handled differently by anova and summary
 anova.df <- anova.df %>%
-  rename(pheno = Model,
-         term = Term,
-         dataset = Dataset) #for easier merging
+  rename(pheno = phenotype) #for easier merging
 
 final.df <- base::merge(summary.df2, anova.df, by=c("pheno", "term", "dataset"))
 
-write.csv(final.df, file=paste0(save_path, "/sex_summary.csv"))
+write.csv(final.df, file=paste0(save_path, "/sex_summary_gam.csv"))
