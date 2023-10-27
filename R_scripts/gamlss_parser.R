@@ -74,6 +74,7 @@ drop1.df <- do.call(rbind, lapply(csv.files, fread))
 
 drop1.df <- drop1.df %>%
   rename(drop1.pval = "Pr(Chi)") %>%
+  dplyr::filter(Term != "<none>") %>% #drop intercepts
   mutate(sig.drop_bf.corr = case_when(Model %in% vol_list_global & drop1.pval < (0.05/length(vol_list_global)) ~ TRUE,
                                       Model %in% vol_list_global & drop1.pval >= (0.05/length(vol_list_global)) ~ FALSE,
                                       !(Model %in% vol_list_global) & drop1.pval < (0.05/length(ct_list)) ~ TRUE,
@@ -86,8 +87,9 @@ write.csv(drop1.df, file=paste0(save_path, "/drop1_tests.csv"))
 drop1.df <- drop1.df %>%
   rename(pheno = Model,
          term = Term,
-         dataset = Dataset) #for easier merging
+         dataset = Dataset,
+	 parameter = Moment) #for easier merging
 
-sigma.sex.df2 <- base::merge(sigma.sex.df, drop1.df, by=c("pheno", "term", "dataset"))
+sigma.sex.df2 <- base::merge(sigma.sex.df, drop1.df, by=c("pheno", "term", "dataset", "parameter"))
 
 write.csv(sigma.sex.df2, file=paste0(save_path, "/sex_summary.csv"))
