@@ -52,7 +52,8 @@ summary.df <- summary.df %>%
 #remaining cols
 summary.df2 <- summary.df %>%
   mutate(
-    dataset = sub(".*_(.*)", "\\1", mod_name),
+    dataset = sub("_gam$", "", mod_name), #drop _gam
+    dataset = sub(".*_(.*)", "\\1", dataset),
     pheno_cat = as.factor(case_when(
     pheno %in% vol_list_global ~ "Global Volume",
     pheno %in% vol_list_regions ~ "Regional Volume",
@@ -91,4 +92,4 @@ anova.df <- anova.df %>%
 
 final.df <- base::merge(summary.df2, anova.df, by=c("pheno", "term", "dataset"))
 
-write.csv(final.df, file=paste0(save_path, "/sex_summary.csv"))
+write.csv(final.df, file=paste0(save_path, "/sex_summary_gam.csv"))
