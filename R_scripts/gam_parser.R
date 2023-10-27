@@ -52,7 +52,8 @@ summary.df <- summary.df %>%
 #remaining cols
 summary.df2 <- summary.df %>%
   mutate(
-    dataset = sub(".*_(.*)", "\\1", mod_name),
+    dataset = sub("_gam$", "", mod_name), #drop _gam
+    dataset = sub(".*_(.*)", "\\1", dataset),
     pheno_cat = as.factor(case_when(
     pheno %in% vol_list_global ~ "Global Volume",
     pheno %in% vol_list_regions ~ "Regional Volume",
