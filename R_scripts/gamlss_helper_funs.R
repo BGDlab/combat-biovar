@@ -279,3 +279,68 @@ plot.hist.by.sex <- function(data, pheno_list, facet_fac = NA) {
   # Return the list of ggplot objects
   return(plots)
 }
+
+#copying from GAMLSS repo for simplicity/access 
+centile_predict <- function(gamlssModel, dataToPredictM, dataToPredictF, ageRange, desiredCentiles, og.data = NA){
+
+  # Predict phenotype values in a set age range
+  predictedModelM <- predictAll(gamlssModel, data = og.data, newdata=dataToPredictM) #
+  predictedModelF <- predictAll(gamlssModel, data = og.data, newdata=dataToPredictF) #
+
+  # For each desired centile
+  fanCentiles <- c()
+  fanCentiles_M <- c()
+  fanCentiles_F <- c()
+  for (i in c(1:length(desiredCentiles))){
+    fanCentiles_M[[i]] <- qGG(desiredCentiles[[i]],
+                              mu=predictedModelM$mu,
+                              sigma=predictedModelM$sigma,
+                              nu=predictedModelM$nu)
+    
+    fanCentiles_F[[i]] <- qGG(desiredCentiles[[i]],
+                              mu=predictedModelF$mu,
+                              sigma=predictedModelF$sigma,
+                              nu=predictedModelF$nu)
+    
+    fanCentiles[[i]] <- (fanCentiles_M[[i]] + fanCentiles_F[[i]])/2
+  }
+  # to get peaks, match median point with age ranges
+  med.idx <- ceiling(length(desiredCentiles) / 2) #find median centile
+  
+  medians_M <- data.frame("ages"=ageRange,
+                          "median"=fanCentiles_M[[med.idx]])
+  peak_M <- medians_M[which.max(medians_M$median),]$median
+  peak_age_M <- medians_M[which.max(medians_M$median),]$ages 
+  
+  medians_F <- data.frame("ages"=ageRange,
+                          "median"=fanCentiles_F[[med.idx]])
+  peak_F <- medians_F[which.max(medians_F$median),]$median
+  peak_age_F <- medians_F[which.max(medians_F$median),]$ages
+  
+  medians <- data.frame("ages"=ageRange,
+                        "median"=fanCentiles[[med.idx]])
+  peak <- medians[which.max(medians$median),]$median
+  peak_age <- medians[which.max(medians$median),]$ages
+  
+  pred <- list(fanCentiles, fanCentiles_M, fanCentiles_F, peak, peak_age, peak_M, peak_age_M, peak_F, peak_age_F, predictedModelM$mu, predictedModelM$sigma, predictedModelM$nu, predictedModelF$mu, predictedModelF$sigma, predictedModelF$nu)
+  names(pred) <- c("fanCentiles", "fanCentiles_M", "fanCentiles_F", "peak", "peak_age", "peak_M", "peak_age_M", "peak_F", "peak_age_F", "M_mu", "M_sigma", "M_nu", "F_mu", "F_sigma", "F_nu")
+  return(pred)
+}
+
+#wrapped version of centile_predict including readRDS
+get.centile.pred <- function(gamlss.rds.file, og.data, sim) {
+  #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  gamlss.rds.file <- as.character(gamlss.rds.file)
+  gamlss.obj <- readRDS(gamlss.rds.file)
+  #pass gamlss model to global
+  assign("gamlss.obj", gamlss.obj, envir=globalenv())
+  
+  #get args to pass
+  df.M <- sim[["dataToPredictM"]]
+  df.F <- sim[["dataToPredictF"]]
+  age <- sim[["ageRange"]]
+  cent <- sim[["desiredCentiles"]]
+  
+  centiles <- centile_predict(gamlss.obj, df.M, df.F, age, cent, og.data)
+  return(centiles)
+}
