@@ -140,6 +140,14 @@ get.summary<- function(rds.file) {
   return(sum.table)
 }
 
+get.y<- function(gamlss.rds.file) {
+  #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  gamlss.rds.file <- as.character(gamlss.rds.file)
+  gamlss.obj <- readRDS(gamlss.rds.file)
+  pheno <- as.character(gamlss.obj$mu.terms[[2]])
+  return(pheno)
+}
+
 ################
 # COMBAT
 ################
@@ -156,7 +164,7 @@ post_combat_concat <- function(comfam_obj, og_df){
 }
 
 ################
-# PLOTTING
+# PLOTTING & CENTILE CALC
 ################
 
 mean.tb.sim <- function(df, sex_level, ageRange, measure){
@@ -342,5 +350,28 @@ get.centile.pred <- function(gamlss.rds.file, og.data, sim) {
   cent <- sim[["desiredCentiles"]]
   
   centiles <- centile_predict(gamlss.obj, df.M, df.F, age, cent, og.data)
+  assign(sub("_mod\\.rds$", "", basename(gamlss.rds.file)), centiles)
+  sum.table$mod_name <- sub("_mod\\.rds$", "", basename(gamlss.rds.file))
+  return(centiles)
+}
+
+# predict centile score of original data - dont think this will separate out m and f distributions though
+#based on Jenna's function calculatePhenotypeCentile() from mpr_analysis repo
+
+get.og.data.centiles <- function(gamlss.rds.file, og.data){
+  gamlss.rds.file <- as.character(gamlss.rds.file)
+  gamlss.obj <- readRDS(gamlss.rds.file)
+  pheno <- gamlss.obj$mu.terms[[2]]
+
+  newData <- data.frame(age_days=og.data$age_days,
+                        sexMale=og.data$sexMale)
+    
+  predModel <- predictAll(gamlss.obj, newdata=newData, data=og.data)
+  
+  centiles <- c()
+  #iterate through participants
+  for (i in 1:nrow(og.data)){
+      centiles[i] <- pGG(og.data[[pheno]][[i]], mu=predModel$mu[[i]], sigma=predModel$sigma[[i]], nu=predModel$nu[[i]])
+  }
   return(centiles)
 }

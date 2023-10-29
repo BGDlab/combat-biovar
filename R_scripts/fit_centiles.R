@@ -42,7 +42,6 @@ pred.list <- lapply(model.files, get.centile.pred, og.data = df, sim=sim.df)
 names(pred.list) <- lapply(model.files, function(x) {sub("_mod\\.rds$", "", basename(x))})
 
 #compile into dataframe
-
 # Calculate the number of iterations
 num_iterations <- length(sim.df$desiredCentiles)
 # Preallocate the dataframe with the desired number of columns
@@ -55,10 +54,12 @@ cent.df <- data.frame(
 for (i in 1:num_iterations) {
   cent_col_name_M <- paste0("M_centile_", i)
   cent_col_name_F <- paste0("F_centile_", i)
+  cent_col_name <- paste0("centile_", i)
   
   # Add the new columns for each iteration
   cent.df[[cent_col_name_M]] <- as.numeric()
   cent.df[[cent_col_name_F]] <- as.numeric()
+  cent.df[[cent_col_name]] <- as.numeric()
 }
 
 #append centiles predicted from each model
@@ -77,6 +78,9 @@ for (n in names(pred.list)){
     
     cent_col_name_F <- paste0("F_centile_", i)
     new.df[[cent_col_name_F]] <- pred.df[["fanCentiles_F"]][[i]]
+    
+    cent_col_name <- paste0("centile_", i)
+    new.df[[cent_col_name]] <- pred.df[["fanCentiles"]][[i]]
   }
   cent.df <- rbind(cent.df, new.df)
 }
@@ -104,3 +108,19 @@ final.df <- cent.df %>%
 
 #write out
 fwrite(final.df, paste0(save_path, "/", fname_str, "_centiles.csv"))
+
+#also predict centile scores for original data points
+cent.list <- lapply(model.files, get.og.data.centiles, og.data = df)
+names(cent.list) <- lapply(model.files, get.y)
+
+#compile into dataframe
+cent.df <- df %>%
+  dplyr::select(participant, sex, age_days)
+
+#loop through centiles for each phenotype
+for (name in names(cent.list)){
+  cent.df[[name]] <- unlist(cent.list[[name]])
+}
+
+#write out
+fwrite(cent.df, paste0(save_path, "/", fname_str, "_predictions.csv"))
