@@ -189,22 +189,22 @@ sim.data.ukb <- function(df){
   
   #sim data
   dataToPredictM <- data.frame(age_days=ageRange,
-                               sexMale=c(rep(1, length(ageRange))),
-                               fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
-                               sex.age=ageRange)
-  dataToPredictM$TBV <- mean.tb.sim(df, "Male", ageRange, "TBV")
-  dataToPredictM$Vol_total <- mean.tb.sim(df, "Male", ageRange, "Vol_total")
-  dataToPredictM$SA_total <- mean.tb.sim(df, "Male", ageRange, "SA_total")
-  dataToPredictM$CT_total <- mean.tb.sim(df, "Male", ageRange, "CT_total")
+                               sexMale=c(rep(1, length(ageRange))))
+                               #fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
+                               #sex.age=ageRange)
+  #dataToPredictM$TBV <- mean.tb.sim(df, "Male", ageRange, "TBV")
+  #dataToPredictM$Vol_total <- mean.tb.sim(df, "Male", ageRange, "Vol_total")
+  #dataToPredictM$SA_total <- mean.tb.sim(df, "Male", ageRange, "SA_total")
+  #dataToPredictM$CT_total <- mean.tb.sim(df, "Male", ageRange, "CT_total")
   
   dataToPredictF <- data.frame(age_days=ageRange,
-                               sexMale=c(rep(0, length(ageRange))),
-                               fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
-                               sex.age=c(rep(0, length(ageRange))))
-  dataToPredictF$TBV <- mean.tb.sim(df, "Female", ageRange, "TBV")
-  dataToPredictF$Vol_total <- mean.tb.sim(df, "Female", ageRange, "Vol_total")
-  dataToPredictF$SA_total <- mean.tb.sim(df, "Female", ageRange, "SA_total")
-  dataToPredictF$CT_total <- mean.tb.sim(df, "Female", ageRange, "CT_total")
+                               sexMale=c(rep(0, length(ageRange))))
+                               #fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
+                               #sex.age=c(rep(0, length(ageRange))))
+  #dataToPredictF$TBV <- mean.tb.sim(df, "Female", ageRange, "TBV")
+  #dataToPredictF$Vol_total <- mean.tb.sim(df, "Female", ageRange, "Vol_total")
+  #dataToPredictF$SA_total <- mean.tb.sim(df, "Female", ageRange, "SA_total")
+  #dataToPredictF$CT_total <- mean.tb.sim(df, "Female", ageRange, "CT_total")
   
   # List of centiles for the fan plot
   desiredCentiles <- c(0.1, 0.25, 0.5, 0.75, 0.9)
@@ -351,7 +351,6 @@ get.centile.pred <- function(gamlss.rds.file, og.data, sim) {
   
   centiles <- centile_predict(gamlss.obj, df.M, df.F, age, cent, og.data)
   assign(sub("_mod\\.rds$", "", basename(gamlss.rds.file)), centiles)
-  sum.table$mod_name <- sub("_mod\\.rds$", "", basename(gamlss.rds.file))
   return(centiles)
 }
 
