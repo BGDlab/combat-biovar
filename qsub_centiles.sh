@@ -31,7 +31,7 @@ do
 	bash_script=$bash_dir/${config}_cent.sh
 	touch $bash_script
 	
-	echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path $mod_path $base $config" > $bash_script
+	echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path $mod_path $base/ukb_basic $config" > $bash_script
 
 	#qsub bash script
 	qsub -N $config -o $bash_dir/${config}_out.txt -e $bash_dir/${config}_err.txt $bash_script

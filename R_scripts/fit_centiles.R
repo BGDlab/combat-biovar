@@ -29,17 +29,25 @@ fname_str_search <- sub("_", "[-_]", fname_str)
 all.csvs <- list.files(path = df_path, pattern = ".csv", full.names = TRUE)
 matched_csv <- all.csvs[grep(fname_str_search, all.csvs)]
 df <- fread(matched_csv, stringsAsFactors = TRUE)
+print("data:")
+print(df[1:4,])
 
 #find correct models
 all.model.files <- list.files(path = read_path, pattern = "mod.rds", full.names = TRUE)
 model.files <- all.model.files[grep(fname_str_search, all.model.files)]
+print("model files:")
+print(model.files[1:4])
 
 #sim data
 sim.df <- sim.data.ukb(df)
+print("simulated data:")
+print(sim.df$dataToPredictM[1:4,])
 
 #predict centiles from each gamlss model
 pred.list <- lapply(model.files, get.centile.pred, og.data = df, sim=sim.df)
 names(pred.list) <- lapply(model.files, function(x) {sub("_mod\\.rds$", "", basename(x))})
+print("predicted centiles:")
+print(pred.list[1:4])
 
 #compile into dataframe
 # Calculate the number of iterations
@@ -81,9 +89,13 @@ for (n in names(pred.list)){
     
     cent_col_name <- paste0("centile_", i)
     new.df[[cent_col_name]] <- pred.df[["fanCentiles"]][[i]]
+    print("predicted centiles")
+    print(pred.df[["fanCentiles"]][[i]])
   }
   cent.df <- rbind(cent.df, new.df)
 }
+print("centile dataframe:")
+print(cent.df[1:4,])
 
 #parse and add more info about model (phenotype, dataset used) w code borrowed from gamlss_parser.R
 final.df <- cent.df %>%
@@ -112,6 +124,9 @@ fwrite(final.df, paste0(save_path, "/", fname_str, "_centiles.csv"))
 #also predict centile scores for original data points
 cent.list <- lapply(model.files, get.og.data.centiles, og.data = df)
 names(cent.list) <- lapply(model.files, get.y)
+print("predicted centiles for each subject:")
+print(cent.list[1:4])
+print(names(cent.list[1:4]))
 
 #compile into dataframe
 cent.df <- df %>%
