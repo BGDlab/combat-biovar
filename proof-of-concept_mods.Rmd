@@ -4,14 +4,20 @@ output: html_document
 date: '2023-10-06'
 ---
 
+## QUESTIONS
+- effect size for poly(age_days, 3) in gam/gamlss
+- next steps abstract v paper
+- abs values of centile differences
+- z scores instead of centiles
+
 ## Setup
 
 ```{r setup, include=FALSE, warning = FALSE, message = FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, tidymodels, broom.mixed, ggseg)
+pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, tidymodels, broom.mixed, ggseg, cowplot, lsr)
 
 source("./R_scripts/gamlss_helper_funs.R")
 ```
@@ -34,8 +40,8 @@ pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
 Designate *basic* model formula
 
 ```{r}
-basic.m1 <- gamlss(formula = GMV ~ poly(age_days, 3) + sex,
-                       sigma.formula = ~ poly(age_days, 3) + sex,
+basic.m1 <- gamlss(formula = GMV ~ poly(age_days, 3) + sexMale,
+                       sigma.formula = ~ poly(age_days, 3) + sexMale,
                        nu.formula = ~ 1,
                        family = BCCG, data=ukb_df_age.filt, trace = FALSE)
 summary(basic.m1)
@@ -44,12 +50,12 @@ summary(basic.m1)
 plot
 
 ```{r}
-plot_singlestudy_centiles(basic.m1, "GMV", ukb_df_age.filt, "sex")
+#plot_singlestudy_centiles(basic.m1, "GMV", ukb_df_age.filt, "sexMale")
 ```
 
 # Review Results
 
-scp'd csvs from cubic
+scp'd csvs from cubic (`scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/*.csv' ./ukb_basic`)
 
 ```{r}
 drop1.df <- fread("ukb_basic/drop1_tests.csv", stringsAsFactors = TRUE) %>%
@@ -72,7 +78,7 @@ sex.df <- left_join(sex.df, dk.parc, by="label")
 sum.df <- left_join(sum.df, dk.parc, by="label")
 ```
 
-## Raw Data Results
+### Raw Data Results
 
 ```{r, fig.width=11}
 sex.df %>%
@@ -150,14 +156,16 @@ var.long <- pivot_longer(var.df, cols=c(-Source_File, -sim.site), names_to = "fe
 var.long %>%
   dplyr::filter(!(feature %in% vol_list_global)) %>%
   ggplot() +
-  geom_density(aes(x=variance, fill=sim.site), alpha = 0.4, position="identity") +
-  facet_wrap(~Source_File)
+  geom_density(aes(x=variance, fill=Source_File), alpha = 0.4, position="identity") +
+  facet_wrap(~sim.site)
 
 var.long %>%
-  dplyr::filter(!(feature %in% vol_list_global) & (Source_File == "cf.lm_data.csv" | Source_File == "cf.gamlss_data.csv" | Source_File == "ukb_CN_data_simsites.csv")) %>%
+  dplyr::filter(!(feature %in% vol_list_global) & (Source_File == "cf.gam_data.csv" |Source_File == "ukb_CN_data_simsites.csv" |  Source_File == "cf.gamlss_data.csv" )) %>%
   ggplot() +
   geom_density(aes(x=variance, fill=Source_File), alpha = 0.5, position="identity") +
   facet_wrap(~sim.site)
+
+#Source_File == "cf.lm_data.csv" | 
 ```
 
 ```{r}
@@ -170,11 +178,44 @@ var.by.sex.long <- pivot_longer(var.by.sex, cols=c(-Source_File, -sex), names_to
 
 ```{r}
 var.by.sex.long %>%
-  dplyr::filter(!(feature %in% vol_list_global) & (Source_File == "cf.lm_data.csv" | Source_File == "cf.gamlss_data.csv" | Source_File == "ukb_CN_data_simsites.csv")) %>%
+  dplyr::filter(!(feature %in% vol_list_global) & (Source_File == "cf.gam_data.csv" | Source_File == "cf.gamlss_data.csv" | Source_File == "ukb_CN_data_simsites.csv")) %>%
   ggplot() +
   geom_density(aes(x=variance, fill=sex), alpha = 0.5, position="identity") +
   facet_wrap(~Source_File)
 ```
+
+Simple t test for sex effects across combat types
+```{r}
+sex_ttest_df <- data.frame("Source_File" = levels(combined_data$Source_File))
+
+for(pheno in pheno_list){
+  # New column name
+  new_col_name <- paste0(pheno, ".p")
+  
+  #run t-tests
+  out <- lapply(split(combined_data, factor(combined_data$Source_File)), function(x)t.test(x[[pheno]] ~ x[["sex"]], paired=FALSE)$p.value)
+  stopifnot(names(out) == levels(combined_data$Source_File)) #make sure results are in correct order
+  
+  #append to dataframe
+  sex_ttest_df[[new_col_name]] <- unlist(unname(out))
+}
+```
+
+```{r}
+sex_ttest_long <- sex_ttest_df %>% pivot_longer(!Source_File, values_to="p.value", names_to="pheno") %>%
+  mutate(pheno = sub(".p$", "", pheno),
+         sig_bfcor = case_when(pheno %in% vol_list_global & p.value < (0.05/length(vol_list_global)) ~ TRUE,
+                            pheno %in% vol_list_global & p.value >= (0.05/length(vol_list_global)) ~ FALSE,
+                            !(pheno %in% vol_list_global) & p.value < (0.05/length(ct_list)) ~ TRUE,
+                            !(pheno %in% vol_list_global) & p.value >= (0.05/length(ct_list)) ~ FALSE,
+                            TRUE ~ NA))
+sex_ttest_long %>%
+  group_by(Source_File) %>%
+  summarize(n_sig_regions = sum(sig_bfcor),
+            n_regions = n())
+```
+
+Basically same results gam/gamlss
 
 #### Mu
 
@@ -188,7 +229,7 @@ drop1.df %>%
             n_regions = n())
 ```
 
-No.ln
+No.
 
 Does the number of regions w significant sex effects on mu change depending on combat version?
 
@@ -222,6 +263,23 @@ sex.df %>%
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
   ggtitle("t-statistic for effect of male sex on mu")
 ```
+
+Trying with ultra-strict threshold to see if results change:
+
+```{r}
+drop1.df <- drop1.df %>%
+  mutate(sig.sum.strict = case_when(drop1.pval < (0.05/length(pheno_list)) ~ TRUE,
+                            drop1.pval >= (0.05/length(pheno_list)) ~ FALSE,
+                            TRUE ~ NA))
+
+drop1.df %>%
+  dplyr::filter(Term=="poly(age_days, 3)" & Moment == "mu") %>%
+  group_by(Dataset) %>%
+  summarize(n_sig_regions = sum(sig.sum.strict),
+            n_regions = n())
+```
+
+No difference
 
 #### Sigma
 
@@ -259,4 +317,301 @@ sex.df %>%
   theme_void() +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
   ggtitle("t-statistic for effect of male sex on sigma")
+```
+Check number of regions w significant sex effects in sigma
+```{r}
+sex.sigma.counts <- sex.df %>%
+  dplyr::filter(term=="sexMale" & parameter == "sigma") %>%
+  group_by(dataset, pheno_cat) %>%
+  summarize(n_sig_regions = sum(sig.drop_bf.corr),
+            n_regions = n())
+sex.sigma.counts
+```
+
+More variation
+```{r}
+ggplot(sex.sigma.counts) +
+  geom_col(aes(x=dataset, y=n_sig_regions, fill=dataset)) +
+  facet_wrap(~pheno_cat) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+Convert sigma to variance by correcting for log-link function (sex's effect on variance = exp(sigma) - exp(log(sigma) - beta sex)) -> exp(beta_sex)
+
+```{r}
+sigma.df <- sum.df %>%
+  dplyr::filter(parameter == "sigma") %>%
+  mutate(var_est = exp(estimate))
+
+skim(sigma.df$var_est)
+
+sigma.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & term =="sexMale") %>%
+  group_by(dataset, pheno_cat) %>%
+  ggplot() +
+  geom_histogram(aes(x=var_est, fill = dataset)) +
+  facet_wrap(~pheno_cat, scales= "free")
+
+sigma.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & pheno_cat != "Global Volume" & term =="sexMale") %>%
+  group_by(dataset, pheno_cat) %>%
+  ggplot() +
+  geom_brain(atlas = dk, 
+             position = position_brain(hemi ~ side),
+             aes(fill = var_est)) +
+  #scale_fill_gradient2() +
+  facet_grid(dataset~pheno_cat) + 
+  theme_void() +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
+  ggtitle("Beta weight for effect of male sex on variance")
+```
+
+#### Centiles
+
+Do centile scores change based on combat version?
+```{r}
+pred.csvs <- list.files(path = "ukb_basic", pattern = "_predictions.csv", full.names = TRUE)
+combined_preds <- data.frame()
+
+for (file in pred.csvs) {
+  # Read each CSV file
+  data <- fread(file)
+  
+  # Add a "Source_File" column with the file name
+  data <- data %>%
+    mutate(Source_File = as.factor(basename(file))) %>%
+    mutate(dataset = sub("_data_predictions.csv", "", Source_File))
+  
+  # Bind the data to the combined dataframe
+  combined_preds <- bind_rows(combined_preds, data, .id = "File_ID")
+}
+
+table(combined_preds$dataset)
+names(combined_preds)
+```
+calc how much centiles change
+```{r}
+cent_diffs <- combined_preds %>%
+  mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
+  mutate(dataset = relevel(dataset, ref= "ukb_CN")) %>%
+  arrange(dataset) %>%
+  group_by(participant) %>%
+  mutate(across(all_of(pheno_list), ~ . - first(.), .names = "diff_{.col}")) %>%
+  ungroup()
+
+diff_vol_glob <- sapply(vol_list_global, function(x) paste0("diff_", x))
+
+mean.cent.diffs <- cent_diffs %>%
+  group_by(dataset) %>%
+  summarize(across(starts_with("diff_"), mean))
+
+max.cent.diffs <- cent_diffs %>%
+  group_by(dataset) %>%
+  summarize(across(starts_with("diff_"), max))
+```
+
+Plot average differences in centiles
+```{r}
+mean.diffs.long <- mean.cent.diffs %>%
+  pivot_longer(cols=starts_with("diff_"), values_to="centile_diff", names_to = "pheno", names_prefix = "diff_") %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)))
+
+ggplot(mean.diffs.long) +
+  geom_density(aes(x=centile_diff, fill=dataset), alpha=0.5) +
+  facet_grid(dataset~pheno_cat)
+
+mean.diffs.long %>%
+  dplyr::filter(dataset== "cf.gam" | dataset == "cf.gam_refA" | dataset == "cf.gamlss" | dataset == "cf.gamlss_refA") %>%
+  ggplot() +
+  geom_density(aes(x=centile_diff, fill=dataset), alpha=0.5) +
+  scale_x_continuous(labels = label_comma())
+
+mean.diffs.long %>%
+  dplyr::filter(dataset != "ukb_CN") %>%
+  mutate(centile_diff = centile_diff*100) %>% #for visualization purposes
+  ggplot() +
+  geom_histogram(aes(x=centile_diff, fill=dataset), alpha=0.5) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  scale_x_continuous(labels = label_comma()) + facet_wrap(~dataset, scales = "free_y")
+```
+
+Look at max difference per phenotype
+```{r}
+max.diffs.long <- max.cent.diffs %>%
+  pivot_longer(cols=starts_with("diff_"), values_to="max_centile_diff", names_to = "pheno", names_prefix = "diff_") %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)))
+
+max.diffs.long %>%
+  #dplyr::filter(dataset== "cf.lm_refA" | dataset == "cf.gam_refA" | dataset == "cf.gamlss" | dataset == "cf.gamlss_refA") %>%
+  ggplot() +
+  geom_density(aes(x=max_centile_diff, fill=dataset), alpha=0.5) +
+  scale_x_continuous(labels = label_comma()) + facet_wrap(~pheno_cat)
+
+max.diffs.long %>%
+  dplyr::filter(dataset != "ukb_CN") %>%
+  ggplot() +
+  geom_density(aes(x=max_centile_diff, fill=dataset), alpha=0.5) +
+  scale_x_continuous(labels = label_comma()) + facet_wrap(~dataset, scales = "free_y")
+```
+
+Test for differences in distribution
+```{r}
+summary(aov(centile_diff ~ dataset, data=mean.diffs.long))
+
+attach(mean.diffs.long)
+pairwise.t.test(x=centile_diff, g=dataset, p.adj = "bonf")
+detach()
+```
+
+Seems like gamlss methods are significantly better than the other combat methods and not significantly different from raw centile scores (bonferroni-adjusted)
+
+Do the different combat methods introduce any kind of bias in centile scores?
+
+```{r}
+mean.cent.diffs.by.sex <- cent_diffs %>%
+  group_by(dataset, sex) %>%
+  summarize(across(starts_with("diff_"), mean)) %>%
+  ungroup() %>%
+  pivot_longer(cols=starts_with("diff_"), values_to="centile_diff", names_to = "pheno", names_prefix = "diff_") %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)))
+
+mean.cent.diffs.by.sex %>%
+  dplyr::filter(dataset != "ukb_CN") %>%
+  mutate(centile_diff = centile_diff *100) %>%
+ggplot() +
+  geom_density(aes(x=centile_diff, fill=sex), alpha=0.5) +
+  facet_wrap(~dataset, scales = "free_y")
+
+
+max.cent.diffs.by.sex <- cent_diffs %>%
+  group_by(dataset, sex) %>%
+  summarize(across(starts_with("diff_"), max)) %>%
+  ungroup() %>%
+  pivot_longer(cols=starts_with("diff_"), values_to="max_centile_diff", names_to = "pheno", names_prefix = "diff_") %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)))
+
+max.cent.diffs.by.sex %>%
+  dplyr::filter(dataset != "ukb_CN") %>%
+  mutate(max_centile_diff = max_centile_diff *100) %>%
+ggplot() +
+  geom_density(aes(x=max_centile_diff, fill=sex), alpha=0.5) +
+  facet_wrap(~dataset, scales = "free_y")
+```
+
+Other methods are fairly consistently underestimating male centiles and overestimating female centiles.
+
+#### GAMs
+scp'd csvs from cubic (`scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/*.csv' ./ukb_basic`)
+
+```{r}
+anova.gam <- fread("ukb_basic/anova_gam_tests.csv", stringsAsFactors = TRUE) %>%
+  dplyr::select(-V1)
+gam.sex.df <- fread("ukb_basic/sex_summary_gam.csv", stringsAsFactors = TRUE) %>%
+  dplyr::select(-V1)
+gam.sum.df <- fread("ukb_basic/gam_summary.csv", stringsAsFactors = TRUE)%>%
+  dplyr::select(-V1)
+```
+
+Does the number of regions w significant age effects on mean change depending on combat version?
+
+```{r}
+anova.gam %>%
+  dplyr::filter(term=="poly(age_days, 3)") %>%
+  group_by(dataset) %>%
+  summarize(n_sig_regions = sum(sig.drop_bf.corr),
+            n_regions = n())
+```
+
+No.
+
+
+```{r, fig.height=10, fig.width=15}
+anova.gam %>%
+  dplyr::filter(term=="poly(age_days, 3)") %>%
+  rename(f_val = "F") %>%
+  ggplot() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  geom_col(aes(x=phenotype, y=f_val, fill=dataset), position = "dodge")
+```
+
+```{r}
+anova.gam_wide.f <- anova.gam %>%
+  dplyr::filter(term=="poly(age_days, 3)") %>%
+  rename(f_val = "F") %>%
+  pivot_wider(id_cols= phenotype, names_from=dataset, values_from=f_val)
+
+anova.gam.f_diff <- anova.gam_wide.f %>%
+  rename_all(~ gsub("-", "_", .)) %>%
+  mutate(across(starts_with("cf"), ~ . - ukb_CN_data_simsites)) %>%
+  dplyr::select(!ukb_CN_data_simsites)%>%
+  pivot_longer(!phenotype, names_to = "dataset", values_to = "f_diff") %>%
+  mutate(dataset = as.factor(dataset))
+
+summary(aov(f_diff ~ dataset, data=anova.gam.f_diff))
+
+attach(anova.gam.f_diff)
+pairwise.t.test(x=f_diff, g=dataset, p.adj = "bonf")
+detach()
+
+ggplot(anova.gam.f_diff) + 
+  geom_density(aes(x=f_diff, fill=dataset), alpha=0.5)
+
+anova.gam.f_diff %>%
+  dplyr::filter(dataset == "cf.gamlss_data" | dataset == "cf.gam_data" | dataset == "cf.gam_refA_data" | dataset == "cf.gamlss_refA_data") %>%
+ggplot() + 
+  geom_density(aes(x=f_diff, fill=dataset), alpha=0.5)
+```
+
+So the effect sizes (if this F is the correct F to use as effect size) are closer to the "ground truth" for gamlss than non-gamlss combat methods. However, similar to other results, only combat w/o covariates and combat with linear covariates are significantly worse.
+
+Does the number of regions w significant sex effects on mean change depending on combat version?
+
+```{r}
+anova.gam %>%
+  dplyr::filter(term=="sexMale") %>%
+  group_by(dataset) %>%
+  summarize(n_sig_regions = sum(sig.drop_bf.corr),
+            n_regions = n())
+```
+
+Not much, only for combat w/out covariates or linear covariates
+
+```{r, fig.heigt=15}
+gam.sum.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & term == "sexMale") %>%
+  dplyr::filter(dataset == "cf.lm-data" | dataset == "cf.gamlss-data" | dataset == "ukb-CN-data-simsites"| dataset == "cf.lm-refA-data") %>%
+  ggplot() +
+  geom_col(aes(x=label, y=t_stat, fill=dataset), position="dodge") +
+  facet_wrap(~pheno_cat, scales = "free_x") + 
+  #theme_cowplot()+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  #theme_void() +
+  #theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
+  ggtitle("t-statistic for effect of male sex on mean")
+
+gam.sum.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & term == "sexMale") %>%
+  ggplot() +
+    geom_density(aes(x=t_stat, fill=dataset), alpha=0.4) +
+  facet_wrap(~dataset)
 ```
