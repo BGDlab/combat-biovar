@@ -351,7 +351,9 @@ sigma.df %>%
   ggplot() +
   geom_histogram(aes(x=var_est, fill = dataset)) +
   facet_wrap(~pheno_cat, scales= "free")
+```
 
+```{r, fig.height=15, fig.widt=12}
 sigma.df %>%
   dplyr::filter(sig.sum_bf.corr == TRUE & pheno_cat != "Global Volume" & term =="sexMale") %>%
   group_by(dataset, pheno_cat) %>%
@@ -361,9 +363,31 @@ sigma.df %>%
              aes(fill = var_est)) +
   #scale_fill_gradient2() +
   facet_grid(dataset~pheno_cat) + 
-  theme_void() +
-  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
+  theme_bw(base_size=20) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA)) +
   ggtitle("Beta weight for effect of male sex on variance")
+```
+
+```{r, fig.height=6, fig.widt=8}
+sigma.df %>%
+  dplyr::filter(pheno_cat == "Global Volume" & term =="sexMale") %>%
+  mutate(var_est.sig = case_when(sig.sum_bf.corr == TRUE ~ var_est,
+                                 sig.sum_bf.corr == FALSE ~ 0)) %>%
+  #group_by(dataset) %>%
+  ggplot() +
+  geom_col(aes(x=dataset, y = var_est.sig, fill=dataset), position="dodge") +
+  #scale_fill_gradient2() +
+  facet_grid(~pheno) + 
+  theme_bw(base_size=16) +
+  #theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA)) +
+  ggtitle("Beta weight for effect of male sex on global volumes' variance")
+
+sigma.df.glob <- sigma.df %>%
+  dplyr::filter(pheno_cat == "Global Volume" & term =="sexMale")
+table(sigma.df.glob$dataset, sigma.df.glob$pheno)
+
+sigma.df %>%
+  dplyr::filter(pheno == "sGMV")
 ```
 
 #### Centiles

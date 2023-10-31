@@ -7,7 +7,7 @@ img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity ima
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic) - also path that output csvs will be saved to
 r_script=$base/R_scripts/fit_centiles.R #path to .R script
 csv_path=$base/data/ukb_to_model #path to data csvs
-mod_path=$vase/ukb_basic/gamlss_objs #path to gamlss .rds objs
+mod_path=$base/ukb_basic/gamlss_objs #path to gamlss .rds objs
 #######################################################################################
 cd $base #to source functions correctly
 #######################################################################################
