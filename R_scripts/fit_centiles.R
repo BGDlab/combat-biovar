@@ -23,7 +23,7 @@ df_path <- args[1] #path to original data csv
 read_path <- args[2] #path to gamlss models
 save_path <- args[3] #path to save output csv
 fname_str <- args[4] #string to look for in data .csv and model .rds files
-fname_str_search <- sub("_", "[-_]", fname_str)
+fname_str_search <- gsub("_", "[-_]", fname_str)
 print(fname_str)
 print(fname_str_search)
 
