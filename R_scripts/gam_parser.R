@@ -40,14 +40,13 @@ summary.df <- summary.df %>%
   mutate(pheno = sapply(mod_name, function(b) {
     pheno <- ""
     for (a in pheno_list) {
-      if (grepl(a, b)) {
+      if (grepl(paste0("^", a), b)) {
         pheno <- a
         break
       }
     }
     return(pheno)
   }))
-
 
 #remaining cols
 summary.df2 <- summary.df %>%
