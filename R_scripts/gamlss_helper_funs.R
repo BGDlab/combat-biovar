@@ -288,27 +288,33 @@ plot.hist.by.sex <- function(data, pheno_list, facet_fac = NA) {
   return(plots)
 }
 
-#copying from GAMLSS repo for simplicity/access 
+#modified centile_predict() from GAMLSS repo that automatically adjusts to distribution family (e.g. GG, BCCG) 
 centile_predict <- function(gamlssModel, dataToPredictM, dataToPredictF, ageRange, desiredCentiles, og.data = NA){
 
   # Predict phenotype values in a set age range
   predictedModelM <- predictAll(gamlssModel, data = og.data, newdata=dataToPredictM) #
   predictedModelF <- predictAll(gamlssModel, data = og.data, newdata=dataToPredictF) #
+  
+  #get dist type (e.g. GG, BCCG) and write out function
+  fname <- gamlss.obj$family[1]
+  qfun <- paste0("p", fname)
 
   # For each desired centile
   fanCentiles <- c()
   fanCentiles_M <- c()
   fanCentiles_F <- c()
   for (i in c(1:length(desiredCentiles))){
-    fanCentiles_M[[i]] <- qGG(desiredCentiles[[i]],
+    fanCentiles_M[[i]] <- eval(call(qfun, 
+                              desiredCentiles[[i]],
                               mu=predictedModelM$mu,
                               sigma=predictedModelM$sigma,
-                              nu=predictedModelM$nu)
+                              nu=predictedModelM$nu))
     
-    fanCentiles_F[[i]] <- qGG(desiredCentiles[[i]],
+    fanCentiles_F[[i]] <- eval(call(qfun,
+                              desiredCentiles[[i]],
                               mu=predictedModelF$mu,
                               sigma=predictedModelF$sigma,
-                              nu=predictedModelF$nu)
+                              nu=predictedModelF$nu))
     
     fanCentiles[[i]] <- (fanCentiles_M[[i]] + fanCentiles_F[[i]])/2
   }
@@ -356,22 +362,40 @@ get.centile.pred <- function(gamlss.rds.file, og.data, sim) {
 }
 
 # predict centile score of original data - dont think this will separate out m and f distributions though
-#based on Jenna's function calculatePhenotypeCentile() from mpr_analysis repo
+#based on Jenna's function calculatePhenotypeCentile() from mpr_analysis repo & z.scores() from gamlss package
 
-get.og.data.centiles <- function(gamlss.rds.file, og.data){
-  gamlss.rds.file <- as.character(gamlss.rds.file)
-  gamlss.obj <- readRDS(gamlss.rds.file)
+get.og.data.centiles <- function(gamlss.rds.file, og.data, get.zscores = FALSE){
+  #gamlss.rds.file <- as.character(gamlss.rds.file)
+  gamlss.obj <- gamlss.rds.file
   pheno <- gamlss.obj$mu.terms[[2]]
 
   newData <- data.frame(age_days=og.data$age_days,
                         sexMale=og.data$sexMale)
     
-  predModel <- predictAll(gamlss.obj, newdata=newData, data=og.data)
+  predModel <- predictAll(gamlss.obj, newdata=newData, data=og.data, type= "response")
+  
+  #get dist type (e.g. GG, BCCG) and write out function
+  fname <- gamlss.obj$family[1]
+  qfun <- paste0("p", fname)
   
   centiles <- c()
   #iterate through participants
   for (i in 1:nrow(og.data)){
-      centiles[i] <- pGG(og.data[[pheno]][[i]], mu=predModel$mu[[i]], sigma=predModel$sigma[[i]], nu=predModel$nu[[i]])
+      centiles[i] <- eval(call(qfun, og.data[[pheno]][[i]], mu=predModel$mu[[i]], sigma=predModel$sigma[[i]], nu=predModel$nu[[i]]))
   }
+  if (get.zscores == FALSE){
   return(centiles)
+  } else {
+    #check to make sure distribution family is LMS
+    if (fname != "BCCG") 
+      stop(paste("This gamlss model does not use the BCCG family distribution, can't get z scores.", "\n If you think this message was returned in error, update code to include appropriate dist. families.", ""))
+    
+    #get z scores from normed centiles - how z.score() does it, but double check
+    rqres <- qnorm(centiles)
+    
+    #return dataframe
+    df <- data.frame("centile" = centiles,
+                     "z_score" = rqres)
+    return(df)
+  }
 }
