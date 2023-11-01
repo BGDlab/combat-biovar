@@ -23,7 +23,9 @@ df_path <- args[1] #path to original data csv
 read_path <- args[2] #path to gamlss models
 save_path <- args[3] #path to save output csv
 fname_str <- args[4] #string to look for in data .csv and model .rds files
-fname_str_search <- sub("_", "[-_]", fname_str)
+fname_str_search <- gsub("_", "[-_]", fname_str)
+print(fname_str)
+print(fname_str_search)
 
 #find correct df
 all.csvs <- list.files(path = df_path, pattern = ".csv", full.names = TRUE)
@@ -34,8 +36,10 @@ print(df[1:4,])
 
 #find correct models
 all.model.files <- list.files(path = read_path, pattern = "mod.rds", full.names = TRUE)
+print("all model files:")
+print(all.model.files[1:4])
 model.files <- all.model.files[grep(fname_str_search, all.model.files)]
-print("model files:")
+print("selected model files:")
 print(model.files[1:4])
 
 #sim data
