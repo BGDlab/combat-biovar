@@ -67,6 +67,18 @@ sigma.sex.df <- summary.df %>%
 
 write.csv(sigma.sex.df, file=paste0(save_path, "/gamlss_summary.csv"))
 
+#adding distribution of fitted moments (mu, sigma, nu) to standardize betas
+moment.dist.list <- lapply(model.files, get.moment.dist)
+moment.df <- bind_rows(moment.dist.list)
+
+#merge into larger summary df
+moment.df <- moment.df %>% 
+  mutate(parameter = as.factor(parameter),
+         mod_name = as.factor(mod_name))
+
+full.summary <- base::merge(sigma.sex.df, moment.df, by=c("mod_name", "parameter"))
+write.csv(sigma.sex.df, file=paste0(save_path, "/gamlss_summary2.csv"))
+
 #iterate across drop1 csvs
 csv.files <- list.files(path = read_path, pattern = ".csv", full.names = TRUE)
 drop1.df <- do.call(rbind, lapply(csv.files, fread))

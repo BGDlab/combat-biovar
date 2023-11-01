@@ -140,12 +140,36 @@ get.summary<- function(rds.file) {
   return(sum.table)
 }
 
-get.y<- function(gamlss.rds.file) {
+#find dependent variable
+get.y <- function(gamlss.rds.file) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
   gamlss.rds.file <- as.character(gamlss.rds.file)
   gamlss.obj <- readRDS(gamlss.rds.file)
   pheno <- as.character(gamlss.obj$mu.terms[[2]])
   return(pheno)
+}
+
+#get mean and sd of each moments' estimates (to standardize beta weights)
+get.moment.dist <- function(gamlss.rds.file) {
+  #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  gamlss.rds.file <- as.character(gamlss.rds.file)
+  gamlss.obj <- readRDS(gamlss.rds.file)
+  
+  #init df
+  df <- data.frame("parameter" = character(),
+                   "moment.mean" = double(),
+                   "moment.sd" = double())
+  
+  #get list of fitted values for each moment for each subj.
+  for (moment in gamlss.obj$parameters) {
+    fv <- paste(moment, "fv", sep=".")
+    df2 <- data.frame(parameter = moment,
+                      moment.mean = mean(gamlss.obj[[fv]]),
+                      moment.sd = sd(gamlss.obj[[fv]]))
+    df <- rbind(df, df2)
+  }
+  df$mod_name = as.character(sub("\\.rds$", "", basename(rds.file)))
+  return(df)
 }
 
 ################
