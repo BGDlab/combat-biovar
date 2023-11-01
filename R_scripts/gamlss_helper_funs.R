@@ -365,8 +365,8 @@ get.centile.pred <- function(gamlss.rds.file, og.data, sim) {
 #based on Jenna's function calculatePhenotypeCentile() from mpr_analysis repo & z.scores() from gamlss package
 
 get.og.data.centiles <- function(gamlss.rds.file, og.data, get.zscores = FALSE){
-  #gamlss.rds.file <- as.character(gamlss.rds.file)
-  gamlss.obj <- gamlss.rds.file
+  gamlss.rds.file <- as.character(gamlss.rds.file)
+  gamlss.obj <- readRDS(gamlss.rds.file)
   pheno <- gamlss.obj$mu.terms[[2]]
 
   newData <- data.frame(age_days=og.data$age_days,

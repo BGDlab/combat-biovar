@@ -122,7 +122,7 @@ final.df <- cent.df %>%
 fwrite(final.df, paste0(save_path, "/", fname_str, "_centiles.csv"))
 
 #also predict centile scores for original data points
-cent.list <- lapply(model.files, get.og.data.centiles, og.data = df)
+cent.list <- lapply(model.files, get.og.data.centiles, og.data = df, get.zscores = TRUE)
 names(cent.list) <- lapply(model.files, get.y)
 print("predicted centiles for each subject:")
 print(cent.list[1:4])
@@ -134,7 +134,8 @@ cent.df <- df %>%
 
 #loop through centiles for each phenotype
 for (name in names(cent.list)){
-  cent.df[[name]] <- unlist(cent.list[[name]])
+  cent.df[[name]] <- unlist(cent.list[[name]][, "centile"])
+  cent.df[[paste0(name, ".z")]] <- unlist(cent.list[[name]] [,"z_score"])
 }
 
 #write out
