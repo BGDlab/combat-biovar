@@ -1,20 +1,22 @@
 #!/bin/bash
 # Apply ComFam() with different arguments to specified dataset
 
+#STEP 4 OF VALIDATION PIPELINE#
+
 #######################################################################################
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic) - also path that output csvs will be saved to
 r_script=$base/R_scripts/fit_centiles.R #path to .R script
-csv_path=$base/data/ukb_to_model #path to data csvs
-mod_path=$base/ukb_basic/gamlss_objs #path to gamlss .rds objs
+csv_path=$base/data/ukb_permute #path to data csvs
+mod_path=$base/ukb_permute/gamlss_objs #path to gamlss .rds objs
 #######################################################################################
 cd $base #to source functions correctly
 #######################################################################################
 # MAKE DIRECTORY
 
 #qsub script & outputs
-bash_dir=$base/ukb_basic/centile_qsubs
+bash_dir=$base/ukb_permute/centile_qsubs
 if ! [ -d $bash_dir ]
 	then
 	mkdir $bash_dir

@@ -2,6 +2,8 @@
 
 #Fit GAMLSS growth chart models for each phenotype
 
+#STEP 3 OF VALIDATION PIPELINE#
+
 #######################################################################################
 # SET PATHS
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
@@ -19,7 +21,7 @@ fi
 # MAKE DIRECTORIES 
 
 #study dir
-study_dir=$base/ukb
+study_dir=$base/ukb_permute
 if ! [ -d $study_dir ]
 	then
 	mkdir $study_dir

@@ -1,12 +1,14 @@
 #!/bin/bash
 # Apply ComFam() with different arguments to specified dataset
 
+#STEP 2 OF VALIDATION PIPELINE#
+
 #######################################################################################
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
 cf_script=$base/R_scripts/combat_apply.R #path to .R script
-save_path=$base/data/ukb_to_model
+save_path=$base/data/ukb_permutations
 #######################################################################################
 helpFunction()
 {
@@ -36,7 +38,7 @@ cd $base #to source functions correctly
 #######################################################################################
 # MAKE DIRECTORIES 
 #study dir
-study_dir=$base/ukb_basic
+study_dir=$base/ukb_permute
 if ! [ -d $study_dir ]
 	then
 	mkdir $study_dir
