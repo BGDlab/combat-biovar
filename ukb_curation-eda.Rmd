@@ -33,6 +33,7 @@ Load UKB Data from Jakob
 ```{r}
 cn_data <- fread(file="data/lifespan_dataset_dkatlas_CNonly.csv")
 #table(cn_data$study)
+names(cn_data)
 ```
 
 ## Data Org
@@ -132,11 +133,20 @@ Restricting to ages 50-80, since that's when there's roughly ~100 ppts per sex
 ```{r}
 ukb_df_age.filt <- ukb_df_totals %>%
   dplyr::filter(age_yrs >= 50 & age_yrs <= 80)
-# #write data
-# write_csv(ukb_df_age.filt, file="data/ukb_CN_data_agefilt.csv")
+#write data
+fwrite(ukb_df_age.filt, file="data/ukb_CN_data_agefilt.csv")
 ```
 
 ## EDA
+
+```{r}
+#percent female
+r <- table(ukb_df_age.filt$sex)
+
+(r["Female"]/n_unique(ukb_df_age.filt$participant))*100
+summary(ukb_df_age.filt$age_yrs)
+(table(ukb_df_age.filt$fs_version)["FS6_T1T2"])/(n_unique(ukb_df_age.filt$participant))*100
+```
 
 Going to stick with age_days since distribution is fairly normal, not lifespan data
 
@@ -347,9 +357,9 @@ for(i in 1:5) {
 ukb_df_sites_perm <- bind_cols(ukb_df_age.filt, !!!df_list)
 
 # View the final dataframe
-print(ukb_df_sites_perm)
 #names(ukb_df_sites_perm)
 ```
+
 ```{r}
 sim.perm.long <- ukb_df_sites_perm %>%
   dplyr::select(sex, age_days, contains("SimSite")) %>%
