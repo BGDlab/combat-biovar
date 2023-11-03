@@ -65,7 +65,7 @@ sigma.sex.df <- summary.df %>%
                             TRUE ~ NA),
     label = sub("_[^_]*_", "_", pheno)) #for plotting
 
-write.csv(sigma.sex.df, file=paste0(save_path, "/gamlss_summary.csv"))
+#write.csv(sigma.sex.df, file=paste0(save_path, "/gamlss_summary.csv"))
 
 #adding distribution of fitted moments (mu, sigma, nu) to standardize betas
 moment.dist.list <- lapply(model.files, get.moment.dist)
@@ -77,7 +77,7 @@ moment.df <- moment.df %>%
          mod_name = as.factor(mod_name))
 
 full.summary <- base::merge(sigma.sex.df, moment.df, by=c("mod_name", "parameter"))
-write.csv(sigma.sex.df, file=paste0(save_path, "/gamlss_summary2.csv"))
+write.csv(full.summary, file=paste0(save_path, "/gamlss_summary.csv"))
 
 #iterate across drop1 csvs
 csv.files <- list.files(path = read_path, pattern = ".csv", full.names = TRUE)

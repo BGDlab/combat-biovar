@@ -168,7 +168,7 @@ get.moment.dist <- function(gamlss.rds.file) {
                       moment.sd = sd(gamlss.obj[[fv]]))
     df <- rbind(df, df2)
   }
-  df$mod_name = as.character(sub("\\.rds$", "", basename(rds.file)))
+  df$mod_name = as.character(sub("_mod\\.rds$", "", basename(gamlss.rds.file)))
   return(df)
 }
 
