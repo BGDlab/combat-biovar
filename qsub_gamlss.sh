@@ -19,7 +19,7 @@ fi
 # MAKE DIRECTORIES 
 
 #study dir
-study_dir=$base/ukb
+study_dir=$base/ukb_permute
 if ! [ -d $study_dir ]
 	then
 	mkdir $study_dir

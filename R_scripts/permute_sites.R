@@ -12,7 +12,8 @@ library(stringr)
 args <- commandArgs(trailingOnly = TRUE)
 df <- fread(args[1], stringsAsFactors = TRUE, na.strings = "")
 save_path <- fread(args[2], stringsAsFactors = TRUE, na.strings = "")
-pass <- as.logical(args[3]) #whether or not to automatically pass to qsub_combat.sh
+n_permutations <- as.integer(args[3])
+pass <- as.logical(args[4]) #whether or not to automatically pass to qsub_combat.sh
 
 #extract csv name
 csv_basename <- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(as.character(args[1])))
@@ -31,7 +32,8 @@ female_prob <- c(0.33, 0.5875, 0.0825)
 df.filt <- df %>%
   dplyr::select(participant, sex)
 
-for(i in 1:5) {
+#control # permutations to complete
+for(i in 1:n_permutations) {
   # Separate samples for males and females
   sampled_males <- sample(sim.site.list, size = n_male, replace = TRUE, prob = male_prob)
   sampled_females <- sample(sim.site.list, size = n_female, replace = TRUE, prob = female_prob)
