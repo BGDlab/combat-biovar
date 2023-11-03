@@ -2,6 +2,8 @@
 
 #Fit GAMLSS growth chart models for each phenotype
 
+#STEP 3 OF VALIDATION PIPELINE#
+
 #######################################################################################
 # SET PATHS
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)

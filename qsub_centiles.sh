@@ -1,6 +1,8 @@
 #!/bin/bash
 # Apply ComFam() with different arguments to specified dataset
 
+#STEP 4 OF VALIDATION PIPELINE#
+
 #######################################################################################
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
