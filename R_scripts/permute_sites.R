@@ -11,7 +11,7 @@ library(stringr)
 #GET ARGUMENTS
 args <- commandArgs(trailingOnly = TRUE)
 df <- fread(args[1], stringsAsFactors = TRUE, na.strings = "")
-save_path <- fread(args[2], stringsAsFactors = TRUE, na.strings = "")
+save_path <- as.character(args[2])
 n_permutations <- as.integer(args[3])
 pass <- as.logical(args[4]) #whether or not to automatically pass to qsub_combat.sh
 
@@ -21,8 +21,8 @@ csv_basename <- gsub("_", "-", csv_basename)
 
 #SETUP SITES
 sim.site.list <- c("Site_A", "Site_B", "Site_C")
-n_female <- table(ukb_df_age.filt$sex)["Female"]
-n_male <- table(ukb_df_age.filt$sex)["Male"]
+n_female <- table(df$sex)["Female"]
+n_male <- table(df$sex)["Male"]
 
 # Sample probabilities
 male_prob <- c(0.33, 0.0825, 0.5875)

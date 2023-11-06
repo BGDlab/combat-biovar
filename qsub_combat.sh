@@ -8,7 +8,7 @@
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
 cf_script=$base/R_scripts/combat_apply.R #path to .R script
-save_path=$base/data/ukb_permutations
+save_path=$base/data/ukb_permute
 #######################################################################################
 helpFunction()
 {
@@ -28,7 +28,7 @@ do
    esac
 done
 
-if [ -z "$csv" ] || [ -z "$oupasstputs" ]
+if [ -z "$csv" ] || [ -z "$pass" ]
 then
    echo "provide path to data & indicate TRUE/FALSE to automated gamlss fitting";
    helpFunction
@@ -56,6 +56,10 @@ if ! [ -d ${save_path}/combat_objs ]
 	then
 	mkdir ${save_path}/combat_objs
 	fi
+
+#GET CSV FILENAME
+csv_fname=$(basename $csv .csv)
+
 #######################################################################################
 #SET COVAR COLS
 covar_list="age_days,sexMale"
@@ -69,7 +73,7 @@ for config in $config_list
 do
 	echo "Prepping $config"
 	#write bash script
-	bash_script=$bash_dir/${config}_combat.sh
+	bash_script=$bash_dir/${csv_fname}_${config}_combat.sh
 	touch $bash_script
 
 	#SIMPLE COMBAT, NO COVARS
@@ -109,5 +113,5 @@ do
 	fi
 
 #qsub bash script
-	qsub -N $config -o $bash_dir/${config}_out.txt -e $bash_dir/${config}_err.txt $bash_script
+	qsub -N ${config}.${csv_fname} -o $bash_dir/${config}_out.txt -e $bash_dir/${config}_err.txt $bash_script
 done
