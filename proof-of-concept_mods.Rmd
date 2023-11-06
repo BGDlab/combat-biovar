@@ -561,14 +561,82 @@ max.diffs.long %>%
 
 Test for differences in distribution
 ```{r}
-summary(aov(centile_abs.diff ~ dataset, data=mean.diffs.long))
+#get centile errors for each subject
+cent.diffs2 <- combined_preds %>%
+  dplyr::filter(!str_detect(dataset, "_refA")) %>%
+  mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
+  mutate(dataset = relevel(dataset, ref= "ukb_CN")) %>%
+  arrange(dataset) %>%
+  group_by(participant) %>%
+  mutate(across(all_of(pheno_list), ~ abs(. - first(.)), .names = "diff_{.col}")) %>%
+  ungroup() %>%
+  dplyr::filter(dataset != "ukb_CN") #drop ref
 
-attach(mean.diffs.long)
-pairwise.t.test(x=centile_abs.diff, g=dataset, p.adj = "fdr")
+# cf.gmvdiff <- cent.diffs2 %>%
+#   dplyr::filter(dataset == "cf") %>%
+#   dplyr::select(diff_GMV)
+# cf.lm.gmvdiff <- cent.diffs2 %>%
+#   dplyr::filter(dataset == "cf.lm") %>%
+#   dplyr::select(diff_GMV) 
+# 
+# t.test(cf.gmvdiff, cf.lm.gmvdiff, paired=TRUE)
+```
+
+NOTE: "missing" paired comparisons between cf and cf.lm diffs are because diff values are identical between the two methods (i.e. there is literally no difference in accuracy of centile scores between the two)
+
+```{r, warning=FALSE, message=FALSE}
+#within each phenotype, iterate paired t test between each combo of combat dfs 
+
+#initalize empty dfs to store outputs
+sum.df <- data.frame(pheno = character(),
+                     term = character(),
+                     df = double(),
+                     sumsq = double(),
+                     meansq = double(),
+                     statistic = double(),
+                     p.value = double())
+t.df <- data.frame("pheno" = character(),
+                   "group1" = character(),
+                   "group2" = character(),
+                   "p.value" = double())
+pheno_diff.list <- paste0("diff_", pheno_list)
+
+#run tests
+attach(cent.diffs2)
+for (pheno in pheno_diff.list) {
+  df.aov <- tidy(aov(cent.diffs2[[pheno]] ~ cent.diffs2[["dataset"]]))
+  df.aov$pheno <- pheno
+  sum.df <- rbind(sum.df, df.aov)
+
+  df.pairwise.t <- tidy(pairwise.t.test(x=cent.diffs2[[pheno]], g=cent.diffs2[["dataset"]], paired = TRUE, p.adj = "none"))
+  df.pairwise.t$pheno <- pheno
+  t.df <- rbind(t.df, df.pairwise.t)
+}
 detach()
 ```
 
-Seems like gamlss methods are significantly better than the other combat methods and not significantly different from raw centile scores (BH corrected)
+```{r}
+#apply fdr correction
+sum.df <- sum.df %>%
+  dplyr::filter(term != "Residuals") %>%
+  mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(pheno_list)))
+
+summary(sum.df$p.val_fdr)
+
+t.df <- t.df %>%
+  mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(pheno)),
+         sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
+                             p.val_fdr >= 0.05 ~ FALSE),
+         pheno = sub("diff_", "", pheno)) %>%
+  unite(comp, c("group1", "group2")) %>%
+  mutate(comp = as.factor(comp))
+table(t.df$comp)
+
+t.df %>%
+  group_by(comp) %>%
+   summarize(n_sig_regions = sum(sig_fdr),
+            n_compare = n())
+```
 
 ##### Sex-Biases
 
@@ -616,15 +684,6 @@ ggplot() +
 ```
 
 No shift in abs. differences, looking at overall diff.
-```{r, fig.height=7, fig.width=8}
-cent.diffs2 <- combined_preds %>%
-  mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
-  mutate(dataset = relevel(dataset, ref= "ukb_CN")) %>%
-  arrange(dataset) %>%
-  group_by(participant) %>%
-  mutate(across(all_of(pheno_list), ~ . - first(.), .names = "diff_{.col}")) %>%
-  ungroup()
-```
 
 ```{r}
 max.cent.diffs.by.sex2 <- cent.diffs2 %>%
@@ -793,10 +852,16 @@ max.z.long %>%
 Test for differences in distribution
 ```{r}
 summary(aov(z_abs.diff ~ dataset, data=mean.z.long))
+tidy(aov(z_abs.diff ~ dataset, data=mean.z.long))
 
 attach(mean.z.long)
-pairwise.t.test(x=z_abs.diff, g=dataset, p.adj = "fdr")
+t.obj <- pairwise.t.test(x=z_abs.diff, g=dataset, p.adj = "fdr", paired = TRUE)
 detach()
+names(tidy(t.obj))
+
+test <- tidy(t.obj) %>%
+  mutate(comp = paste(group1, group2))
+table(test$comp)
 ```
 
 ##### Sex-Biases
@@ -941,15 +1006,18 @@ gam.sum.df %>%
 
 rerunning stats above w/o ref-site combat versions (to account for different FDR correction) per Andrew's suggestion
 
+Test
+
 Test for differences in centile offset distributions
 ```{r}
 mean.diffs.long_filt <- mean.diffs.long %>%
-  filter(!str_detect(dataset, "_refA"))
+  filter(!str_detect(dataset, "_refA")) %>%
+  filter(dataset != "ukb_CN")
 
 summary(aov(centile_abs.diff ~ dataset, data=mean.diffs.long_filt))
 
 attach(mean.diffs.long_filt)
-pairwise.t.test(x=centile_abs.diff, g=dataset, p.adj = "fdr")
+pairwise.t.test(x=centile_abs.diff, g=dataset, p.adj = "bonferroni")
 detach()
 ```
 
@@ -1014,7 +1082,10 @@ beta.plot2 <- sigma.df %>%
   ggtitle("Beta weight for effect of male sex on variance")
 
 beta.plot2
+
+ggsave("male_variance_beta2.jpeg", beta.plot2, width=10, height=10)
 ```
+
 
 ```{r}
 proportion_beta_plot2 <- sigma.df %>%
@@ -1034,11 +1105,20 @@ proportion_beta_plot2 <- sigma.df %>%
   ggtitle("Proportion of effect of male sex on variance")
 
 proportion_beta_plot2
+ggsave("male_variance_prop.beta2.jpeg", proportion_beta_plot2, width=10, height=10)
 ```
 
 Centile plot
 
 ```{r}
+#Define scales
+scales_y <- list(
+  `Global Volume` = scale_y_continuous(limits = c(0, 4)),
+  `Regional CT` = scale_y_continuous(limits = c(0, 70)),
+  `Regional SA` = scale_y_continuous(limits = c(0, 70)),
+  `Regional Volume` = scale_y_continuous(limits = c(0, 70))
+)
+
 cent.diffs.plot2 <- mean.diffs.long %>%
   dplyr::filter(dataset != "ukb_CN") %>%
   filter(!str_detect(dataset, "_refA")) %>%
@@ -1046,9 +1126,13 @@ cent.diffs.plot2 <- mean.diffs.long %>%
   ggplot() +
   geom_histogram(aes(x=centile_abs.diff, fill=dataset), color="black", alpha=0.4, position="identity") +
   theme_linedraw(base_size = 12) +
-  scale_x_continuous(labels = label_comma()) + facet_wrap(~pheno_cat) +
+  scale_x_continuous(labels = label_comma()) + 
+  facet_wrap(~pheno_cat) +
+  #facetscales::facet_grid_sc(pheno_cat~.,
+                #scales = list(y = scales_y)) +
   #paletteer::scale_fill_paletteer_d("Polychrome::light") +
   ggtitle("Mean absolute differences in centile scores across \nComBat processing pipelines for each phenotype")
 
 cent.diffs.plot2
+#ggsave("mean_centile_diffs2.jpeg", cent.diffs.plot2, width=10, height=10)
 ```
