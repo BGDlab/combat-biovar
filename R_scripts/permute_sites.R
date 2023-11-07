@@ -21,8 +21,8 @@ csv_basename <- gsub("_", "-", csv_basename)
 
 #SETUP SITES
 sim.site.list <- c("Site_A", "Site_B", "Site_C")
-n_female <- table(ukb_df_age.filt$sex)["Female"]
-n_male <- table(ukb_df_age.filt$sex)["Male"]
+n_female <- table(df$sex)["Female"]
+n_male <- table(df$sex)["Male"]
 
 # Sample probabilities
 male_prob <- c(0.33, 0.0825, 0.5875)

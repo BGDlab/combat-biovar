@@ -9,7 +9,7 @@ img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity ima
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
 r_script=$base/R_scripts/permute_sites.R #path to .R script
 og_data=$base/data/ukb_CN_data_agefilt.csv #path to original data for which site assignments should be permuted
-save_path=$base/data/ukb_permutations
+save_path=$base/data/ukb_permute
 #######################################################################################
 cd $base #to source functions correctly
 #######################################################################################
@@ -21,8 +21,6 @@ then
 fi
 #######################################################################################
 # MAKE DIRECTORIES
-#data dir
-save_path=$base/data/ukb_permute
 
 if ! [ -d $save_path ]
 	then
