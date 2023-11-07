@@ -172,6 +172,25 @@ get.moment.dist <- function(gamlss.rds.file) {
   return(df)
 }
 
+get.var.at.mean.age <- function(gamlss.rds.file, og_df) {
+  #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
+  gamlss.rds.file <- as.character(gamlss.rds.file)
+  gamlss.obj <- readRDS(gamlss.rds.file)
+  
+  #get mean age
+  age <- mean(og_df$age_days)
+  
+  #sim male and female subj.
+  dataToPredictM <- data.frame(age_days=age,
+                               sexMale=1)
+  dataToPredictF <- data.frame(age_days=age,
+                               sexMale=0)
+  
+  var.df <- data.frame("m.var" = exp(predict(gamlss.obj, what="sigma", data = og_df, newdata=dataToPredictM)),
+             "f.var" = exp(predict(gamlss.obj, what="sigma", data = og_df, newdata=dataToPredictF)),
+             "pheno" = as.character(gamlss.obj$mu.terms[[2]]))
+  return(var.df)
+}
 ################
 # COMBAT
 ################
