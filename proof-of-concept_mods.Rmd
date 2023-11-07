@@ -7,6 +7,7 @@ date: '2023-10-06'
 ## QUESTIONS
 - effect size for poly(age_days, 3) in gam/gamlss
 - z scores instead of centiles!!!!
+- Fix age -> diff in male and female variance/intercept
 
 ## Setup
 
@@ -413,6 +414,11 @@ sigma.df.glob <- sigma.df %>%
 table(sigma.df.glob$dataset, sigma.df.glob$sig.sum_bf.corr)
 ```
 
+fix age, get diff between male and female pred. variance
+```{r}
+mean(ukb_df_age.filt$age_days)
+```
+
 #### Centiles
 
 Do centile scores change based on combat version?
@@ -635,7 +641,9 @@ table(t.df$comp)
 t.df %>%
   group_by(comp) %>%
    summarize(n_sig_regions = sum(sig_fdr),
-            n_compare = n())
+            n_compare = n(),
+            min_pval = min(p.val_fdr),
+            max_pval = max(p.val_fdr))
 ```
 
 ##### Sex-Biases
@@ -684,9 +692,30 @@ ggplot() +
 ```
 
 No shift in abs. differences, looking at overall diff.
+```{r}
+#get centile errors for each subject - not abs val
+cent.diffs3 <- combined_preds %>%
+  dplyr::filter(!str_detect(dataset, "_refA")) %>%
+  mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
+  mutate(dataset = relevel(dataset, ref= "ukb_CN")) %>%
+  arrange(dataset) %>%
+  group_by(participant) %>%
+  mutate(across(all_of(pheno_list), ~ . - first(.), .names = "diff_{.col}")) %>%
+  ungroup() %>%
+  dplyr::filter(dataset != "ukb_CN") #drop ref
+```
+
+```{r, eval=FALSE}
+cent.diffs3 %>%
+  pivot_longer(starts_with("diff_"), names_to="pheno", values_to="diff", names_prefix = "diff_") %>%
+  ggplot() +
+  geom_density(aes(x=diff, fill=pheno)) +
+  facet_wrap(~pheno_class) +
+  theme(legend.position="none")
+```
 
 ```{r}
-max.cent.diffs.by.sex2 <- cent.diffs2 %>%
+max.cent.diffs.by.sex2 <- cent.diffs3 %>%
   group_by(dataset, sex) %>%
   summarize_at(vars(starts_with("diff")), list(max_value = ~.[which.max(abs(.))])) %>%
   ungroup() %>%
@@ -709,7 +738,7 @@ ggplot() +
 Other methods are fairly consistently underestimating male centiles and overestimating female centiles.
 
 ```{r}
-mean.cent.diffs.by.sex2 <- cent.diffs2 %>%
+mean.cent.diffs.by.sex2 <- cent.diffs3 %>%
   group_by(dataset, sex) %>%
   summarize(across(starts_with("diff_"), mean)) %>%
   ungroup() %>%
@@ -744,6 +773,39 @@ t.test.by.sex
 ```
 
 Both gam methods and lm combat with ref both end up inducing a bias in how males and females centiles are shifted.
+
+```{r, warning=FALSE, message=FALSE}
+# within each df, within each phenotype, t-test between male and female diffs
+
+#initalize empty dfs to store outputs
+t.df.sex <- data.frame("pheno" = character(),
+                   "dataset" = character(),
+                   "p_value" = double()
+                   )
+
+for (pheno in pheno_diff.list){
+    df.sex.test <- cent.diffs3 %>%
+        group_by(dataset) %>%
+        summarize(p_value = t.test(.data[[pheno]][sex == "Male"], .data[[pheno]][sex == "Female"])$p.value) %>%
+        ungroup()
+    df.sex.test$pheno <- pheno
+    t.df.sex <- rbind(t.df.sex, df.sex.test)
+}
+```
+
+```{r}
+#apply fdr correction
+t.df.sex <- t.df.sex %>%
+  mutate(p.val_fdr = p.adjust(p_value, method="fdr", n = length(p_value)),
+         sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
+                             p.val_fdr >= 0.05 ~ FALSE),
+         pheno = sub("diff_", "", pheno))
+
+t.df.sex %>%
+  group_by(dataset) %>%
+   summarize(n_sig_regions = sum(sig_fdr),
+            n_compare = n())
+```
 
 #### Z-Score
 calc how much z-scores change
@@ -850,18 +912,66 @@ max.z.long %>%
 
 
 Test for differences in distribution
-```{r}
-summary(aov(z_abs.diff ~ dataset, data=mean.z.long))
-tidy(aov(z_abs.diff ~ dataset, data=mean.z.long))
 
-attach(mean.z.long)
-t.obj <- pairwise.t.test(x=z_abs.diff, g=dataset, p.adj = "fdr", paired = TRUE)
+```{r, warning=FALSE, message=FALSE}
+#within each phenotype, iterate paired t test between each combo of combat dfs 
+
+z_diffs.filt <- z_diffs %>%
+  dplyr::filter(!str_detect(dataset, "_refA")) %>%
+  dplyr::filter(dataset != "ukb_CN")
+
+#initalize empty dfs to store outputs
+z.sum.df <- data.frame(pheno = character(),
+                     term = character(),
+                     df = double(),
+                     sumsq = double(),
+                     meansq = double(),
+                     statistic = double(),
+                     p.value = double())
+z.t.df <- data.frame("pheno" = character(),
+                   "group1" = character(),
+                   "group2" = character(),
+                   "p.value" = double())
+
+z.pheno_abs.diff.list <- paste0("abs.diff_", pheno_list, ".z")
+
+#run tests
+attach(z_diffs.filt)
+for (pheno in z.pheno_abs.diff.list) {
+  df.aov <- tidy(aov(z_diffs.filt[[pheno]] ~ z_diffs.filt[["dataset"]]))
+  df.aov$pheno <- pheno
+  z.sum.df <- rbind(z.sum.df, df.aov)
+
+  df.pairwise.t <- tidy(pairwise.t.test(x=z_diffs.filt[[pheno]], g=z_diffs.filt[["dataset"]], paired = TRUE, p.adj = "none"))
+  df.pairwise.t$pheno <- pheno
+  z.t.df <- rbind(z.t.df, df.pairwise.t)
+}
 detach()
-names(tidy(t.obj))
+```
 
-test <- tidy(t.obj) %>%
-  mutate(comp = paste(group1, group2))
-table(test$comp)
+```{r}
+#apply fdr correction
+z.sum.df <- z.sum.df %>%
+  dplyr::filter(term != "Residuals") %>%
+  mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(pheno_list)))
+
+summary(z.sum.df$p.val_fdr)
+
+z.t.df <- z.t.df %>%
+  mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(pheno)),
+         sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
+                             p.val_fdr >= 0.05 ~ FALSE),
+         pheno = sub("abs.diff_", "", pheno),
+         pheno = sub(".z", "", pheno)) %>%
+  unite(comp, c("group1", "group2")) %>%
+  mutate(comp = as.factor(comp))
+
+z.t.df %>%
+  group_by(comp) %>%
+   summarize(n_sig_regions = sum(sig_fdr),
+            n_compare = n(),
+            min.pval = min(p.val_fdr),
+            max.pval = max(p.val_fdr))
 ```
 
 ##### Sex-Biases
