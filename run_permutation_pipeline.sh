@@ -106,6 +106,7 @@ batch="sim.site"
 config_list="cf cf.lm cf.gam cf.gamlss" #cf.lm_refA cf.gam_refA cf.gamlss_refA
 #######################################################################################
 for csv in $($save_data_path/*.csv)
+do
 	#GET CSV FILENAME
 	echo $csv
 	csv_fname=$(basename $csv .csv)
@@ -136,6 +137,7 @@ for csv in $($save_data_path/*.csv)
 		then
 			echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale, sigma.formula = ~ age_days + sexMale'" > $bash_script
 
+		fi
 		#qsub bash script
 		#qsub -N ${config}.${csv_fname} -o $bash_dir/${config}_out.txt -e $bash_dir/${config}_err.txt $bash_script
 	done
