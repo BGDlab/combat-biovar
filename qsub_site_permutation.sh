@@ -56,20 +56,22 @@ qsub -N perm-${1}x -o $bash_dir/perm_${1}x_out.txt -e $bash_dir/perm_${1}x_err.t
 #######################################################################################
 # CHECK FOR OUTPUTS
 #expect # csvs in save_data_path = # permutations called for
-count_file=`find ./ -type f -name '*.csv' | wc  -l`
+count_file=$(find $save_data_path/ -type f -name '*.csv' | wc  -l)
 
-start=$EPOCHSECONDS
+SECONDS=0
+
 while :    # while TRUE
 do
     # detect the expected output from 1st job
-    if [ $count_file  = $1 ] 
+    if [ $count_file -eq $1 ] 
 	then    # 1st job successfully finished
         echo "${count_file} permutations completed"
         break
-    elif [ EPOCHSECONDS-$start > 86400 ] #kill if taking more than 1 day
-		echo "taking too long, abort!"
-		exit 2
-	fi
+    elif [ $SECONDS -gt 86400 ] #kill if taking more than 1 day
+	then
+	echo "taking too long, abort!"
+	exit 2
+    fi
     sleep 60    # wait for 1min before detecting again
 done
 
