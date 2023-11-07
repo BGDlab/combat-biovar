@@ -67,6 +67,9 @@ sigma.sex.df <- summary.df %>%
 
 #write.csv(sigma.sex.df, file=paste0(save_path, "/gamlss_summary.csv"))
 
+#get variance estimate at mean age for m and f
+
+
 #adding distribution of fitted moments (mu, sigma, nu) to standardize betas
 moment.dist.list <- lapply(model.files, get.moment.dist)
 moment.df <- bind_rows(moment.dist.list)
