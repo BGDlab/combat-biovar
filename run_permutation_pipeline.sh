@@ -123,10 +123,10 @@ batch="sim.site"
 config_list="cf cf.lm cf.gam cf.gamlss" #cf.lm_refA cf.gam_refA cf.gamlss_refA
 #######################################################################################
 #give permissions
-chmod -R 755 $save_data_path
+#chmod -R 755 $save_data_path
 
 #iterate through csvs
-for csv in $($save_data_path/*.csv)
+for csv in "$save_data_path"/*.csv
 do
 	#GET CSV FILENAME
 	echo $csv
@@ -192,10 +192,10 @@ echo "launching gamlss jobs"
 #######################################################################################
 # SUBMIT GAMLSS JOBS
 #give permissions
-chmod -R 755 $save_data_path
+#chmod -R 755 $save_data_path
 
 #run iterations
-for csv in $($save_data_path/*.csv)
+for csv in "$save_data_path"/*.csv
 do
 	csv_name=$(basename $csv_file .csv)
 	csv_name=${csv_name//_/\-}
