@@ -88,13 +88,13 @@ qsub -N perm-${1}x -o $perm_bash_dir/perm_${1}x_out.txt -e $perm_bash_dir/perm_$
 
 #######################################################################################
 # CHECK FOR OUTPUTS
-#expect # csvs in save_data_path = # permutations called for
-count_file=$(find $save_data_path/ -type f -name '*.csv' | wc  -l)
 
 SECONDS=0
 
 while :    # while TRUE
 do
+    #expect # csvs in save_data_path = # permutations called for
+    count_file=$(find $save_data_path -type f -name '*.csv' | wc -l)
     # detect the expected output from 1st job
     if [ $count_file -eq $1 ] 
 	then    # 1st job successfully finished
@@ -105,6 +105,8 @@ do
 	echo "taking too long, abort!"
 	exit 2
     fi
+    echo "count ${count_file} files"
+    #echo $(find $save_data_path -type f -name '*.csv')
     sleep 60    # wait for 1min before detecting again
 done
 
