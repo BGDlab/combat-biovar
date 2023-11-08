@@ -3,6 +3,8 @@
 #Fit GAMLSS growth chart models for each phenotype
 #pass as argument EITHER path to .csv containing data OR directory of .csvs to iterate across
 
+#STEP 3 OF VALIDATION PIPELINE#
+
 #######################################################################################
 # SET PATHS
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
@@ -72,7 +74,7 @@ then
 #if input directory of .csvs
 elif [ -d $1 ]
 then
-	for csv_file in "$1"/*.csv #select JUST csvs - need to test this
+	for csv_file in "$1"/*.csv #select JUST csvs
 	do
 		csv_name=$(basename $csv_file .csv)
 		csv_name=${csv_name//_/\-}
