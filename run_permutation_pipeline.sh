@@ -88,7 +88,6 @@ qsub -N perm-${1}x -o $perm_bash_dir/perm_${1}x_out.txt -e $perm_bash_dir/perm_$
 
 #######################################################################################
 # CHECK FOR OUTPUTS
-
 SECONDS=0
 
 while :    # while TRUE
@@ -123,6 +122,10 @@ batch="sim.site"
 #LIST POSSIBLE CONFIGS
 config_list="cf cf.lm cf.gam cf.gamlss" #cf.lm_refA cf.gam_refA cf.gamlss_refA
 #######################################################################################
+#give permissions
+chmod -R 755 $save_data_path
+
+#iterate through csvs
 for csv in $($save_data_path/*.csv)
 do
 	#GET CSV FILENAME
@@ -170,6 +173,7 @@ SECONDS=0
 
 while :    # while TRUE
 do
+	count_file=$(find $save_data_path -type f -name '*.csv' | wc -l)
     # detect the expected output from 1st job
     if [ $count_file -eq $combat_counts ] 
 	then    # 1st job successfully finished
@@ -187,6 +191,10 @@ echo "launching gamlss jobs"
 #######################################################################################
 #######################################################################################
 # SUBMIT GAMLSS JOBS
+#give permissions
+chmod -R 755 $save_data_path
+
+#run iterations
 for csv in $($save_data_path/*.csv)
 do
 	csv_name=$(basename $csv_file .csv)
