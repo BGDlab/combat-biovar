@@ -178,7 +178,7 @@ get.var.at.mean.age <- function(gamlss.rds.file, og_df) {
   gamlss.obj <- readRDS(gamlss.rds.file)
   
   #get mean age
-  age <- mean(og_df$age_days)
+  age <- mean(og_df[["age_days"]])
   
   #sim male and female subj.
   dataToPredictM <- data.frame(age_days=age,
