@@ -1,7 +1,14 @@
 #single script to parse outputs & get results for OHBM 2024 abstract (condensed from proof-of-concept_mods.Rmd)
 
+#define path
+data_path <- "/cbica/home/gardnerm/combat-biovar/ukb_basic"
+
 ### LOAD ###
 pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
+vol_list_global <- readRDS(file="R_scripts/vol_list_global.rds")
+vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
+sa_list <- readRDS(file="R_scripts/SA_list.rds")
+ct_list <- readRDS(file="R_scripts/CT_list.rds")
 
 library(data.table) 
 library(readr)
@@ -15,7 +22,7 @@ library(paletteer)
 ### CENTILES ###
 #Do centile scores change based on combat version?
 
-pred.csvs <- list.files(path = "ukb_basic", pattern = "_predictions.csv", full.names = TRUE)
+pred.csvs <- list.files(path = data_path, pattern = "_predictions.csv", full.names = TRUE)
 combined_preds <- data.frame()
 
 for (file in pred.csvs) {
@@ -171,7 +178,7 @@ sum_z.t.df <- z.t.df %>%
 ### SCALE EFFECTS OF SEX ###
 #fix age, get diff between male and female pred. variance
 
-pred.csvs <- list.files(path = "ukb_basic", pattern = "_variance.csv", full.names = TRUE)
+pred.csvs <- list.files(path = data_path, pattern = "_variance.csv", full.names = TRUE)
 combined_var <- data.frame()
 
 for (file in pred.csvs) {
