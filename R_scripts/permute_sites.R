@@ -27,10 +27,6 @@ n_male <- table(df$sex)["Male"]
 male_prob <- c(0.33, 0.0825, 0.5875)
 female_prob <- c(0.33, 0.5875, 0.0825)
 
-# Just get cols needed for site assignment
-df.filt <- df %>%
-  dplyr::select(participant, sex)
-
 #control # permutations to complete
 for(i in 1:n_permutations) {
   # Separate samples for males and females
@@ -38,12 +34,12 @@ for(i in 1:n_permutations) {
   sampled_females <- sample(sim.site.list, size = n_female, replace = TRUE, prob = female_prob)
   
   #assign to df
-  new_df <- df.filt %>%
+  new_df <- df %>%
     mutate(sim.site = as.factor(ifelse(sex == "Male", sampled_males, sampled_females)))
   
   #save out csv w permutation number in filename
   n_perm <- str_pad(i, 3, pad = "0")
-  fname <- paste0(save_path, "/", csv_basename, "_perm-key_", n_perm, ".csv")
+  fname <- paste0(save_path, "/", csv_basename, "_perm-", n_perm, ".csv")
   fwrite(new_df, file=fname)
   
 }

@@ -338,6 +338,7 @@ ggplot(sex.sigma.counts) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
+##### Variance
 Convert sigma to variance by correcting for log-link function (sex's effect on variance = exp(sigma) - exp(log(sigma) - beta sex)) -> exp(beta_sex).
 Also getting mean variance.
 
@@ -416,7 +417,64 @@ table(sigma.df.glob$dataset, sigma.df.glob$sig.sum_bf.corr)
 
 fix age, get diff between male and female pred. variance
 ```{r}
-mean(ukb_df_age.filt$age_days)
+pred.csvs <- list.files(path = "ukb_basic", pattern = "_variance.csv", full.names = TRUE)
+combined_var <- data.frame()
+
+for (file in pred.csvs) {
+  # Read each CSV file
+  data <- fread(file)
+  
+  # Add a "Source_File" column with the file name
+  data <- data %>%
+    mutate(Source_File = as.factor(basename(file))) %>%
+    mutate(dataset = sub("_data_variance.csv", "", Source_File))
+  
+  # Bind the data to the combined dataframe
+  combined_var <- bind_rows(combined_var, data, .id = "File_ID")
+}
+
+table(combined_var$dataset)
+#skim(combined_preds)
+```
+
+```{r}
+combined_var <- combined_var %>%
+  mutate(sex_std = sex_effect/f.var)
+
+summary(sigma.df$var_est)
+summary(combined_var$sex_effect)
+
+summary(sigma.df$beta_ratio)
+summary(combined_var$sex_std)
+```
+
+```{r}
+plot.info <- sigma.df %>%
+  dplyr::filter(term == "sexMale") %>%
+  dplyr::select(mod_name, pheno, dataset, pheno_cat, label, hemi, region, sig.sum_bf.corr) %>%
+  unique() %>%
+  mutate(dataset = gsub("-", "_", dataset),
+         dataset = gsub("_simsites", "", dataset))
+combined_var <- inner_join(combined_var, plot.info)
+table(combined_var$dataset)
+```
+
+plot
+
+```{r, fig.height=5, fig.widt=5}
+combined_var %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & pheno_cat != "Global Volume") %>%
+  group_by(dataset, pheno_cat) %>%
+  ggplot() +
+  geom_brain(atlas = dk, 
+             position = position_brain(hemi ~ side),
+             aes(fill = sex_std)) +
+  #scale_fill_gradient2() +
+  facet_grid(dataset~pheno_cat) + 
+  theme_bw(base_size=12) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA)) +
+  paletteer::scale_fill_paletteer_c("grDevices::Oslo") +
+  ggtitle("Standardized effect of male sex on variance")
 ```
 
 #### Centiles
