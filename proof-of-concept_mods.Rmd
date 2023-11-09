@@ -6,7 +6,6 @@ date: '2023-10-06'
 
 ## QUESTIONS
 - effect size for poly(age_days, 3) in gam/gamlss
-- z scores instead of centiles!!!!
 - Fix age -> diff in male and female variance/intercept
 
 ## Setup
@@ -765,10 +764,17 @@ cent.diffs3 <- combined_preds %>%
 
 ```{r, eval=FALSE}
 cent.diffs3 %>%
+  #dplyr::filter(dataset == "cf.gamlss") %>%
   pivot_longer(starts_with("diff_"), names_to="pheno", values_to="diff", names_prefix = "diff_") %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_))) %>%
   ggplot() +
-  geom_density(aes(x=diff, fill=pheno)) +
-  facet_wrap(~pheno_class) +
+  geom_density(aes(x=diff, fill=dataset), alpha=0.4) +
+  facet_wrap(~pheno_cat) +
   theme(legend.position="none")
 ```
 
