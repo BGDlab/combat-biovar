@@ -317,17 +317,3 @@ p_annotate <- annotate_figure(p, top = text_grob("Figure 1. Standardized effect 
 
 ggsave("figs/male_variance_ohbm_big.jpeg", p_annotate, width=7, height=8)
 ```
-
-
-```{r}
-gridExtra::grid.arrange(var.plot.global,var.plot, ncol=2, widths=c(1, 1.7))
-```
-
-
-```{r}
-p2 <- grid_arrange_shared_legend(var.plot.global, var.plot, ncol=2, nrow=1, widths=c(1, 1.7))
-annotate_figure(p2, top = text_grob("Standardized effect of male sex on feature variance", 
-               color = "black", size = 16))
-```
-
-
