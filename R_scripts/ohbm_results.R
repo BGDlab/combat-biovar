@@ -1,7 +1,7 @@
 #plot centile differences
 
 #define path
-cent_abs.diffs <- fread("/cbica/home/gardnerm/combat-biovar/ukb_basic")
+cent_abs.diffs <- readRDS("data/centile_abs_diffs.rds")
 
 ### LOAD ###
 vol_list_global <- readRDS(file="R_scripts/vol_list_global.rds")
@@ -9,7 +9,7 @@ vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
 sa_list <- readRDS(file="R_scripts/SA_list.rds")
 ct_list <- readRDS(file="R_scripts/CT_list.rds")
 
-library(data.table) 
+# library(data.table) 
 library(ggplot2) 
 library(tidyverse) 
 # library(ggseg)

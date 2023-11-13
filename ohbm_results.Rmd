@@ -59,6 +59,10 @@ cent_abs.diffs <- combined_preds %>%
   ungroup() %>%
   dplyr::filter(dataset != "ukb_CN") #drop raw
 
+saveRDS(cent_abs.diffs, "data/centile_abs_diffs.rds")
+```
+
+```{r}
 #within each phenotype, iterate paired t test between each combo of combat dfs 
 
 #initalize empty dfs to store outputs
@@ -107,6 +111,7 @@ t.df.sum <- t.df %>%
             n_compare = n(),
             min_pval = min(p.val_fdr),
             max_pval = max(p.val_fdr))
+t.df.sum
 ```
 
 Big plot - too big to run locally :(
@@ -190,6 +195,8 @@ sum_z.t.df <- z.t.df %>%
             n_compare = n(),
             min.pval = min(p.val_fdr),
             max.pval = max(p.val_fdr))
+
+sum_z.t.df
 ```
 
 
@@ -254,8 +261,8 @@ tp <- unique(var.plot.df[,c('dataset','pheno_cat')]) %>%
 tp$sex_std <- 1
 
 var.plot <- ggplot(var.plot.df) +
-  geom_rect(data = tp, fill="lightgreen", xmin = -Inf,xmax = Inf,
-            ymin = -Inf, ymax = Inf, alpha = 0.2) +
+  geom_rect(data = tp, fill="gray", xmin = -Inf,xmax = Inf,
+            ymin = -Inf, ymax = Inf, alpha = 0.4) +
   ggseg::geom_brain(atlas = dk, 
              position = position_brain(hemi ~ side),
              aes(fill = sex_std)) +
@@ -288,8 +295,8 @@ tp <- unique(var.plot.global.df[,c('dataset','pheno_cat')]) %>%
 tp$sex_std <- 1
 
 var.plot.global <- ggplot(var.plot.global.df) +
-  geom_rect(data = tp, fill="lightgreen", xmin = -Inf,xmax = Inf,
-            ymin = -Inf, ymax = Inf, alpha = 0.2) +
+  geom_rect(data = tp, fill="gray", xmin = -Inf,xmax = Inf,
+            ymin = -Inf, ymax = Inf, alpha = 0.4) +
   ggseg::geom_brain(atlas = aseg_cerebrum, 
              aes(fill = sex_std),
              side = c("coronal")) +
