@@ -270,7 +270,7 @@ var.plot <- ggplot(var.plot.df) +
   facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
   theme_linedraw(base_size=12) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
-  paletteer::scale_fill_paletteer_c("viridis::plasma", name = "Sex Effect")
+  paletteer::scale_fill_paletteer_c("viridis::plasma", name = "Sex Effect", limits = c(-0.15, 0.15), breaks = c(-0.1, 0,0.1))
 var.plot
 
 #ggsave("figs/male_variance_ohbm.jpeg", var.plot, width=10, height=10)
@@ -304,7 +304,7 @@ var.plot.global <- ggplot(var.plot.global.df) +
   facet_grid(dataset~pheno_cat) + 
   theme_linedraw(base_size=12) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
-  paletteer::scale_fill_paletteer_c("viridis::plasma", name = "Sex Effect")
+  paletteer::scale_fill_paletteer_c("viridis::plasma", name = "Sex Effect", limits = c(-0.15, 0.15), breaks = c(-0.1, 0,0.1))
 ```
 
 Combine plots
