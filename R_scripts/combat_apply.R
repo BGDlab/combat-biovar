@@ -27,6 +27,8 @@ library(ComBatFamily)
 args <- commandArgs(trailingOnly = TRUE)
 raw.df <- fread(args[1], stringsAsFactors = TRUE, na.strings = "")
 
+print(paste("col names:", names(raw.df)))
+
 batch.arg <- args[2]
 #if batch arg is csv, merge csv into raw.df and designate last col as batch ID
 if (endsWith(batch.arg, '.csv')){
