@@ -1,7 +1,7 @@
 #plot centile differences
 
 #define path
-cent_abs.diffs <- readRDS("data/centile_abs_diffs.rds")
+cent_abs.diffs <- readRDS(file="/home/megardn/combat-biovar/data/centile_abs_diffs.rds")
 
 ### LOAD ###
 vol_list_global <- readRDS(file="R_scripts/vol_list_global.rds")
@@ -26,7 +26,7 @@ plot.cents <- cent_abs.diffs %>%
     pheno %in% ct_list ~ "Regional CT",
     TRUE ~ NA_character_))) %>%
   ggplot() +
-  geom_density(aes(x=diff, fill=dataset), alpha=0.4) +
+  geom_density(aes(x=abs.diff, fill=dataset), alpha=0.4) +
   facet_wrap(~pheno_cat) +
   theme(legend.position="none")
-ggsave("figs/cent_plot_test.jpeg", var.plot, width=10, height=10)
+ggsave("figs/cent_plot_test.jpeg", plot.cents, width=10, height=10)
