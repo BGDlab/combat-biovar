@@ -79,6 +79,10 @@ stopifnot(length(batch) == nrow(covar.df))
 stopifnot(all(sapply(covar.df, is.numeric)))
 }
 
+#extract csv name from input data
+csv_basename <- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(as.character(args[1])))
+csv_basename <- gsub("_", "-", csv_basename)
+
 ##########################################################################
 
 #COMBAT
@@ -123,7 +127,7 @@ for (l in list_of_feature_lists){
   }
   
   #save cf.obj
-  saveRDS(cf.obj, file=paste0(save_path, "/combat_objs/", save_name,"_", names(list_of_feature_lists[i]), "_cf_obj.rds"))
+  saveRDS(cf.obj, file=paste0(save_path, "/combat_objs/",csv_basename,"_", config_name,"_", names(list_of_feature_lists[i]), "_cf_obj.rds"))
   
   #row number
   cf.obj.df <- cf.obj$dat.combat %>%
@@ -162,10 +166,6 @@ final.df <- cf.merged %>%
 
 ##########################################################################
 #WRITE OUT
-
-#extract csv name from input data
-csv_basename <- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(as.character(args[1])))
-csv_basename <- gsub("_", "-", csv_basename)
 
 #append config name
 datafile <- paste0(save_path, "/", csv_basename, "_", config_name, "_data.csv")

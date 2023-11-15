@@ -179,7 +179,7 @@ do
 	then    # 1st job successfully finished
         echo "${count_file} csvs written"
         break
-    elif [ $SECONDS -gt 86400 ] #kill if taking more than 1 day
+    elif [ $SECONDS -gt 172800 ] #kill if taking more than 2 days
 	then
 	echo "taking too long, abort!"
 	exit 2
