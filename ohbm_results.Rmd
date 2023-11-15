@@ -134,6 +134,44 @@ plot.cents <- cent_abs.diffs %>%
 ggsave("figs/cent_plot_test.jpeg", var.plot, width=10, height=10)
 ```
 
+Little plot
+```{r}
+mean.diffs.long <- cent_abs.diffs %>%
+  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+  group_by(dataset) %>%
+  summarize(across(starts_with("abs.diff_"), mean)) %>%
+  ungroup() %>%
+  pivot_longer(cols=starts_with("abs.diff_"), values_to="centile_abs.diff", names_to = "pheno", names_prefix = "abs.diff_") %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)),
+      label = sub("_[^_]*_", "_", pheno))
+```
+
+```{r}
+dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+dataset_colors <- c(cf = "#3D5983FF", cf.lm = "#5A8A54FF", cf.gam ="#262626FF", cf.gamlss ="#CFB023FF")
+
+cent.diffs.plot <- mean.diffs.long %>%
+  dplyr::filter(dataset != "ukb_CN") %>%
+  mutate(centile_abs.diff = centile_abs.diff*100) %>% #for visuals
+  ggplot() +
+  geom_histogram(aes(x=centile_abs.diff, fill=dataset, y = stat(width*density)), color="black", alpha=0.6, position="identity") +
+  theme_linedraw(base_size = 11) +
+  scale_x_continuous(labels = label_comma()) + 
+  facet_wrap(~pheno_cat) +
+  scale_y_continuous(labels = percent ) + 
+  scale_fill_manual(values=dataset_colors, name = "ComBat \nConfiguration", labels=dataset_names) +
+  labs(y= "Percent Features", x = "Mean Absolute Centile Error") +
+  ggtitle("Figure 2. Absolute errors in centile scores across ComBat processing pipelines")
+cent.diffs.plot
+
+ggsave("figs/mean_centile_diffs.jpeg", cent.diffs.plot)
+```
+
 ### Z-SCORES ###
 
 ```{r}
@@ -248,8 +286,6 @@ combined_var <- inner_join(combined_var, plot.info)
 ```
 
 ```{r}
-dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat", cf.lm = "ComBat Linear", cf.gam ="ComBatGAM", cf.gamlss ="ComBatLS")
-
 #var plot
 var.plot.df <- combined_var %>%
   dplyr::filter(sig.sum_bf.corr == TRUE & pheno_cat != "Global Volume") %>%
@@ -270,7 +306,7 @@ var.plot <- ggplot(var.plot.df) +
   facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
   theme_linedraw(base_size=12) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
-  paletteer::scale_fill_paletteer_c("viridis::plasma", name = "Sex Effect")
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Sex Effect", limits = c(-0.12, 0.12), breaks = c(-0.1, 0,0.1))
 var.plot
 
 #ggsave("figs/male_variance_ohbm.jpeg", var.plot, width=10, height=10)
@@ -304,7 +340,8 @@ var.plot.global <- ggplot(var.plot.global.df) +
   facet_grid(dataset~pheno_cat) + 
   theme_linedraw(base_size=12) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
-  paletteer::scale_fill_paletteer_c("viridis::plasma", name = "Sex Effect")
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Sex Effect", limits = c(-0.12, 0.12), breaks = c(-0.1, 0,0.1))
+var.plot.global
 ```
 
 Combine plots

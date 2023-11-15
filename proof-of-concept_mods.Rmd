@@ -15,9 +15,17 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, tidymodels, broom.mixed, ggseg, cowplot, lsr, paletteer)
+pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, tidymodels, broom.mixed, ggseg, cowplot, lsr, paletteer, ggsegExtra, ggseg3d)
 
 source("./R_scripts/gamlss_helper_funs.R")
+# 
+# # Enable this universe
+# options(repos = c(
+#   ggseg = 'https://ggseg.r-universe.dev',
+#   CRAN = 'https://cloud.r-project.org'))
+# 
+# # Install some packages
+# install.packages('ggsegExtra')
 ```
 
 # Analysis Outline
@@ -120,6 +128,13 @@ sex.df %>%
   theme_void() +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
   ggtitle("t-statistic for effect of male sex on sigma")
+```
+
+Simple bar plot of sites
+```{r}
+ggplot(ukb_df_age.filt) +
+  geom_bar(aes(x=sim.site, fill=sex), color="black", alpha=0.6) +
+  theme_linedraw(base_size=12)
 ```
 
 ### Combat Effects
@@ -474,6 +489,12 @@ combined_var %>%
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA)) +
   paletteer::scale_fill_paletteer_c("grDevices::Oslo") +
   ggtitle("Standardized effect of male sex on variance")
+```
+
+using aseg 
+
+```{r}
+plot(aseg)
 ```
 
 #### Centiles
@@ -1258,6 +1279,37 @@ beta.plot2 <- sigma.df %>%
 beta.plot2
 
 ggsave("male_variance_beta2.jpeg", beta.plot2, width=10, height=10)
+```
+
+```{r}
+sigma.aseg_all <- sigma.df %>%
+  dplyr::filter(pheno_cat == "Global Volume" & term =="sexMale") %>%
+  filter(!str_detect(dataset, "-refA")) %>%
+  dplyr::select(!label) %>%
+  mutate(dataset = factor(dataset, levels = c("ukb-CN-simsites", "cf", "cf.lm", "cf.gam", "cf.gamlss")),
+         tissue_class = as.factor(case_when(pheno == "GMV" ~ "cGM",
+                                            pheno == "Ventricles" ~ "CSF",
+                                            pheno == "WMV" ~ "White Matter",
+                                            pheno == "sGMV" ~ "sGM",
+                                            TRUE ~ NA)),
+         var_est = case_when(sig.sum_bf.corr == TRUE ~ var_est,
+                             TRUE ~ NA)) #just keep significant regions
+
+sigma.aseg_all <- left_join(sigma.aseg_all, aseg_cerebrum$data, by = c("tissue_class"))
+
+sigma.aseg_all %>%
+  group_by(dataset) %>%
+  ggplot() +
+  geom_brain(atlas = aseg_cerebrum, 
+             #position = position_brain(hemi ~ side),
+             aes(fill = var_est),
+             alpha=0.8) +
+  #scale_fill_gradient2() +
+  facet_wrap(~dataset) + 
+  theme_bw(base_size=20) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA)) +
+  paletteer::scale_fill_paletteer_c("grDevices::Oslo") +
+  ggtitle("Beta weight for effect of male sex on variance")
 ```
 
 
