@@ -168,6 +168,7 @@ done
 #expect # csvs in save_data_path = # permutations called for * (# combat permutations + 1)
 cf_len=`echo ${config_list[@]} | wc -w`
 combat_counts=$((len*(cf_len+1)))
+echo "submitted ${cf_len} combat configurations, looking for ${combat_counts} output csvs"
 
 SECONDS=0
 
@@ -184,6 +185,7 @@ do
 	echo "taking too long, abort!"
 	exit 2
     fi
+	echo "${count_file} csvs found"
     sleep 60    # wait for 1min before detecting again
 done
 
