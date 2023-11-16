@@ -197,7 +197,7 @@ echo "launching gamlss jobs"
 #chmod -R 755 $save_data_path
 
 #run iterations
-for csv in "$save_data_path"/*.csv
+for csv_file in "$save_data_path"/*.csv
 do
 	csv_name=$(basename $csv_file .csv)
 	csv_name=${csv_name//_/\-}
