@@ -13,5 +13,5 @@ config_list="cf cf.lm cf.gam cf.gamlss"
 
 #expect # csvs in save_data_path = # permutations called for * (# combat permutations + 1)
 cf_len=`echo ${config_list[@]} | wc -w`
-combat_counts=$((len*(cf_len+1)))
+combat_counts=$(($1*(${cf_len}+1)))
 echo "submitted ${cf_len} combat configurations, looking for ${combat_counts} output csvs"

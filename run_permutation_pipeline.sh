@@ -84,7 +84,7 @@ touch $bash_script
 echo "singularity run --cleanenv $img Rscript --save $permute_script $og_data $save_data_path $1" > $bash_script
 
 #qsub bash script
-#qsub -N perm-${1}x -o $perm_bash_dir/perm_${1}x_out.txt -e $perm_bash_dir/perm_${1}x_err.txt $bash_script
+qsub -N perm-${1}x -o $perm_bash_dir/perm_${1}x_out.txt -e $perm_bash_dir/perm_${1}x_err.txt $bash_script
 
 #######################################################################################
 # CHECK FOR OUTPUTS
@@ -160,14 +160,14 @@ do
 
 		fi
 		#qsub bash script
-		#qsub -N ${config}.${csv_fname} -o $cf_bash_dir/${csv_fname}_${config}_out.txt -e $cf_bash_dir/${csv_fname}_${config}_err.txt $bash_script
+		qsub -N ${config}.${csv_fname} -o $cf_bash_dir/${csv_fname}_${config}_out.txt -e $cf_bash_dir/${csv_fname}_${config}_err.txt $bash_script
 	done
 done
 #######################################################################################
 # CHECK FOR OUTPUTS
 #expect # csvs in save_data_path = # permutations called for * (# combat permutations + 1)
 cf_len=`echo ${config_list[@]} | wc -w`
-combat_counts=$((len*(cf_len+1)))
+combat_counts=$(($1*(${cf_len}+1)))
 echo "submitted ${cf_len} combat configurations, looking for ${combat_counts} output csvs"
 
 SECONDS=0
