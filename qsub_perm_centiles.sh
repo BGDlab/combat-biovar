@@ -22,7 +22,7 @@ cd $base #to source functions correctly
 # MAKE DIRECTORY
 
 #qsub script & outputs
-bash_dir=$base/ukb_basic/centile_qsubs
+bash_dir=$base/ukb_permute/centile_qsubs
 if ! [ -d $bash_dir ]
 	then
 	mkdir $bash_dir
@@ -30,27 +30,15 @@ if ! [ -d $bash_dir ]
 #######################################################################################
 #LIST POSSIBLE CONFIGS, INCLUDING NAME OF ORIGINAL RAW DATA
 #be sure to include "data" at the end of the string so refA options aren't confused
-config_list="cf_data cf.lm_data cf.gam_data cf.gamlss_data" #cf.lm_refA_data cf.gam_refA_data cf.gamlss_refA_data ukb_CN_data
+config_list="cf_data cf.lm_data cf.gam_data cf.gamlss_data raw" #cf.lm_refA_data cf.gam_refA_data cf.gamlss_refA_data ukb_CN_data
 #######################################################################################
 #LIST permutations
 for p in $(seq -f "%03g" 1 $1)
 do
-	#base file w/o config
-	f_string=perm-${p}_mod
-	echo "Prepping $f_string"
-	#write bash script
-	bash_script=$bash_dir/${f_string}_cent.sh
-	touch $bash_script
-		
-	echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path $mod_path $base/ukb_permute $f_string" > $bash_script
-
-	#qsub bash script
-	qsub -N $f_string -o $bash_dir/${f_string}_out.txt -e $bash_dir/${f_string}_err.txt $bash_script
-
 	#iterate through combat configs
 	for config in $config_list
 	do
-		f_string=perm-${p}-${config}_mod
+		f_string=perm-${p}-${config}
 		echo "Prepping $f_string"
 		#write bash script
 		bash_script=$bash_dir/${f_string}_cent.sh
