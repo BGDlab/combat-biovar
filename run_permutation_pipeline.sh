@@ -218,3 +218,30 @@ do
 		done < $list
 	done
 done
+#######################################################################################
+# CHECK FOR OUTPUTS
+#expect # models in gamlss_dir = #csvs * 208
+mod_counts=$((${combat_counts}*208))
+
+echo "${combat_counts} csvs, looking for ${mod_counts} output csvs"
+
+SECONDS=0
+
+while :    # while TRUE
+do
+	count_mods=$(find $gamlss_dir -type f -name '*.rds' | wc -l)
+    # detect the expected output from 1st job
+    if [ $count_mods -eq $mod_counts ] 
+	then    # 1st job successfully finished
+        echo "${count_mods} gamlss models written"
+        break
+    elif [ $SECONDS -gt 172800 ] #kill if taking more than 2 days
+	then
+	echo "taking too long, abort!"
+	exit 2
+    fi
+	echo "${count_mods} gamlss models found"
+    sleep 60    # wait for 1min before detecting again
+done
+
+echo "SUCCESS! All done :)"
