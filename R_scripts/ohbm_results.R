@@ -1,7 +1,7 @@
 #plot centile differences
 
 #define path
-cent_abs.diffs <- readRDS(file="/home/megardn/combat-biovar/data/centile_abs_diffs.rds")
+cent_abs.diffs <- readRDS(file="/cbica/home/gardnerm/combat-biovar/data/centile_abs_diffs.rds")
 
 ### LOAD ###
 vol_list_global <- readRDS(file="R_scripts/vol_list_global.rds")
