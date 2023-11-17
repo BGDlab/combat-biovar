@@ -216,21 +216,12 @@ do
 	csv_name=${csv_name//_/\-}
     echo "Pulling data from $csv_name"
 
-	#iterate through measure types (vol, SA, CT, global vols) for correct global corrections
-	for list in "$pheno_path"/*
-	do
-		echo "Modelling phenotypes in $list"
-		#iterate through list of phenotypes
-		while read -r pheno
-		do
-			#write bash script
-			bash_script=$gamlss_bash_dir/${pheno}_${csv_name}_basic_fit.sh
-			touch $bash_script
-			echo "singularity run --cleanenv /cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif Rscript --save $mod_script $csv_file $pheno $gamlss_dir" > $bash_script
-			#qsub bash script
-			qsub -N ${pheno}.${csv_name} -o $gamlss_bash_dir/${pheno}_${csv_name}_out.txt -e $gamlss_bash_dir/${pheno}_${csv_name}_err.txt $bash_script
-		done < $list
-	done
+	#write bash script
+	bash_script=$gamlss_bash_dir/${csv_name}_basic_fit.sh
+	touch $bash_script
+	echo "singularity run --cleanenv /cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif Rscript --save $mod_script $csv_file $gamlss_dir" > $bash_script
+	#qsub bash script
+	qsub -N ${csv_name}.gamlss -o $gamlss_bash_dir/${csv_name}_gamlss_out.txt -e $gamlss_bash_dir/${csv_name}_gamlss_err.txt $bash_script
 done
 #######################################################################################
 # CHECK FOR OUTPUTS
