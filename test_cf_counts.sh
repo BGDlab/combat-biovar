@@ -11,7 +11,22 @@ mod_script=$base/R_scripts/fit_basic_mod.R
 
 config_list="cf cf.lm cf.gam cf.gamlss"
 
-#expect # csvs in save_data_path = # permutations called for * (# combat permutations + 1)
-cf_len=`echo ${config_list[@]} | wc -w`
-combat_counts=$(($1*(${cf_len}+1)))
-echo "submitted ${cf_len} combat configurations, looking for ${combat_counts} output csvs"
+for csv_file in "$save_data_path"/*.csv
+do
+	#append "raw" suffix to og, non-combatted dfs so that the csvs and models are easily searchable
+	# Check if the filename ends with a number
+    if [[ $csv_file =~ [0-9]+\.csv ]] 
+	then
+        # Append "_raw" after the number
+        new_name="${csv_file/.csv/_raw.csv}"
+
+        # Rename the file
+        mv "$csv_file" "$new_name"
+	echo "Renamed: $csv_file -> $new_name"
+		csv_name=$(basename $new_name .csv)
+	else
+		csv_name=$(basename $csv_file .csv)
+	fi
+	csv_name=${csv_name//_/\-}
+	echo "Pulling data from $csv_name"
+done
