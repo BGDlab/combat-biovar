@@ -11,7 +11,7 @@ pheno_path=$base/pheno_lists #path to .txt files listing phenotypes (global & re
 # paths to R scripts
 permute_script=$base/R_scripts/permute_sites.R
 cf_script=$base/R_scripts/combat_apply.R
-mod_script=$base/R_scripts/fit_basic_mod.R
+mod_script=$base/R_scripts/fit_perm_basic_mod.R
 #######################################################################################
 cd $base #to source functions correctly
 #######################################################################################
@@ -210,8 +210,10 @@ do
         mv "$csv_file" "$new_name"
         echo "Renamed: $csv_file -> $new_name"
         csv_name=$(basename $new_name .csv)
+		csv_to_load=$new_name
     else
         csv_name=$(basename $csv_file .csv)
+		csv_to_load=$csv_file
     fi
 	csv_name=${csv_name//_/\-}
     echo "Pulling data from $csv_name"
@@ -219,7 +221,7 @@ do
 	#write bash script
 	bash_script=$gamlss_bash_dir/${csv_name}_basic_fit.sh
 	touch $bash_script
-	echo "singularity run --cleanenv /cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif Rscript --save $mod_script $csv_file $gamlss_dir" > $bash_script
+	echo "singularity run --cleanenv /cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif Rscript --save $mod_script $csv_to_load $gamlss_dir" > $bash_script
 	#qsub bash script
 	qsub -N ${csv_name}.gamlss -o $gamlss_bash_dir/${csv_name}_gamlss_out.txt -e $gamlss_bash_dir/${csv_name}_gamlss_err.txt $bash_script
 done
