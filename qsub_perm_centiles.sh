@@ -21,11 +21,18 @@ cd $base #to source functions correctly
 #######################################################################################
 # MAKE DIRECTORY
 
-#qsub script & outputs
+#qsub script & job outputs
 bash_dir=$base/ukb_permute/centile_qsubs
 if ! [ -d $bash_dir ]
 	then
 	mkdir $bash_dir
+	fi
+
+#csv outputs outputs
+save_dir=$base/ukb_permute/perm_centile_csvs
+if ! [ -d $save_dir ]
+	then
+	mkdir $save_dir
 	fi
 #######################################################################################
 #LIST POSSIBLE CONFIGS, INCLUDING NAME OF ORIGINAL RAW DATA
@@ -44,7 +51,7 @@ do
 		bash_script=$bash_dir/${f_string}_cent.sh
 		touch $bash_script
 		
-		echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path $mod_path $base/ukb_permute $f_string" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path $mod_path $save_dir $f_string" > $bash_script
 
 		#qsub bash script
 		qsub -N $f_string -o $bash_dir/${f_string}_out.txt -e $bash_dir/${f_string}_err.txt $bash_script
