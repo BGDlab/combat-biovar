@@ -532,7 +532,9 @@ cent_err.p <- bind_rows(perm_cent.err, .id = "permutation")
 cent.diffs.v.plot <- cent_err.p %>%
   mutate(mean = mean*100) %>% #for visuals
   ggplot() +
-  geom_violin(aes(x=dataset, y=mean, fill=permutation))
+  geom_violin(aes(x=dataset, y=mean, fill=permutation)) +
+  labs(y= "Magnitude Centile Error", x = "ComBat Configurations") +
+  ggtitle("Within-subject mean magnitude of error in centile scores across ComBat \nconfigurations replicated 10x")
 ggsave(filename="figs/centile_violin.png", cent.diffs.v.plot)
 ```
 
@@ -584,7 +586,15 @@ z_t.tests.p <- bind_rows(perm_t.tests_z, .id = "column_label")
 ```
 
 ```{r}
-fwrite(z_t.tests.p, file="ukb_permute/z_t.tests.csv")
+fwrite(z_t.tests.p, file="ukb_perm_csvs/z_t.tests.csv")
+```
+
+```{r}
+z_t.tests.p %>%
+  group_by(comp) %>%
+  dplyr::summarize(n_sig_min=min(n_sig_regions),
+            n_sig_max = max(n_sig_regions),
+            n_sig_mean = mean(n_sig_regions))
 ```
 
 ## SCALE EFFECTS OF SEX
@@ -603,7 +613,8 @@ get.var <- function(x){
       mutate(Source_File = as.factor(basename(file)),
              perm = as.factor(x)) %>%
       mutate(dataset = gsub("_data|_variance.csv|perm-|[0-9]|-", "", Source_File),
-             sex_standard = sex_effect/f.var)
+             sex_standard = sex_effect/f.var,
+             pheno = as.character(pheno))
 
     # Bind the data to the combined dataframe
     df <- bind_rows(df, data, .id = "File_ID")
@@ -612,51 +623,40 @@ get.var <- function(x){
 }
 
 perm_var <- mclapply(n_perm_list, get.var, mc.preschedule = FALSE)
+perm_var.all <- bind_rows(perm_var, .id = "column_label")
 ```
 
 maybe better to get sex_summary.csv - just need signifigance
 
 ```{r}
 #get summary df for p vals, plotting
-sigma.sex.df <- fread("ukb_basic/gamlss_summary.csv", stringsAsFactors = TRUE) %>%
+sigma.sex.df <- fread("ukb_perm_csvs/sex_summary.csv", stringsAsFactors = TRUE) %>%
   dplyr::select(-V1) %>%
-  mutate(dataset = gsub("-data", "", dataset),
-         dataset = gsub("-", "_", dataset),
-         dataset = gsub("_simsites", "", dataset)) %>% #clean up dataset naming
-  mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
-  mutate(dataset = relevel(dataset, ref= "ukb_CN")) %>%
+  mutate(perm = gsub("ukb-CN-data-agefilt-|-raw|-cf|.lm|.gam|.gamlss|-data", "", dataset),
+         dataset = gsub("-data", "", dataset),
+         dataset = gsub("simsites|ukb-CN-agefilt-|perm-|[0-9]", "", dataset),
+         dataset = gsub("-", "", dataset),
+         #dataset = as.character(dataset),
+         pheno = as.character(pheno)) %>%
+  mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE),
+         perm = factor(perm, levels = unique(perm), ordered=FALSE)) %>%
+  #mutate(dataset = relevel(dataset, ref= "raw")) %>%
   dplyr::filter(parameter == "sigma" & term == "sexMale") %>%
-  dplyr::select(mod_name, pheno, dataset, pheno_cat, label, sig.sum_bf.corr)
+  dplyr::select(mod_name, pheno, dataset, pheno_cat, label, sig.sum_bf.corr, perm, sig.drop_bf.corr)
 
-#add more info from parcellations
-dk.parc <- dk$data %>%
-  as.data.frame() %>%
-  na.omit() %>%
-  dplyr::select(c(hemi, region, label)) %>%
-  distinct()
-
-sigma.sex.df <- left_join(sigma.sex.df, dk.parc, by="label")
-
-combined_var <- inner_join(combined_var, plot.info)
+perm_var_info <- inner_join(perm_var.all, sigma.sex.df)
 ```
 
 ```{r}
-plot_male_var <- function(df) {
-permutation <- unique(df[["perm"]])
-
-sex_effect_plot <- df %>%
-  mutate(sex_standard = case_when(isTRUE(sig.drop_bf.corr)~ sex_standard,
-                                   isFALSE(sig.drop_bf.corr) ~ NA)) %>% #only significant effects
-  ggplot() +
-  geom_bar(aes(x=pheno, y=sex_standard, fill=dataset)) +
-  facet_wrap(~pheno_cat) +
-  ggtitle(paste("Standardized effect of male sex on variance:", permutation))
-
-  ggsave(paste0("figs/male_variance_ohbm", permutation, ".jpeg", sex_effect_plot)
-  print(sex_effect_plot)
-}
-
-
-#mclapply
-
+  sex_effect_plot <- perm_var_info %>%
+    mutate(sex_standard = case_when(sig.drop_bf.corr == TRUE ~ sex_standard,
+                                    sig.drop_bf.corr == FALSE ~ 0)) %>% #only significant effects
+    ggplot() +
+    geom_col(aes(x=pheno, y=sex_standard, fill=dataset)) +
+    facet_wrap(~perm, ncol=5) +
+    ggtitle(paste("Standardized effect of male sex on variance:", permutation)) +
+    theme(axis.text.x = element_blank())
+  
+    ggsave(paste0("figs/male_variance_perms.jpeg"), sex_effect_plot)
+    print(sex_effect_plot)
 ```
