@@ -1,0 +1,96 @@
+---
+title: "ABIDE EDA"
+output: html_document
+date: '2023-11-30'
+---
+
+## Setup
+
+```{r setup, include=FALSE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+if(!require('pacman')) {
+  install.packages('pacman')
+}
+pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, see)
+
+# #pull plotting functions from github
+# plot.func.url <- "https://raw.githubusercontent.com/BGDlab/GAMLSS/main/plotting_functions.R?token=GHSAT0AAAAAACGAYP4HZWCTHACGUM6KG2PSZIQUPBA"
+# Sys.setenv(GITHUB_PAT = "") #if needed to access private BGDlab GAMLSS repo
+# source_url(plot.func.url) #sometimes doesn't work....?
+
+source("/Users/megardn/Desktop/BGD_Repos/GAMLSS/plotting_functions.R")
+source("/Users/megardn/Desktop/BGD_Repos/combat_biovar/R_scripts/gamlss_helper_funs.R")
+```
+
+Load data from Lena
+```{r}
+abide.df <- fread("data/ABIDE.csv", stringsAsFactors = TRUE) %>%
+  dplyr::select(-X) %>%
+  janitor::remove_empty(which = "cols") #drop totally empty cols
+
+skim(abide.df)
+
+#check for duplicate subjects
+nrow(abide.df) == n_unique(abide.df$participant)
+```
+
+
+restrict to one scan per subject for visualizing demographics
+
+```{r}
+abide.df.no_dup <- abide.df %>%
+  arrange(age_days) %>%
+  group_by(participant) %>%
+  slice(1)
+
+nrow(abide.df.no_dup) == n_unique(abide.df.no_dup$participant)
+
+min(abide.df.no_dup$age_days)/365
+max(abide.df.no_dup$age_days)/365
+```
+
+## Site-wise EDA
+
+look for variance-effecting features that are confounded by site
+
+### Age
+
+```{r}
+ggplot(abide.df.no_dup) +
+  geom_violin(aes(x=site, y=age_days), scale="width", trim = FALSE, adjust=0.75) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+```{r}
+ggplot(abide.df.no_dup) +
+  geom_boxplot(aes(x=site, y=age_days)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r}
+ggplot(abide.df.no_dup) +
+  geom_violin(aes(x=site, y=age_days, fill=sex), scale="width", trim = FALSE, adjust=0.75) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+### Sex
+
+```{r}
+ggplot(abide.df.no_dup) +
+  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=site, fill=sex)) + 
+  scale_y_continuous(labels = scales::percent) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+### Diagnosis
+
+```{r}
+ggplot(abide.df.no_dup) +
+  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=site, fill=dx)) + 
+  scale_y_continuous(labels = scales::percent) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r}
+ggplot(abide.df.no_dup) + 
+  geom_density(aes(x=lh.CT.frontalpole, fill=dx))
+```

@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider)
+pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, see)
 
 # #pull plotting functions from github
 # plot.func.url <- "https://raw.githubusercontent.com/BGDlab/GAMLSS/main/plotting_functions.R?token=GHSAT0AAAAAACGAYP4HZWCTHACGUM6KG2PSZIQUPBA"
@@ -42,7 +42,11 @@ restrict to one scan per subject for visualizing demographics
 adni.df.no_dup <- adni.df.filt %>%
   arrange(age_days) %>%
   group_by(participant) %>%
-  slice(1)
+  slice(1) %>%
+  ungroup() %>%
+  group_by(site) %>%
+  filter(n() >= 2) %>%
+  ungroup() #drop sites w <2 ppl
 
 nrow(adni.df.no_dup) == n_unique(adni.df.no_dup$participant)
 ```
@@ -55,7 +59,7 @@ look for variance-effecting features that are confounded by site
 
 ```{r}
 ggplot(adni.df.no_dup) +
-  geom_histogram(aes(x=age, fill=site), position="identity", alpha=0.5)
+  geom_violin(aes(x=site, y=age), scale="width", trim = FALSE, adjust=0.75)
 ```
 
 ```{r}
@@ -95,13 +99,28 @@ ggplot(adni.df.no_dup) +
 ```
 
 ```{r}
-ggplot(adni.df.no_dup, aes(x=site, y=age, fill=dx, color=dx)) + 
-  geom_boxplot() 
+ggplot(adni.df.no_dup, aes(x=site, y=age, fill=dx, color=dx)) +
+  geom_violin(scale="width", trim = FALSE, adjust=0.75)
 ```
 
 ```{r}
 ggplot(adni.df.no_dup, aes(x=site, y=age, fill=dx, color=dx)) + 
   geom_boxplot() +
   facet_wrap(~sex, nrow=2)
+```
+
+Keep just CN, AD, and LMCI (same as longComBat paper)
+
+```{r}
+adni.df.no_dup %>%
+  dplyr::filter(dx == "CN" | dx == "AD" | dx == "LMCI") %>%
+ggplot() +
+  geom_bar(aes(y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=site, fill=dx)) + 
+  scale_y_continuous(labels = scales::percent)
+
+adni.df.no_dup %>%
+  dplyr::filter(dx == "CN" | dx == "AD" | dx == "LMCI") %>%
+ggplot() +
+  geom_bar(aes(x=site, fill=dx))
 ```
 

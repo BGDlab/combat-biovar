@@ -1,0 +1,142 @@
+---
+title: "lifespan_eda"
+output: html_document
+date: '2023-11-30'
+---
+
+## Setup
+
+```{r setup, include=FALSE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+if(!require('pacman')) {
+  install.packages('pacman')
+}
+pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, see)
+
+# #pull plotting functions from github
+# plot.func.url <- "https://raw.githubusercontent.com/BGDlab/GAMLSS/main/plotting_functions.R?token=GHSAT0AAAAAACGAYP4HZWCTHACGUM6KG2PSZIQUPBA"
+# Sys.setenv(GITHUB_PAT = "") #if needed to access private BGDlab GAMLSS repo
+# source_url(plot.func.url) #sometimes doesn't work....?
+
+source("/Users/megardn/Desktop/BGD_Repos/GAMLSS/plotting_functions.R")
+source("/Users/megardn/Desktop/BGD_Repos/combat_biovar/R_scripts/gamlss_helper_funs.R")
+```
+
+Load data from Jakob
+```{r}
+cn.df <- fread("data/lifespan_dataset_dkatlas_CNonly.csv", stringsAsFactors = TRUE)
+
+#drop repeat scans
+cn.df.unique <- cn.df %>%
+  drop_na(c(age_days, participant, study)) %>%
+  arrange(age_days) %>%
+  group_by(participant) %>%
+  slice(1) %>%
+  ungroup()
+
+nrow(cn.df.unique) == n_unique(cn.df.unique$participant)
+```
+
+## Site-Level Data
+look just at data w site info
+
+```{r}
+cn.df.site <- cn.df.unique %>% 
+  dplyr::filter(site != "NA") %>%
+  mutate(study = droplevels(study),
+         site = gsub(" ", "_", trimws(site)))
+n_unique(cn.df.site$participant)
+n_unique(cn.df.site$participant) == nrow(cn.df.site)
+
+max(cn.df.site$age_days)/365.25
+
+grep("scan", colnames(cn.df.site), value = TRUE) #no scanner info
+```
+
+```{r}
+# number studies
+length(levels(cn.df.site$study))
+
+#number sites per study
+cn.df.site %>%
+  group_by(study) %>% 
+  summarise(Result = length(unique(site)))
+```
+
+```{r}
+ggplot(cn.df.site) +
+  geom_violin(aes(x=study, y=age_days), scale="width")+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ggplot(cn.df.site) +
+  geom_violin(aes(x=site, y=age_days, fill=study), scale="width") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "none")
+```
+
+check for sex differences in sites
+
+```{r}
+ggplot(cn.df.site) +
+  geom_bar(aes(x=site, fill=sex))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r}
+ggplot(cn.df.site) +
+  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=site, fill=sex)) + 
+  scale_y_continuous(labels = scales::percent) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+Write out
+
+```{r}
+fwrite(cn.df.site, file="data/lifespan_CN_site-level.csv")
+```
+
+## Keep Study Level
+Keep studies w missing site info and just treat as single-site
+
+```{r}
+#clean up site NAs
+cn.df.imp <- cn.df.unique %>%
+  mutate(site = trimws(as.character(site)),
+         study = trimws(study)) %>%
+  mutate(site = gsub(" ", "_", ifelse(is.na(site), study, site)))
+
+unique(cn.df.imp$site)
+length(is.na(cn.df.imp$site))
+max(cn.df.imp$age_days)/365.25
+mean(cn.df.imp$age_days)/365.25
+```
+
+```{r}
+ggplot(cn.df.imp) +
+  geom_violin(aes(x=study, y=age_days), scale="width") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ggplot(cn.df.imp) +
+  geom_violin(aes(x=site, y=age_days, fill=study), scale="width") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "none")
+```
+
+check for sex differences in sites
+
+```{r}
+ggplot(cn.df.imp) +
+  geom_bar(aes(x=site, fill=sex))+
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r}
+ggplot(cn.df.imp) +
+  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=site, fill=sex)) + 
+  scale_y_continuous(labels = scales::percent) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+Write out
+
+```{r}
+fwrite(cn.df.imp, file="data/lifespan_CN_imp-sites.csv")
+```
