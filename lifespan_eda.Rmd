@@ -36,9 +36,47 @@ cn.df.unique <- cn.df %>%
   mutate(sexMale = as.numeric(case_when(sex == "Male" ~ 1,
                                         sex == "Female" ~ 0,
                                         TRUE ~ NA)),
-         sex.age = sexMale*age_days)
+         sex.age = sexMale*age_days,
+         log_age = log(age_days, base=10))
 
 nrow(cn.df.unique) == n_unique(cn.df.unique$participant)
+```
+
+```{r}
+skim(cn.df.unique)
+levels(cn.df.unique$study)
+```
+
+## Visualize Features
+plot global brain features for basic qc - check again post-combat
+
+```{r}
+ggplot(cn.df.unique) +
+  geom_point(aes(x=age_days, y=GMV, color=sex))
+
+ggplot(cn.df.unique) +
+  geom_point(aes(x=age_days, y=sGMV, color=sex))
+
+ggplot(cn.df.unique) +
+  geom_point(aes(x=age_days, y=WMV, color=sex))
+
+ggplot(cn.df.unique) +
+  geom_point(aes(x=age_days, y=Ventricles, color=sex))
+```
+
+log-scaled
+```{r}
+ggplot(cn.df.unique) +
+  geom_point(aes(x=log_age, y=GMV, color=sex))
+
+ggplot(cn.df.unique) +
+  geom_point(aes(x=log_age, y=sGMV, color=sex))
+
+ggplot(cn.df.unique) +
+  geom_point(aes(x=log_age, y=WMV, color=sex))
+
+ggplot(cn.df.unique) +
+  geom_point(aes(x=log_age, y=Ventricles, color=sex))
 ```
 
 ## Site-Level Data
@@ -48,7 +86,8 @@ look just at data w site info
 cn.df.site <- cn.df.unique %>% 
   dplyr::filter(site != "NA") %>%
   mutate(study = droplevels(study),
-         site = gsub(" ", "_", trimws(site)))
+         site = gsub(" ", "_", trimws(site))) %>%
+  na.omit()
 n_unique(cn.df.site$participant)
 n_unique(cn.df.site$participant) == nrow(cn.df.site)
 
@@ -106,7 +145,8 @@ Keep studies w missing site info and just treat as single-site
 cn.df.imp <- cn.df.unique %>%
   mutate(site = trimws(as.character(site)),
          study = trimws(study)) %>%
-  mutate(site = gsub(" ", "_", ifelse(is.na(site), study, site)))
+  mutate(site = gsub(" ", "_", ifelse(is.na(site), study, site))) %>%
+  na.omit()
 
 unique(cn.df.imp$site)
 length(is.na(cn.df.imp$site))
@@ -144,3 +184,4 @@ Write out
 ```{r}
 fwrite(cn.df.imp, file="data/lifespan_CN_imp-sites.csv")
 ```
+
