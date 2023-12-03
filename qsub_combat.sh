@@ -38,7 +38,7 @@ cd $base #to source functions correctly
 #######################################################################################
 # MAKE DIRECTORIES 
 #study dir
-study_dir=$base/ukb_permute
+study_dir=$base/lifespan
 if ! [ -d $study_dir ]
 	then
 	mkdir $study_dir
@@ -94,22 +94,22 @@ do
 	#COMBAT GAM
 	elif [ $config = "cf.gam" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list $pass 'gam, formula = y ~ s(age_days) + sexMale'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list $pass 'gam, formula = y ~ s(age_days) * sexMale'" > $bash_script
 
 	#COMBAT GAM W/ REF SITE
 	elif [ $config = "cf.gam_refA" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list $pass 'gam, formula = y ~ s(age_days) + sexMale, ref.batch = \"Site_A\"'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list $pass 'gam, formula = y ~ s(age_days) * sexMale, ref.batch = \"Site_A\"'" > $bash_script
 
 	#COMBAT GAMLSS
 	elif [ $config = "cf.gamlss" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list $pass 'gamlss, formula = y ~ pb(age_days) + sexMale, sigma.formula = ~ age_days + sexMale'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list $pass 'gamlss, formula = y ~ pb(age_days) * sexMale, sigma.formula = ~ pb(age_days) * sexMale'" > $bash_script
 
 	#COMBAT GAMLSS W/ REF SITE
 	elif [ $config = "cf.gamlss_refA" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list $pass 'gamlss, formula = y ~ pb(age_days) + sexMale, sigma.formula = ~ age_days + sexMale, ref.batch = \"Site_A\"'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list $pass 'gamlss, formula = y ~ pb(age_days) * sexMale, sigma.formula = ~ pb(age_days) * sexMale, ref.batch = \"Site_A\"'" > $bash_script
 	fi
 
 #qsub bash script

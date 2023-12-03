@@ -32,7 +32,10 @@ cn.df.unique <- cn.df %>%
   arrange(age_days) %>%
   group_by(participant) %>%
   slice(1) %>%
-  ungroup()
+  ungroup() %>%
+  mutate(sexMale = as.numeric(case_when(sex == "Male" ~ 1,
+                                        sex == "Female" ~ 0,
+                                        TRUE ~ NA)))
 
 nrow(cn.df.unique) == n_unique(cn.df.unique$participant)
 ```
