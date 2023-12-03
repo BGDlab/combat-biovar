@@ -8,18 +8,18 @@
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
 cf_script=$base/R_scripts/combat_apply.R #path to .R script
-save_path=$base/data/ukb_permute
+save_path=$base/data/lifespan
 #######################################################################################
 helpFunction()
 {
    echo ""
-   echo "Usage: $0 -c data.csv -p pass"
+   echo "Usage: $0 -c data.csv"
    echo -e "\t-c Path to data as .csv file"
    exit 1 # Exit script after printing help
 }
 #######################################################################################
 # GET ARGS
-while getopts "c:p:" opt
+while getopts ":c:" opt
 do
    case "$opt" in
 	c ) csv="$OPTARG" ;;
@@ -62,7 +62,7 @@ csv_fname=$(basename $csv .csv)
 #SET COVAR COLS
 covar_list="age_days,sexMale,sex.age"
 #SET BATCH COL
-batch="sim.site"
+batch="site"
 
 #LIST POSSIBLE CONFIGS
 config_list="cf.gam cf.gamlss" #cf cf.lm cf.lm_refA cf.gam_refA cf.gamlss_refA
