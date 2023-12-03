@@ -6,9 +6,8 @@
 ## 2. name of column containing batch identifier, or path to a csv containing batch identifier
 ## 3. path to save output csv
 ## 4. combat config name to append to output csv's filename
-## 5. logical indicator of whether to pass data fit_ukb_basic.R
-## 6. list of columns to be included as covariates (OPTIONAL)
-## 7. Additional comfam() arguments, including model, formula, ref.batch, ... (OPTIONAL)
+## 5. list of columns to be included as covariates (OPTIONAL)
+## 6. Additional comfam() arguments, including model, formula, ref.batch, ... (OPTIONAL)
 
 set.seed(12345)
 
