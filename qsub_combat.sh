@@ -67,7 +67,7 @@ covar_list="age_days,sexMale,sex.age"
 batch="sim.site"
 
 #LIST POSSIBLE CONFIGS
-config_list="cf cf.lm cf.lm_refA cf.gam cf.gam_refA cf.gamlss cf.gamlss_refA"
+config_list="cf.gam cf.gamlss" #cf cf.lm cf.lm_refA cf.gam_refA cf.gamlss_refA
 #######################################################################################
 for config in $config_list
 do
