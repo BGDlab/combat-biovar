@@ -111,5 +111,5 @@ do
 	fi
 
 #qsub bash script
-	qsub -N ${config}.${csv_fname} -o $bash_dir/${config}_out.txt -e $bash_dir/${config}_err.txt $bash_script
+	qsub -l h_vmem=64G,s_vmem=64G -N ${config}.${csv_fname} -o $bash_dir/${config}.${csv_fname}_out.txt -e $bash_dir/${config}.${csv_fname}_err.txt $bash_script
 done

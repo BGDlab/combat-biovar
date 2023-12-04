@@ -526,6 +526,9 @@ return(mean.diffs.subj)
 perm_cent.err <- mclapply(perm_diffs, mean.subj.centile.err, mc.preschedule = FALSE)
 names(perm_cent.err) <- n_perm_list
 cent_err.p <- bind_rows(perm_cent.err, .id = "permutation")
+
+#write out for plotting later
+saveRDS(cent_err.p, "ukb_perm_csvs/centile_errors.RDS")
 ```
 
 ```{r}
@@ -654,7 +657,7 @@ perm_var_info <- inner_join(perm_var.all, sigma.sex.df)
     ggplot() +
     geom_col(aes(x=pheno, y=sex_standard, fill=dataset)) +
     facet_wrap(~perm, ncol=5) +
-    ggtitle(paste("Standardized effect of male sex on variance:", permutation)) +
+    ggtitle(paste("Standardized effect of male sex on variance")) +
     theme(axis.text.x = element_blank())
   
     ggsave(paste0("figs/male_variance_perms.jpeg"), sex_effect_plot)
