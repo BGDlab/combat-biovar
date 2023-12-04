@@ -781,6 +781,7 @@ cent.diffs3 <- combined_preds %>%
   mutate(across(all_of(pheno_list), ~ . - first(.), .names = "diff_{.col}")) %>%
   ungroup() %>%
   dplyr::filter(dataset != "ukb_CN") #drop ref
+saveRDS(cent.diffs3, file="ukb_basic/cent_diffs.RDS")
 ```
 
 ```{r, eval=FALSE}
@@ -1069,8 +1070,10 @@ z_diffs2 <- combined_preds %>%
   mutate(dataset = relevel(dataset, ref= "ukb_CN")) %>%
   arrange(dataset) %>%
   group_by(participant) %>%
-  mutate(across(all_of(pheno_list), ~ . - first(.), .names = "diff_{.col}")) %>%
+  mutate(across(ends_with(".z"), ~ . - first(.), .names = "diff_{.col}")) %>%
   ungroup()
+#write out
+saveRDS(z_diffs2, file = "ukb_basic/z_diffs.RDS")
 
 mean.z.diffs.by.sex2 <- z_diffs2 %>%
   group_by(dataset, sex) %>%
