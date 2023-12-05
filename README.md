@@ -11,8 +11,8 @@ Directory containing cripts for conducting analyses
 ## `pheno_lists`
 Directory containing .txt files listing brain features output by freesurfer broken down by phenotype class (global Volumes & cortical regions CT, SA & Vol)
 
-## `ohbm_results.Rmd`
+## ohbm_results.Rmd
 
-## 'paper_figs.Rmd`
+## paper_figs.Rmd
 
-## `ukb_sim.site_analyses.Rmd`
+## ukb_sim.site_analyses.Rmd
