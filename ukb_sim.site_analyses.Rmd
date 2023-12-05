@@ -1,12 +1,8 @@
 ---
-title: "proof-of-concept_mods"
+title: "UKB Simulation Analyses"
 output: html_document
 date: '2023-10-06'
 ---
-
-## QUESTIONS
-- effect size for poly(age_days, 3) in gam/gamlss
-- Fix age -> diff in male and female variance/intercept
 
 ## Setup
 
@@ -17,7 +13,7 @@ if(!require('pacman')) {
 }
 pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, tidymodels, broom.mixed, ggseg, cowplot, lsr, paletteer, ggsegExtra, ggseg3d)
 
-source("./R_scripts/gamlss_helper_funs.R")
+source("./cubic_scripts/R_scripts/gamlss_helper_funs.R")
 # 
 # # Enable this universe
 # options(repos = c(
@@ -28,38 +24,20 @@ source("./R_scripts/gamlss_helper_funs.R")
 # install.packages('ggsegExtra')
 ```
 
-# Analysis Outline
-## Load Data
+## Load
 
 ```{r}
 ukb_df_totals <- read_csv(file="data/ukb_CN_data.csv")
 ukb_df_age.filt <- read_csv(file="data/ukb_to_model/ukb_CN_data_simsites.csv")
 
-vol_list_global <- readRDS(file="R_scripts/vol_list_global.rds")
-vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
-sa_list <- readRDS(file="R_scripts/SA_list.rds")
-ct_list <- readRDS(file="R_scripts/CT_list.rds")
-pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
+vol_list_global <- readRDS(file="cubic_scripts/R_scripts/vol_list_global.rds")
+vol_list_regions <- readRDS(file="cubic_scripts/R_scripts/Vol_list_regions.rds")
+sa_list <- readRDS(file="cubic_scripts/R_scripts/SA_list.rds")
+ct_list <- readRDS(file="cubic_scripts/R_scripts/CT_list.rds")
+pheno_list <- readRDS(file="cubic_scripts/R_scripts/pheno_list.rds")
+
+aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
 ```
-
-## Basic Models
-Designate *basic* model formula
-
-```{r}
-basic.m1 <- gamlss(formula = GMV ~ poly(age_days, 3) + sexMale,
-                       sigma.formula = ~ poly(age_days, 3) + sexMale,
-                       nu.formula = ~ 1,
-                       family = BCCG, data=ukb_df_age.filt, trace = FALSE)
-summary(basic.m1)
-```
-
-plot
-
-```{r}
-#plot_singlestudy_centiles(basic.m1, "GMV", ukb_df_age.filt, "sexMale")
-```
-
-# Review Results
 
 scp'd csvs from cubic (`scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/*.csv' ./ukb_basic`)
 
@@ -87,7 +65,15 @@ sex.df <- left_join(sex.df, dk.parc, by="label")
 sum.df <- left_join(sum.df, dk.parc, by="label")
 ```
 
-### Raw Data Results
+Simple bar plot of sites
+```{r}
+ggplot(ukb_df_age.filt) +
+  geom_bar(aes(x=sim.site, fill=sex), color="black", alpha=0.6) +
+  theme_linedraw(base_size=12)
+```
+
+## Raw Data Results
+Review outcomes from raw (non-ComBat-ed) data
 
 ```{r, fig.width=11}
 sex.df %>%
@@ -130,17 +116,10 @@ sex.df %>%
   ggtitle("t-statistic for effect of male sex on sigma")
 ```
 
-Simple bar plot of sites
-```{r}
-ggplot(ukb_df_age.filt) +
-  geom_bar(aes(x=sim.site, fill=sex), color="black", alpha=0.6) +
-  theme_linedraw(base_size=12)
-```
+## ComBat Effects by Moment
 
-### Combat Effects
-
-#### Site Effects
 Loading combatted data (scp'd from cubic: `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/data/ukb_to_model/*.csv' ./data/ukb_to_model`) to see how values change with different combat methods
+
 ```{r}
 data.csvs <- list.files(path = "data/ukb_to_model", pattern = ".csv", full.names = TRUE)
 combined_data <- data.frame()
@@ -497,7 +476,7 @@ using aseg
 plot(aseg)
 ```
 
-#### Centiles
+## ComBat Effects on Centiles
 
 Do centile scores change based on combat version?
 ```{r}
@@ -724,7 +703,7 @@ t.df %>%
             max_pval = max(p.val_fdr))
 ```
 
-##### Sex-Biases
+#### Sex-Biases
 
 Do the different combat methods introduce any kind of bias in centile scores?
 
@@ -893,7 +872,7 @@ t.df.sex %>%
             n_compare = n())
 ```
 
-#### Z-Score
+## ComBat Effects on Z-Score
 calc how much z-scores change
 
 ```{r}
