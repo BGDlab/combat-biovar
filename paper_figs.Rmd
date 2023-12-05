@@ -222,14 +222,28 @@ ggplot(z_diffs) +
   geom_jitter(aes(x=sex, y=diff_WMV.z, color=WMV.z), width = 0.2, height = 0, alpha=0.2) +
   #geom_smooth(method="lm") +
   facet_grid(sim.site~dataset) +
-  #paletteer::scale_color_paletteer_c("grDevices::Cork") +
+  paletteer::scale_color_paletteer_c("grDevices::Cork") +
   theme_bw()
 
 ggplot(z_diffs, aes(x=dataset, y=diff_WMV.z, color=sex)) +
   geom_boxplot() +
   theme_bw() +
   stat_compare_means(aes(group = sex))
+
+ggplot(z_diffs, aes(x=dataset, y=diff_WMV.z, color=sim.site)) +
+  geom_boxplot() +
+  theme_bw() +
+  stat_compare_means(aes(group = sim.site, label = paste0("p = ", after_stat(p.format))))
 ```
+
+```{r}
+ggplot(z_diffs) +
+  geom_boxplot(aes(y=diff_WMV.z, x=sim.site, color=sex)) +
+  #geom_jitter(aes(y=diff_WMV.z, x=sim.site, color=sex), alpha=0.3) +
+  #geom_smooth(method="lm", aes(linetype=sim.site)) +
+  facet_wrap(~dataset)
+```
+
 
 ## Centile Errors
 
@@ -248,7 +262,7 @@ ggplot(cent_diffs, aes(x=WMV, y=diff_WMV, color=sex)) +
   facet_wrap(~dataset)
 ```
 ```{r}
-ggplot(z_diffs, aes(x=dataset, y=diff_WMV.z, color=sex)) +
+ggplot(cent_diffs, aes(x=dataset, y=diff_WMV, color=sex)) +
   geom_boxplot() +
   theme_bw() +
   stat_compare_means(aes(group = sex))
