@@ -1,0 +1,286 @@
+---
+title: "ohbm_results"
+output: html_document
+date: '2023-11-12'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+if(!require('pacman')) {
+  install.packages('pacman')
+}
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel)
+
+source("./R_scripts/gamlss_helper_funs.R")
+```
+
+Figures for paper
+
+# UKB Basic Models
+
+load info
+```{r}
+data_path <- "./ukb_basic"
+
+### LOAD ###
+pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
+vol_list_global <- readRDS(file="R_scripts/vol_list_global.rds")
+vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
+sa_list <- readRDS(file="R_scripts/SA_list.rds")
+ct_list <- readRDS(file="R_scripts/CT_list.rds")
+
+aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
+
+dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+dataset_colors <- c(cf = "#3D5983FF", cf.lm = "#5A8A54FF", cf.gam ="#262626FF", cf.gamlss ="#CFB023FF")
+
+#ukb data from ohbm_results.Rmd
+cent_err.p <- readRDS("ukb_perm_csvs/centile_errors.RDS")
+z_diffs2 <- readRDS("ukb_basic/z_diffs.RDS")
+cent.diffs3 <- readRDS("ukb_basic/cent_diffs.RDS")
+ukb_data <- fread("data/ukb_to_model/ukb_CN_data_simsites.csv")
+#cent_abs.diffs <- readRDS("data/centile_abs_diffs.rds")
+```
+
+Big plot - too big to run locally :(
+
+```{r, eval=FALSE}
+#test big plot
+plot.cents <- cent_abs.diffs %>%
+  #dplyr::filter(dataset == "cf.gamlss") %>%
+  pivot_longer(starts_with("abs.diff_"), names_to="pheno", values_to="abs.diff", names_prefix = "abs.diff_") %>%
+  mutate(pheno_cat = as.factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_))) %>%
+  ggplot() +
+  geom_density(aes(x=diff, fill=dataset), alpha=0.4) +
+  facet_wrap(~pheno_cat) +
+  theme(legend.position="none")
+ggsave("figs/cent_plot_test.jpeg", var.plot, width=10, height=10)
+```
+
+
+## Sex Effects on Scale
+fix age, get diff between male and female pred. variance
+```{r}
+pred.csvs <- list.files(path = data_path, pattern = "_variance.csv", full.names = TRUE)
+combined_var <- data.frame()
+
+for (file in pred.csvs) {
+  # Read each CSV file
+  data <- fread(file)
+  
+  # Add a "Source_File" column with the file name
+  data <- data %>%
+    mutate(Source_File = as.factor(basename(file))) %>%
+    mutate(dataset = sub("_data_variance.csv", "", Source_File),
+           sex_standard = sex_effect/f.var)
+  
+  # Bind the data to the combined dataframe
+  combined_var <- bind_rows(combined_var, data, .id = "File_ID")
+}
+
+#get summary df for p vals, plotting
+sigma.sex.df <- fread("ukb_basic/gamlss_summary.csv", stringsAsFactors = TRUE) %>%
+  dplyr::select(-V1) %>%
+  mutate(dataset = gsub("-data", "", dataset),
+         dataset = gsub("-", "_", dataset),
+         dataset = gsub("_simsites", "", dataset)) %>% #clean up dataset naming
+  mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
+  mutate(dataset = relevel(dataset, ref= "ukb_CN")) %>%
+  dplyr::filter(parameter == "sigma" & term == "sexMale") %>%
+  dplyr::select(mod_name, pheno, dataset, pheno_cat, label, sig.sum_bf.corr)
+
+#add more info from parcellations
+dk.parc <- dk$data %>%
+  as.data.frame() %>%
+  na.omit() %>%
+  dplyr::select(c(hemi, region, label)) %>%
+  distinct()
+
+sigma.sex.df <- left_join(sigma.sex.df, dk.parc, by="label")
+
+plot.info <- sigma.sex.df %>%
+  dplyr::select(mod_name, pheno, dataset, pheno_cat, label, hemi, region, sig.sum_bf.corr) %>%
+  unique() %>%
+  mutate(dataset = gsub("-", "_", dataset),
+         dataset = gsub("_simsites", "", dataset))
+
+combined_var <- inner_join(combined_var, plot.info)
+```
+
+```{r}
+#var plot
+var.plot.df <- combined_var %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & pheno_cat != "Global Volume") %>%
+  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+  group_by(dataset, pheno_cat)
+
+tp <- unique(var.plot.df[,c('dataset','pheno_cat')]) %>%
+  dplyr::filter(dataset=="ukb_CN")
+tp$sex_standard <- 1
+
+var.plot <- ggplot(var.plot.df) +
+  geom_rect(data = tp, fill="gray", xmin = -Inf,xmax = Inf,
+            ymin = -Inf, ymax = Inf, alpha = 0.4) +
+  ggseg::geom_brain(atlas = dk, 
+             position = position_brain(hemi ~ side),
+             aes(fill = sex_standard)) +
+  #scale_fill_gradient2() +
+  facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
+  theme_linedraw(base_size=12) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Sex Effect", limits = c(-0.12, 0.12), breaks = c(-0.1, 0,0.1))
+
+#ggsave("figs/male_variance_ohbm.jpeg", var.plot, width=10, height=10)
+```
+
+```{r}
+#plot global
+var.plot.global.df <- combined_var %>%
+  dplyr::filter(pheno_cat == "Global Volume") %>%
+  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+  dplyr::select(!c(label, region, hemi)) %>% #drop cols corresponding to dk regions
+  mutate(tissue_class = as.factor(case_when(pheno == "GMV" ~ "cGM",
+                                            pheno == "Ventricles" ~ "CSF",
+                                            pheno == "WMV" ~ "WM",
+                                            pheno == "sGMV" ~ "sGM",
+                                            TRUE ~ NA)),
+         sex_standard = ifelse(sig.sum_bf.corr == TRUE, sex_standard, NA)) %>% #drop NS values
+  group_by(dataset)
+
+tp <- unique(var.plot.global.df[,c('dataset','pheno_cat')]) %>%
+  dplyr::filter(dataset=="ukb_CN")
+tp$sex_standard <- 1
+
+var.plot.global <- ggplot(var.plot.global.df) +
+  geom_rect(data = tp, fill="gray", xmin = -Inf,xmax = Inf,
+            ymin = -Inf, ymax = Inf, alpha = 0.4) +
+  ggseg::geom_brain(atlas = aseg_cerebrum, 
+             aes(fill = sex_standard),
+             side = c("coronal")) +
+  #scale_fill_gradient2() +
+  facet_grid(dataset~pheno_cat) + 
+  theme_linedraw(base_size=12) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Sex Effect", limits = c(-0.12, 0.12), breaks = c(-0.1, 0,0.1))
+```
+
+Combine plots
+```{r}
+p <- ggarrange(
+  var.plot.global, var.plot,
+  ncol=2, nrow=1, 
+  widths = c(1, 3.1),
+  #labels=c("A", "B"),
+  #hjust=0.01,
+  align = "hv",
+  common.legend = TRUE, legend = "bottom"
+  )
+
+p_annotate <- annotate_figure(p, top = text_grob("Figure 1. Standardized effect of male sex on feature variance", 
+               color = "black", size = 14, hjust=.65))
+p_annotate
+ggsave("figs/male_variance_ohbm_big.jpeg", p_annotate, width=7, height=8)
+```
+
+## Z Errors
+
+```{r}
+ukb_sites <- ukb_data %>%
+  dplyr::select(participant, sim.site)
+
+z_diffs <- left_join(z_diffs2, ukb_sites) %>%
+  dplyr::filter(dataset != "ukb_CN")
+
+ggplot(z_diffs, aes(x=GMV.z, y=diff_GMV.z, color=sex)) +
+  geom_point(alpha=0.1, aes(shape=sim.site)) +
+  geom_smooth() +
+  facet_wrap(~dataset)
+
+ggplot(z_diffs, aes(x=GMV.z, y=diff_GMV.z, color=sex)) +
+  geom_point(alpha=0.1, aes(shape=sim.site)) +
+  geom_smooth(method="lm") +
+  facet_wrap(~dataset)
+
+ggplot(z_diffs, aes(x=WMV.z, y=diff_WMV.z, color=sex)) +
+  geom_point(alpha=0.1, aes(shape=sim.site)) +
+  geom_smooth(method="lm") +
+  facet_wrap(~dataset)
+
+ggplot(z_diffs) +
+  geom_jitter(aes(x=sex, y=WMV.z, color=diff_WMV.z), width = 0.2, height = 0, alpha=0.2) +
+  #geom_smooth(method="lm") +
+  facet_grid(sim.site~dataset) +
+  paletteer::scale_color_paletteer_c("grDevices::Cork") +
+  theme_bw()
+
+ggplot(z_diffs) +
+  geom_jitter(aes(x=sex, y=diff_WMV.z, color=WMV.z), width = 0.2, height = 0, alpha=0.2) +
+  #geom_smooth(method="lm") +
+  facet_grid(sim.site~dataset) +
+  paletteer::scale_color_paletteer_c("grDevices::Cork") +
+  theme_bw()
+
+ggplot(z_diffs, aes(x=dataset, y=diff_WMV.z, color=sex)) +
+  geom_boxplot() +
+  theme_bw() +
+  stat_compare_means(aes(group = sex))
+
+ggplot(z_diffs, aes(x=dataset, y=diff_WMV.z, color=sim.site)) +
+  geom_boxplot() +
+  theme_bw() +
+  stat_compare_means(aes(group = sim.site, label = paste0("p = ", after_stat(p.format))))
+```
+
+```{r}
+ggplot(z_diffs) +
+  geom_boxplot(aes(y=diff_WMV.z, x=sim.site, color=sex)) +
+  #geom_jitter(aes(y=diff_WMV.z, x=sim.site, color=sex), alpha=0.3) +
+  #geom_smooth(method="lm", aes(linetype=sim.site)) +
+  facet_wrap(~dataset)
+```
+
+
+## Centile Errors
+
+```{r}
+cent_diffs <- left_join(cent.diffs3, ukb_sites) %>%
+  dplyr::filter(dataset != "ukb_CN")
+
+ggplot(cent_diffs, aes(x=GMV, y=diff_GMV, color=sex)) +
+  geom_point(alpha=0.1, aes(shape=sim.site)) +
+  #geom_smooth(method="lm") +
+  facet_wrap(~dataset)
+
+ggplot(cent_diffs, aes(x=WMV, y=diff_WMV, color=sex)) +
+  geom_point(alpha=0.1, aes(shape=sim.site)) +
+  geom_smooth(method="lm") +
+  facet_wrap(~dataset)
+```
+```{r}
+ggplot(cent_diffs, aes(x=dataset, y=diff_WMV, color=sex)) +
+  geom_boxplot() +
+  theme_bw() +
+  stat_compare_means(aes(group = sex))
+```
+
+## Replication Centiles
+W/in subj average plots
+
+```{r}
+cent.diffs.v.plot <- cent_err.p %>%
+  mutate(mean = mean*100) %>% #for visuals
+  ggplot() +
+  geom_violin(aes(x=dataset, y=mean, fill=permutation)) +
+  labs(y= "Magnitude Centile Error", x = "ComBat Configurations") +
+  ggtitle("Within-subject mean magnitude of error in centile scores across ComBat \nconfigurations replicated 10x")
+
+ggsave(filename="figs/centile_violin.png", cent.diffs.v.plot)
+```
+
+
+
