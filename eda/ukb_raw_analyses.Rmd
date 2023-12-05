@@ -1,0 +1,113 @@
+---
+title: "UKB Raw Analyses"
+output: html_document
+date: '2023-10-06'
+---
+
+Mapping sex effects in raw, un-combatted data in order to establish deviation induced by ComBat-ing on simulated sites.
+
+## Setup
+
+```{r setup, include=FALSE, warning = FALSE, message = FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
+if(!require('pacman')) {
+  install.packages('pacman')
+}
+pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, tidymodels, broom.mixed, ggseg, cowplot, lsr, paletteer, ggsegExtra, ggseg3d)
+
+base_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/"
+
+source(paste0(base_path, "cubic_scripts/R_scripts/gamlss_helper_funs.R"))
+# 
+# # Enable this universe
+# options(repos = c(
+#   ggseg = 'https://ggseg.r-universe.dev',
+#   CRAN = 'https://cloud.r-project.org'))
+# 
+# # Install some packages
+# install.packages('ggsegExtra')
+```
+
+## Load
+
+```{r}
+ukb_df_totals <- read_csv(file=paste0(base_path, "data/ukb_CN_data.csv"))
+ukb_df_age.filt <- read_csv(file=paste0(base_path, "data/ukb_to_model/ukb_CN_data_simsites.csv"))
+
+vol_list_global <- readRDS(file=paste0(base_path, "cubic_scripts/R_scripts/vol_list_global.rds"))
+vol_list_regions <- readRDS(file=paste0(base_path, "cubic_scripts/R_scripts/Vol_list_regions.rds"))
+sa_list <- readRDS(file=paste0(base_path, "cubic_scripts/R_scripts/SA_list.rds"))
+ct_list <- readRDS(file=paste0(base_path, "cubic_scripts/R_scripts/CT_list.rds"))
+pheno_list <- readRDS(file=paste0(base_path, "cubic_scripts/R_scripts/pheno_list.rds"))
+
+#aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
+```
+
+scp'd csvs from cubic (`scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/*.csv' ./ukb_basic`)
+
+```{r}
+drop1.df <- fread(paste0(base_path, "ukb_basic/drop1_tests.csv"), stringsAsFactors = TRUE) %>%
+  dplyr::select(-V1)
+sex.df <- fread(paste0(base_path, "ukb_basic/sex_summary.csv"), stringsAsFactors = TRUE) %>%
+  dplyr::select(-V1)
+sum.df <- fread(paste0(base_path, "ukb_basic/gamlss_summary.csv"), stringsAsFactors = TRUE) %>%
+  dplyr::select(-V1) %>%
+  mutate(dataset = gsub("-data", "", dataset)) %>%
+  mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
+  mutate(dataset = relevel(dataset, ref= "ukb-CN-simsites"))
+```
+
+```{r}
+#add more info from parcellations
+dk.parc <- dk$data %>%
+  as.data.frame() %>%
+  na.omit() %>%
+  dplyr::select(c(hemi, region, label)) %>%
+  distinct()
+
+sex.df <- left_join(sex.df, dk.parc, by="label")
+sum.df <- left_join(sum.df, dk.parc, by="label")
+```
+
+## Raw Data Results
+
+```{r, fig.width=11}
+sex.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & dataset ==	"ukb-CN-data-simsites") %>%
+  ggplot() +
+  geom_col(aes(x=reorder(pheno,t_stat), y=t_stat, fill=pheno_cat)) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ggtitle("Significant effects of male sex on sigma across phenotype-specific brain charts")
+
+sex.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & dataset == "ukb-CN-data-simsites") %>%
+  ggplot() +
+  geom_col(aes(x=label, y=t_stat, fill=pheno_cat)) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ggtitle("Significant effects of male sex on sigma across phenotype-specific brain charts")
+
+sex.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & dataset == "ukb-CN-data-simsites") %>%
+  ggplot() +
+  geom_col(aes(x=region, y=t_stat, fill=hemi)) + 
+  facet_wrap(~pheno_cat) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ggtitle("Significant effects of male sex on sigma across phenotype-specific brain charts")
+```
+
+Plot on brains!
+
+```{r}
+sex.df %>%
+  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & dataset == "ukb-CN-data-simsites") %>%
+  group_by(pheno_cat) %>%
+  ggplot() +
+  geom_brain(atlas = dk, 
+             position = position_brain(hemi ~ side),
+             aes(fill = t_stat)) +
+  scale_fill_gradient2() +
+  facet_wrap(~pheno_cat) +
+  theme_void() +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
+  ggtitle("t-statistic for effect of male sex on sigma")
+```
