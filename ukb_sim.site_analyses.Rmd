@@ -72,51 +72,7 @@ ggplot(ukb_df_age.filt) +
   theme_linedraw(base_size=12)
 ```
 
-## Raw Data Results
-Review outcomes from raw (non-ComBat-ed) data
-
-```{r, fig.width=11}
-sex.df %>%
-  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & dataset ==	"ukb-CN-data-simsites") %>%
-  ggplot() +
-  geom_col(aes(x=reorder(pheno,t_stat), y=t_stat, fill=pheno_cat)) + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  ggtitle("Significant effects of male sex on sigma across phenotype-specific brain charts")
-
-sex.df %>%
-  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & dataset == "ukb-CN-data-simsites") %>%
-  ggplot() +
-  geom_col(aes(x=label, y=t_stat, fill=pheno_cat)) + 
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  ggtitle("Significant effects of male sex on sigma across phenotype-specific brain charts")
-
-sex.df %>%
-  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & dataset == "ukb-CN-data-simsites") %>%
-  ggplot() +
-  geom_col(aes(x=region, y=t_stat, fill=hemi)) + 
-  facet_wrap(~pheno_cat) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  ggtitle("Significant effects of male sex on sigma across phenotype-specific brain charts")
-```
-
-Plot on brains!
-
-```{r}
-sex.df %>%
-  dplyr::filter(sig.sum_bf.corr == TRUE & parameter == "sigma" & dataset == "ukb-CN-data-simsites") %>%
-  group_by(pheno_cat) %>%
-  ggplot() +
-  geom_brain(atlas = dk, 
-             position = position_brain(hemi ~ side),
-             aes(fill = t_stat)) +
-  scale_fill_gradient2() +
-  facet_wrap(~pheno_cat) +
-  theme_void() +
-  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank()) +
-  ggtitle("t-statistic for effect of male sex on sigma")
-```
-
-## ComBat Effects by Moment
+## By Moment
 
 Loading combatted data (scp'd from cubic: `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/data/ukb_to_model/*.csv' ./data/ukb_to_model`) to see how values change with different combat methods
 
@@ -147,6 +103,8 @@ var.df <- combined_data %>%
 var.long <- pivot_longer(var.df, cols=c(-Source_File, -sim.site), names_to = "feature", values_to = "variance")
 ```
 
+Plot distribution of features' variances across each site
+
 ```{r}
 var.long %>%
   dplyr::filter(!(feature %in% vol_list_global)) %>%
@@ -159,9 +117,8 @@ var.long %>%
   ggplot() +
   geom_density(aes(x=variance, fill=Source_File), alpha = 0.5, position="identity") +
   facet_wrap(~sim.site)
-
-#Source_File == "cf.lm_data.csv" | 
 ```
+How does male vs. female variance across features change by combat type
 
 ```{r}
 var.by.sex <- combined_data %>%
@@ -179,7 +136,8 @@ var.by.sex.long %>%
   facet_wrap(~Source_File)
 ```
 
-Simple t test for sex effects across combat types
+Simple t test for sex effects on brain features to see whether # of significantly sex-biased features change across combat configurations
+
 ```{r}
 sex_ttest_df <- data.frame("Source_File" = levels(combined_data$Source_File))
 
@@ -210,7 +168,7 @@ sex_ttest_long %>%
             n_regions = n())
 ```
 
-Basically same results gam/gamlss
+Basically no difference across combat types
 
 #### Mu
 
@@ -314,6 +272,7 @@ sex.df %>%
   ggtitle("t-statistic for effect of male sex on sigma")
 ```
 Check number of regions w significant sex effects in sigma
+
 ```{r}
 sex.sigma.counts <- sex.df %>%
   dplyr::filter(term=="sexMale" & parameter == "sigma") %>%
@@ -322,18 +281,23 @@ sex.sigma.counts <- sex.df %>%
             n_regions = n())
 sex.sigma.counts
 ```
-
-More variation
+ Plot these results
+ 
 ```{r}
 ggplot(sex.sigma.counts) +
   geom_col(aes(x=dataset, y=n_sig_regions, fill=dataset)) +
   facet_wrap(~pheno_cat) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ggtitle("# regions with significant effects of male sex on sigma")
 ```
 
-##### Variance
-Convert sigma to variance by correcting for log-link function (sex's effect on variance = exp(sigma) - exp(log(sigma) - beta sex)) -> exp(beta_sex).
-Also getting mean variance.
+## Variance
+Estimating by 3 different methods:
+1. Convert sigma to variance by correcting for log-link function (sex's effect on variance = exp(sigma) - exp(log(sigma) - beta sex)) -> exp(beta_sex).
+1.5. getting mean variance exp(mean sigma) (not actually plotted)
+2. actual estimated variance at mean(sample age) (andrew's rec)
+
+#### Method 1: exp(sigma)
 
 ```{r}
 sigma.df <- sum.df %>%
@@ -350,8 +314,11 @@ sigma.df %>%
   ggplot() +
   geom_histogram(aes(x=var_est, fill = dataset), color="black", alpha=0.5, position = "identity") +
   theme_linedraw() +
-  facet_wrap(~pheno_cat, scales= "free")
+  facet_wrap(~pheno_cat, scales= "free")+
+  ggtitle("estimated variance in regions with significant effects of male sex on sigma")
 ```
+
+What proportion of estimated variance is attributable to sex?
 
 ```{r, fig.height=10, fig.width=8}
 proportion_beta_plot <- sigma.df %>%
@@ -365,9 +332,11 @@ proportion_beta_plot <- sigma.df %>%
   facet_grid(dataset~pheno_cat) + 
   theme_bw(base_size=15) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA)) +
-  paletteer::scale_fill_paletteer_c("grDevices::Oslo") +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork") +
   ggtitle("Proportion of effect of male sex on variance")
 ```
+
+exp(SexMale beta weight on sigma) -> estimate of male effect on variance
 
 ```{r, fig.height=15, fig.width=12}
 beta.plot <- sigma.df %>%
@@ -384,7 +353,7 @@ beta.plot <- sigma.df %>%
   paletteer::scale_fill_paletteer_c("grDevices::Oslo") +
   ggtitle("Beta weight for effect of male sex on variance")
 
-ggsave("male_variance_beta.jpeg", beta.plot, width=12, height=15)
+ggsave("figs/male_variance_beta.jpeg", beta.plot, width=12, height=15)
 ```
 
 ```{r, fig.height=5, fig.widt=5}
@@ -408,6 +377,7 @@ sigma.df.glob <- sigma.df %>%
 table(sigma.df.glob$dataset, sigma.df.glob$sig.sum_bf.corr)
 ```
 
+#### Method 2: Var at Mean Age
 fix age, get diff between male and female pred. variance
 ```{r}
 pred.csvs <- list.files(path = "ukb_basic", pattern = "_variance.csv", full.names = TRUE)
@@ -426,22 +396,26 @@ for (file in pred.csvs) {
   combined_var <- bind_rows(combined_var, data, .id = "File_ID")
 }
 
-table(combined_var$dataset)
+table(combined_var$dataset) #confirm all data's there
 #skim(combined_preds)
 ```
 
+Calculate standardized effects of male sex w/in region as (M var - F var)/F var
+
 ```{r}
 combined_var <- combined_var %>%
-  mutate(sex_std = sex_effect/f.var)
+  mutate(sex_std = sex_effect/f.var) #standardized effect of male sex on variance
 
-summary(sigma.df$var_est)
-summary(combined_var$sex_effect)
+#compare methods
+summary(sigma.df$var_est) #method 1 var
+summary(combined_var$sex_effect) #method 2 var
 
-summary(sigma.df$beta_ratio)
-summary(combined_var$sex_std)
+summary(sigma.df$beta_ratio). #method 1 male effect on var
+summary(combined_var$sex_std) #method 2 male effect on var
 ```
 
 ```{r}
+#join with sigma.df for significance testing
 plot.info <- sigma.df %>%
   dplyr::filter(term == "sexMale") %>%
   dplyr::select(mod_name, pheno, dataset, pheno_cat, label, hemi, region, sig.sum_bf.corr) %>%
@@ -449,7 +423,7 @@ plot.info <- sigma.df %>%
   mutate(dataset = gsub("-", "_", dataset),
          dataset = gsub("_simsites", "", dataset))
 combined_var <- inner_join(combined_var, plot.info)
-table(combined_var$dataset)
+table(combined_var$dataset) #check no data's lost
 ```
 
 plot
@@ -466,17 +440,11 @@ combined_var %>%
   facet_grid(dataset~pheno_cat) + 
   theme_bw(base_size=12) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA)) +
-  paletteer::scale_fill_paletteer_c("grDevices::Oslo") +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Sex Effect", limits = c(-0.12, 0.12), breaks = c(-0.1, -0.05, 0, 0.05, 0.1)) +
   ggtitle("Standardized effect of male sex on variance")
 ```
 
-using aseg 
-
-```{r}
-plot(aseg)
-```
-
-## ComBat Effects on Centiles
+## Centiles
 
 Do centile scores change based on combat version?
 ```{r}
@@ -499,7 +467,11 @@ for (file in pred.csvs) {
 table(combined_preds$dataset)
 #skim(combined_preds)
 ```
-calc how much centiles change
+
+#### Magnitude error
+
+Calculate how far centiles are from "truth" (raw data's centile vals), take absolute value for magnitude error
+
 ```{r}
 cent_diffs <- combined_preds %>%
   mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
@@ -508,9 +480,11 @@ cent_diffs <- combined_preds %>%
   group_by(participant) %>%
   mutate(across(all_of(pheno_list), ~ abs(. - first(.)), .names = "abs.diff_{.col}")) %>%
   ungroup()
+```
 
-diff_vol_glob <- sapply(vol_list_global, function(x) paste0("abs.diff_", x))
+Calculate within feature mean and max abs. centile errors across all subjects
 
+```{r}
 mean.cent.diffs <- cent_diffs %>%
   group_by(dataset) %>%
   summarize(across(starts_with("abs.diff_"), mean)) %>%
@@ -523,7 +497,7 @@ max.cent.diffs <- cent_diffs %>%
 #names(max.cent.diffs)
 ```
 
-Plot average differences in centiles
+Plot w/in feature average magnitude of centile errors
 ```{r}
 mean.diffs.long <- mean.cent.diffs %>%
   pivot_longer(cols=starts_with("abs.diff_"), values_to="centile_abs.diff", names_to = "pheno", names_prefix = "abs.diff_") %>%
@@ -590,6 +564,7 @@ mean.diffs.long %>%
 ```
 
 Look at max difference per phenotype
+
 ```{r, fig.height=6, fig.width=7}
 max.diffs.long <- max.cent.diffs %>%
   pivot_longer(cols=starts_with("abs.diff_"), values_to="max_centile_abs.diff", names_to = "pheno", names_prefix = "abs.diff_") %>%
@@ -622,9 +597,10 @@ max.diffs.long %>%
   ggtitle("Maximum absolute differences in centile scores across \nComBat processing pipelines for each phenotype")
 ```
 
-Test for differences in distribution
+Test for differences in distribution of subjects' abs(cent error)
+
 ```{r}
-#get centile errors for each subject
+#get abs val of centile errors for each subject
 cent.diffs2 <- combined_preds %>%
   dplyr::filter(!str_detect(dataset, "_refA")) %>%
   mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
@@ -644,6 +620,14 @@ cent.diffs2 <- combined_preds %>%
 # 
 # t.test(cf.gmvdiff, cf.lm.gmvdiff, paired=TRUE)
 ```
+
+plot to see if assumptions for t-tests hold ...
+```{r}
+ggplot(cent.diffs2) +
+  geom_histogram(aes(x=diff_rh_CT_posteriorcingulate, fill=dataset), alpha = 0.6)
+```
+
+looks like.... no.
 
 NOTE: "missing" paired comparisons between cf and cf.lm diffs are because diff values are identical between the two methods (i.e. there is literally no difference in accuracy of centile scores between the two)
 
@@ -671,7 +655,7 @@ for (pheno in pheno_diff.list) {
   df.aov$pheno <- pheno
   sum.df <- rbind(sum.df, df.aov)
 
-  df.pairwise.t <- tidy(pairwise.t.test(x=cent.diffs2[[pheno]], g=cent.diffs2[["dataset"]], paired = TRUE, p.adj = "none"))
+  df.pairwise.t <- tidy(pairwise.wilcox.test(x=cent.diffs2[[pheno]], g=cent.diffs2[["dataset"]], paired = TRUE, p.adj = "none")) #update to wilcox since t assumptions not all met
   df.pairwise.t$pheno <- pheno
   t.df <- rbind(t.df, df.pairwise.t)
 }
@@ -872,7 +856,7 @@ t.df.sex %>%
             n_compare = n())
 ```
 
-## ComBat Effects on Z-Score
+## Z-Score
 calc how much z-scores change
 
 ```{r}
@@ -1159,7 +1143,7 @@ beta.plot2 <- sigma.df %>%
   facet_grid(dataset~pheno_cat) + 
   theme_bw(base_size=20) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA)) +
-  paletteer::scale_fill_paletteer_c("grDevices::Oslo") +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork") +
   ggtitle("Beta weight for effect of male sex on variance")
 
 beta.plot2
