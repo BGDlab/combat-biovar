@@ -11,7 +11,7 @@ if(!require('pacman')) {
 }
 pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel)
 
-source("./R_scripts/gamlss_helper_funs.R")
+source("./cubic_scripts/R_scripts/gamlss_helper_funs.R")
 ```
 
 Figures for paper
@@ -23,11 +23,11 @@ load info
 data_path <- "./ukb_basic"
 
 ### LOAD ###
-pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
-vol_list_global <- readRDS(file="R_scripts/vol_list_global.rds")
-vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
-sa_list <- readRDS(file="R_scripts/SA_list.rds")
-ct_list <- readRDS(file="R_scripts/CT_list.rds")
+pheno_list <- readRDS(file="cubic_scripts/R_scripts/pheno_list.rds")
+vol_list_global <- readRDS(file="cubic_scripts/R_scripts/vol_list_global.rds")
+vol_list_regions <- readRDS(file="cubic_scripts/R_scripts/Vol_list_regions.rds")
+sa_list <- readRDS(file="cubic_scripts/R_scripts/SA_list.rds")
+ct_list <- readRDS(file="cubic_scripts/R_scripts/CT_list.rds")
 
 aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
 
@@ -35,7 +35,7 @@ dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat
 dataset_colors <- c(cf = "#3D5983FF", cf.lm = "#5A8A54FF", cf.gam ="#262626FF", cf.gamlss ="#CFB023FF")
 
 #ukb data from ohbm_results.Rmd
-cent_err.p <- readRDS("ukb_perm_csvs/centile_errors.RDS")
+cent_err.p <- readRDS("data/ukb_perm_csvs/centile_errors.RDS")
 z_diffs2 <- readRDS("ukb_basic/z_diffs.RDS")
 cent.diffs3 <- readRDS("ukb_basic/cent_diffs.RDS")
 ukb_data <- fread("data/ukb_to_model/ukb_CN_data_simsites.csv")

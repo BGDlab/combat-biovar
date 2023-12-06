@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, tidymodels, broom.mixed, ggseg, cowplot, lsr, paletteer, ggsegExtra, ggseg3d)
+pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, tidymodels, broom.mixed, ggseg, cowplot, lsr, paletteer, ggsegExtra, ggseg3d, mgcv)
 
 source("./cubic_scripts/R_scripts/gamlss_helper_funs.R")
 # 
@@ -410,7 +410,7 @@ combined_var <- combined_var %>%
 summary(sigma.df$var_est) #method 1 var
 summary(combined_var$sex_effect) #method 2 var
 
-summary(sigma.df$beta_ratio). #method 1 male effect on var
+summary(sigma.df$beta_ratio) #method 1 male effect on var
 summary(combined_var$sex_std) #method 2 male effect on var
 ```
 
@@ -631,8 +631,10 @@ looks like.... no.
 
 NOTE: "missing" paired comparisons between cf and cf.lm diffs are because diff values are identical between the two methods (i.e. there is literally no difference in accuracy of centile scores between the two)
 
+**check w andrew**
+
 ```{r, warning=FALSE, message=FALSE}
-#within each phenotype, iterate paired t test between each combo of combat dfs 
+#within each phenotype, iterate paired wilcox rank test between each combo of combat dfs 
 
 #initalize empty dfs to store outputs
 sum.df <- data.frame(pheno = character(),
@@ -733,6 +735,7 @@ ggplot() +
 ```
 
 No shift in abs. differences, looking at overall diff.
+
 ```{r}
 #get centile errors for each subject - not abs val
 cent.diffs3 <- combined_preds %>%
@@ -747,21 +750,7 @@ cent.diffs3 <- combined_preds %>%
 saveRDS(cent.diffs3, file="ukb_basic/cent_diffs.RDS")
 ```
 
-```{r, eval=FALSE}
-cent.diffs3 %>%
-  #dplyr::filter(dataset == "cf.gamlss") %>%
-  pivot_longer(starts_with("diff_"), names_to="pheno", values_to="diff", names_prefix = "diff_") %>%
-  mutate(pheno_cat = as.factor(case_when(
-      pheno %in% vol_list_global ~ "Global Volume",
-      pheno %in% vol_list_regions ~ "Regional Volume",
-      pheno %in% sa_list ~ "Regional SA",
-      pheno %in% ct_list ~ "Regional CT",
-      TRUE ~ NA_character_))) %>%
-  ggplot() +
-  geom_density(aes(x=diff, fill=dataset), alpha=0.4) +
-  facet_wrap(~pheno_cat) +
-  theme(legend.position="none")
-```
+Look at w/in subject maximum error across all feature's centiles & compare across harmonization methods
 
 ```{r}
 max.cent.diffs.by.sex2 <- cent.diffs3 %>%
@@ -784,7 +773,7 @@ ggplot() +
   facet_wrap(~dataset, scales="free")
 ```
 
-Other methods are fairly consistently underestimating male centiles and overestimating female centiles.
+all methods are fairly consistently underestimating male centiles and overestimating female centiles.
 
 ```{r}
 mean.cent.diffs.by.sex2 <- cent.diffs3 %>%
@@ -807,7 +796,7 @@ ggplot() +
   facet_wrap(~dataset, scales="free")
 ```
 
-T test of mean diff. between sex w/in each dataset
+test of mean diff. between sex w/in each dataset - again need to update w nonparametric method **ask andrew about this**
 ```{r}
 t.test.by.sex <- mean.cent.diffs.by.sex2 %>%
   dplyr::filter(dataset != "ukb_CN") %>%
@@ -822,6 +811,8 @@ t.test.by.sex
 ```
 
 Both gam methods and lm combat with ref both end up inducing a bias in how males and females centiles are shifted.
+
+t tests of sex-biases in centiles w/in each feature **ask andrew about this**
 
 ```{r, warning=FALSE, message=FALSE}
 # within each df, within each phenotype, t-test between male and female diffs
@@ -855,6 +846,40 @@ t.df.sex %>%
    summarize(n_sig_regions = sum(sig_fdr),
             n_compare = n())
 ```
+
+### Extremeness Bias
+
+Does a person's centile error depend on their true centile value (e.g., very low or very high centiles more or less likely to have errors)
+
+do some plotting
+
+```{r}
+ggplot(cent.diffs3, aes(x=GMV, y=diff_GMV, color=sex)) +
+  geom_point(alpha=0.1) +
+  geom_smooth() +
+  facet_wrap(~dataset)
+
+ggplot(cent.diffs3, aes(x=WMV, y=diff_WMV, color=sex)) +
+  geom_point(alpha=0.1) +
+  geom_smooth() +
+  facet_wrap(~dataset, scales="free")
+```
+
+Testing on MAGNITUDE of error, not the errors themselves!
+
+```{r}
+ggplot(cent.diffs2, aes(x=GMV, y=diff_GMV, color=sex)) +
+  geom_point(alpha=0.1) +
+  geom_smooth() +
+  facet_wrap(~dataset)
+
+ggplot(cent.diffs2, aes(x=WMV, y=diff_WMV, color=sex)) +
+  geom_point(alpha=0.1) +
+  geom_smooth() +
+  facet_wrap(~dataset, scales="free")
+```
+
+*ask andrew about how best to test - would GAM be too flexible? use polynomials?*
 
 ## Z-Score
 calc how much z-scores change
@@ -1067,168 +1092,86 @@ t.test.by.sex_z
 
 Same results as centiles.
 
-#### OHBM Abstract
+### Extremeness Bias
 
-rerunning stats above w/o ref-site combat versions (to account for different FDR correction) per Andrew's suggestion
+Plot error
 
-Test
-
-Test for differences in centile offset distributions
 ```{r}
-mean.diffs.long_filt <- mean.diffs.long %>%
-  filter(!str_detect(dataset, "_refA")) %>%
-  filter(dataset != "ukb_CN")
+ggplot(z_diffs2, aes(x=GMV.z, y=diff_GMV.z, color=sex)) +
+  geom_point(alpha=0.1) +
+  geom_smooth(method="lm") +
+  facet_wrap(~dataset)
 
-summary(aov(centile_abs.diff ~ dataset, data=mean.diffs.long_filt))
-
-attach(mean.diffs.long_filt)
-pairwise.t.test(x=centile_abs.diff, g=dataset, p.adj = "bonferroni")
-detach()
+ggplot(z_diffs2, aes(x=WMV.z, y=diff_WMV.z, color=sex)) +
+  geom_point(alpha=0.1) +
+  geom_smooth(method="lm") +
+  facet_wrap(~dataset)
 ```
 
-Testing for differences in Z offset distributions
+plot magnitude error (abs val)
 
 ```{r}
-mean.z.long_filt <- mean.z.long %>%
-  filter(!str_detect(dataset, "_refA"))
+ggplot(z_diffs, aes(x=GMV.z, y=abs.diff_GMV.z, color=sex)) +
+  geom_point(alpha=0.1) +
+  geom_smooth() +
+  facet_wrap(~dataset)
 
-summary(aov(z_abs.diff ~ dataset, data=mean.z.long_filt))
-
-attach(mean.z.long_filt)
-pairwise.t.test(x=z_abs.diff, g=dataset, p.adj = "fdr")
-detach()
+ggplot(z_diffs, aes(x=WMV.z, y=abs.diff_WMV.z, color=sex)) +
+  geom_point(alpha=0.1) +
+  geom_smooth(method="lm") +
+  facet_wrap(~dataset)
 ```
 
-Test for sex-biases in centile offsets
-
-Test for sex-biases
+Try using gam to test associations (start with just GMV)
 
 ```{r}
-mean.z.diffs.by.sex2 %>%
-  dplyr::filter(dataset != "ukb_CN") %>%
-  filter(!str_detect(dataset, "_refA")) %>%
-  group_by(dataset) %>%
-  summarise(t_statistic = t.test(z_diff ~ sex)$statistic,
-            p_value = t.test(z_diff ~ sex)$p.value) %>%
-  mutate(p_val_fdr.corr = p.adjust(p_value, method="fdr", n = length(dataset)),
-         fdr_sig = case_when(p_val_fdr.corr < 0.05 ~ TRUE,
-                             p_val_fdr.corr >= 0.05 ~ FALSE))
+m1 <- gam(abs.diff_GMV.z ~ s(GMV.z, by=dataset) + dataset, data=z_diffs)
+summary(m1)
 
-mean.cent.diffs.by.sex2 %>%
-  dplyr::filter(dataset != "ukb_CN") %>%
-  filter(!str_detect(dataset, "_refA")) %>%
-  group_by(dataset) %>%
-  summarise(t_statistic = t.test(centile_diff ~ sex)$statistic,
-            p_value = t.test(centile_diff ~ sex)$p.value) %>%
-  mutate(p_val_fdr.corr = p.adjust(p_value, method="fdr", n = length(dataset)),
-         fdr_sig = case_when(p_val_fdr.corr < 0.05 ~ TRUE,
-                             p_val_fdr.corr >= 0.05 ~ FALSE))
+#test for interactive sex effects - split df by dataset and smooth by sex
+for (dset in c("cf", "cf.gam", "cf.gamlss", "cf.lm")) {
+  print(dset)
+  df <- z_diffs %>%
+    dplyr::filter(dataset == dset)
+  
+  m2 <- gam(abs.diff_GMV.z ~ s(GMV.z, by=as.factor(sex)) + as.factor(sex) + s(GMV.z), data=df)
+  print(summary(m2))
+}
 ```
 
-##### Plots
-
-Beta weight? or proportion?
-
+Pivot data long and run gam to test assoc. across all features
 ```{r}
-beta.plot2 <- sigma.df %>%
-  dplyr::filter(sig.sum_bf.corr == TRUE & pheno_cat != "Global Volume" & term =="sexMale") %>%
-  filter(!str_detect(dataset, "-refA")) %>%
-  mutate(dataset = factor(dataset, levels = c("ukb-CN-simsites", "cf", "cf.lm", "cf.gam", "cf.gamlss"))) %>%
-  group_by(dataset, pheno_cat) %>%
-  ggplot() +
-  geom_brain(atlas = dk, 
-             position = position_brain(hemi ~ side),
-             aes(fill = var_est)) +
-  #scale_fill_gradient2() +
-  facet_grid(dataset~pheno_cat) + 
-  theme_bw(base_size=20) +
-  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA)) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork") +
-  ggtitle("Beta weight for effect of male sex on variance")
+dataset_test_list <- c("cf", "cf.gam", "cf.gamlss", "cf.lm")
+pheno_list.z <- paste0(pheno_list, ".z")
 
-beta.plot2
+z_diffs.long <- z_diffs %>%
+  dplyr::filter(dataset %in% dataset_test_list) %>%
+  mutate(dataset = droplevels(dataset)) %>%
+  dplyr::select(c(participant, sex, age_days, dataset, Source_File), starts_with("abs.diff_")) %>%
+  pivot_longer(starts_with("abs.diff_"), names_to="pheno", values_to="z_abs.diff", names_prefix = "abs.diff_") 
 
-ggsave("male_variance_beta2.jpeg", beta.plot2, width=10, height=10)
+z_long <- z_diffs %>%
+  dplyr::filter(dataset %in% dataset_test_list) %>%
+  mutate(dataset = droplevels(dataset)) %>%
+  dplyr::select(c(participant, sex, age_days, dataset, Source_File, pheno_list.z)) %>%
+  pivot_longer(cols=all_of(pheno_list.z), names_to="pheno", values_to="z_score")
+
+z_long.full <- inner_join(z_diffs.long, z_long)
 ```
 
 ```{r}
-sigma.aseg_all <- sigma.df %>%
-  dplyr::filter(pheno_cat == "Global Volume" & term =="sexMale") %>%
-  filter(!str_detect(dataset, "-refA")) %>%
-  dplyr::select(!label) %>%
-  mutate(dataset = factor(dataset, levels = c("ukb-CN-simsites", "cf", "cf.lm", "cf.gam", "cf.gamlss")),
-         tissue_class = as.factor(case_when(pheno == "GMV" ~ "cGM",
-                                            pheno == "Ventricles" ~ "CSF",
-                                            pheno == "WMV" ~ "White Matter",
-                                            pheno == "sGMV" ~ "sGM",
-                                            TRUE ~ NA)),
-         var_est = case_when(sig.sum_bf.corr == TRUE ~ var_est,
-                             TRUE ~ NA)) #just keep significant regions
-
-sigma.aseg_all <- left_join(sigma.aseg_all, aseg_cerebrum$data, by = c("tissue_class"))
-
-sigma.aseg_all %>%
-  group_by(dataset) %>%
-  ggplot() +
-  geom_brain(atlas = aseg_cerebrum, 
-             #position = position_brain(hemi ~ side),
-             aes(fill = var_est),
-             alpha=0.8) +
-  #scale_fill_gradient2() +
-  facet_wrap(~dataset) + 
-  theme_bw(base_size=20) +
-  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA)) +
-  paletteer::scale_fill_paletteer_c("grDevices::Oslo") +
-  ggtitle("Beta weight for effect of male sex on variance")
+gam.ext_m1 <- gam(z_abs.diff ~ s(z_score, by=dataset) + dataset, data=z_long.full)
+summary(gam.ext_m1)
 ```
 
-
 ```{r}
-proportion_beta_plot2 <- sigma.df %>%
-  dplyr::filter(sig.sum_bf.corr == TRUE & pheno_cat != "Global Volume" & term =="sexMale") %>%
-  filter(!str_detect(dataset, "-refA")) %>%
-  mutate(dataset = factor(dataset, levels = c("ukb-CN-simsites", "cf", "cf.lm", "cf.gam", "cf.gamlss"))) %>%
-  group_by(dataset, pheno_cat) %>%
-  ggplot() +
-  geom_brain(atlas = dk, 
-             position = position_brain(hemi ~ side),
-             aes(fill = beta_ratio)) +
-  #scale_fill_gradient2() +
-  facet_grid(dataset~pheno_cat) + 
-  theme_bw(base_size=15) +
-  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA)) +
-  paletteer::scale_fill_paletteer_c("grDevices::Oslo") +
-  ggtitle("Proportion of effect of male sex on variance")
-
-proportion_beta_plot2
-ggsave("male_variance_prop.beta2.jpeg", proportion_beta_plot2, width=10, height=10)
-```
-
-Centile plot
-
-```{r}
-#Define scales
-scales_y <- list(
-  `Global Volume` = scale_y_continuous(limits = c(0, 4)),
-  `Regional CT` = scale_y_continuous(limits = c(0, 70)),
-  `Regional SA` = scale_y_continuous(limits = c(0, 70)),
-  `Regional Volume` = scale_y_continuous(limits = c(0, 70))
-)
-
-cent.diffs.plot2 <- mean.diffs.long %>%
-  dplyr::filter(dataset != "ukb_CN") %>%
-  filter(!str_detect(dataset, "_refA")) %>%
-  mutate(centile_abs.diff = centile_abs.diff*100) %>% #for visuals
-  ggplot() +
-  geom_histogram(aes(x=centile_abs.diff, fill=dataset), color="black", alpha=0.4, position="identity") +
-  theme_linedraw(base_size = 12) +
-  scale_x_continuous(labels = label_comma()) + 
-  facet_wrap(~pheno_cat) +
-  #facetscales::facet_grid_sc(pheno_cat~.,
-                #scales = list(y = scales_y)) +
-  #paletteer::scale_fill_paletteer_d("Polychrome::light") +
-  ggtitle("Mean absolute differences in centile scores across \nComBat processing pipelines for each phenotype")
-
-cent.diffs.plot2
-#ggsave("mean_centile_diffs2.jpeg", cent.diffs.plot2, width=10, height=10)
+#test for interactive sex effects - split df by dataset and smooth by sex 
+for (dset in c("cf", "cf.gam", "cf.gamlss", "cf.lm")) {
+  print(dset)
+  df <- z_long.full %>%
+    dplyr::filter(dataset == dset)
+  
+  m2 <- gam(z_abs.diff ~ s(z_score, by=as.factor(sex)) + as.factor(sex) + s(z_score), data=df)
+  print(summary(m2))
+}
 ```
