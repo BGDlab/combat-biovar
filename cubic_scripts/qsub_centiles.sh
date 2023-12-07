@@ -1,5 +1,4 @@
 #!/bin/bash
-# Apply ComFam() with different arguments to specified dataset
 
 #STEP 4 OF VALIDATION PIPELINE#
 

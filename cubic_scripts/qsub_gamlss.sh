@@ -6,7 +6,7 @@
 # SET PATHS
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
 pheno_path=$base/pheno_lists #path to .txt files listing phenotypes (global & regional)
-mod_script=$base/R_scripts/fit_ukb_mod.R #path to .R script
+mod_script=$base/cubic_scripts/R_scripts/fit_lifespan_mod.R #path to .R script
 #######################################################################################
 #######################################################################################
 # GET ARGS
@@ -19,7 +19,7 @@ fi
 # MAKE DIRECTORIES 
 
 #study dir
-study_dir=$base/ukb_permute
+study_dir=$base/lifespan
 if ! [ -d $study_dir ]
 	then
 	mkdir $study_dir

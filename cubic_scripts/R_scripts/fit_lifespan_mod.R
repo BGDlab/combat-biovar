@@ -9,7 +9,7 @@ library(data.table)
 
 #GET ARTS
 args <- commandArgs(trailingOnly = TRUE)
-ukb_df <- fread(args[1], stringsAsFactors = TRUE, na.strings = "")
+df <- fread(args[1], stringsAsFactors = TRUE, na.strings = "")
 pheno <- as.character(args[2])
 glob_pheno <- as.character(args[3])
 save_path <- args[4]
@@ -19,7 +19,7 @@ base_model <- gamlss(formula = as.formula(paste0(pheno,"~ pb(age_days) + sex + f
              sigma.formula = as.formula(paste0("~ pb(age_days) + sex + pb(sex.age) + fs_version + pb(", glob_pheno,")")),
              nu.formula = as.formula(paste0("~ pb(age_days) + sex + pb(sex.age) + fs_version + pb(", glob_pheno,")")),
              control = gamlss.control(n.cyc = 200), 
-             family = BCCG, data=ukb_df, trace = FALSE)
+             family = BCCG, data=df, trace = FALSE)
 
 #SAVE
 csv_name <- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(as.character(args[1])))
