@@ -14,6 +14,7 @@ if(!require('pacman')) {
 pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, tidymodels, broom.mixed, ggseg, cowplot, lsr, paletteer, ggsegExtra, ggseg3d, mgcv)
 
 source("./cubic_scripts/R_scripts/gamlss_helper_funs.R")
+source("./cubic_scripts/R_scripts/ranked_welch_tests.R")
 # 
 # # Enable this universe
 # options(repos = c(
@@ -624,14 +625,13 @@ cent.diffs2 <- combined_preds %>%
 plot to see if assumptions for t-tests hold ...
 ```{r}
 ggplot(cent.diffs2) +
-  geom_histogram(aes(x=diff_rh_CT_posteriorcingulate, fill=dataset), alpha = 0.6)
+  geom_histogram(aes(x=diff_GMV, fill=dataset), alpha = 0.6) +
+  theme_bw()
 ```
 
-looks like.... no.
+looks like.... no. Using welch's t test on centile erro ranks per discussion with Andrew (see Zimmerman & Zumbo, 1993). Using custom functions from `ranked_welch_tests.R`. also updating Anova to nonparametric kruskal-wallace test. **confirm with andrew**
 
 NOTE: "missing" paired comparisons between cf and cf.lm diffs are because diff values are identical between the two methods (i.e. there is literally no difference in accuracy of centile scores between the two)
-
-**check w andrew**
 
 ```{r, warning=FALSE, message=FALSE}
 #within each phenotype, iterate paired wilcox rank test between each combo of combat dfs 
@@ -653,11 +653,14 @@ pheno_diff.list <- paste0("diff_", pheno_list)
 #run tests
 attach(cent.diffs2)
 for (pheno in pheno_diff.list) {
-  df.aov <- tidy(aov(cent.diffs2[[pheno]] ~ cent.diffs2[["dataset"]]))
+  
+  #group-wise
+  df.aov <- tidy(kruskal.test(cent.diffs2[[pheno]] ~ cent.diffs2[["dataset"]]))
   df.aov$pheno <- pheno
   sum.df <- rbind(sum.df, df.aov)
 
-  df.pairwise.t <- tidy(pairwise.wilcox.test(x=cent.diffs2[[pheno]], g=cent.diffs2[["dataset"]], paired = TRUE, p.adj = "none")) #update to wilcox since t assumptions not all met
+  #'post-hoc' pairwise t tests
+  df.pairwise.t <- tidy(pairwise.rank.welch.t.test(x=cent.diffs2[[pheno]], g=cent.diffs2[["dataset"]], paired = TRUE, p.adj = "none"))
   df.pairwise.t$pheno <- pheno
   t.df <- rbind(t.df, df.pairwise.t)
 }
@@ -671,6 +674,7 @@ sum.df <- sum.df %>%
   mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(pheno_list)))
 
 summary(sum.df$p.val_fdr)
+
 
 t.df <- t.df %>%
   mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(pheno)),
@@ -812,7 +816,7 @@ t.test.by.sex
 
 Both gam methods and lm combat with ref both end up inducing a bias in how males and females centiles are shifted.
 
-t tests of sex-biases in centiles w/in each feature **ask andrew about this**
+t tests of sex-biases in centiles w/in each feature
 
 ```{r, warning=FALSE, message=FALSE}
 # within each df, within each phenotype, t-test between male and female diffs
@@ -826,7 +830,7 @@ t.df.sex <- data.frame("pheno" = character(),
 for (pheno in pheno_diff.list){
     df.sex.test <- cent.diffs3 %>%
         group_by(dataset) %>%
-        summarize(p_value = t.test(.data[[pheno]][sex == "Male"], .data[[pheno]][sex == "Female"])$p.value) %>%
+        summarize(p_value = rank.welch.t.test(.data[[pheno]][sex == "Male"], .data[[pheno]][sex == "Female"])$p.value) %>%
         ungroup()
     df.sex.test$pheno <- pheno
     t.df.sex <- rbind(t.df.sex, df.sex.test)
@@ -1012,11 +1016,11 @@ z.pheno_abs.diff.list <- paste0("abs.diff_", pheno_list, ".z")
 #run tests
 attach(z_diffs.filt)
 for (pheno in z.pheno_abs.diff.list) {
-  df.aov <- tidy(aov(z_diffs.filt[[pheno]] ~ z_diffs.filt[["dataset"]]))
+  df.aov <- tidy(kruskal.test(z_diffs.filt[[pheno]] ~ z_diffs.filt[["dataset"]]))
   df.aov$pheno <- pheno
   z.sum.df <- rbind(z.sum.df, df.aov)
 
-  df.pairwise.t <- tidy(pairwise.t.test(x=z_diffs.filt[[pheno]], g=z_diffs.filt[["dataset"]], paired = TRUE, p.adj = "none"))
+  df.pairwise.t <- tidy(pairwise.rank.welch.t.test(x=z_diffs.filt[[pheno]], g=z_diffs.filt[["dataset"]], paired = TRUE, p.adj = "none"))
   df.pairwise.t$pheno <- pheno
   z.t.df <- rbind(z.t.df, df.pairwise.t)
 }
@@ -1077,6 +1081,14 @@ mean.z.diffs.by.sex2 <- z_diffs2 %>%
       TRUE ~ NA_character_)))
 ```
 t-test
+
+```{r}
+#check for skew
+ggplot(z_diffs2) +
+  geom_histogram(aes(x=diff_sGMV.z, fill=dataset))
+```
+
+
 ```{r}
 t.test.by.sex_z <- mean.z.diffs.by.sex2 %>%
   dplyr::filter(dataset != "ukb_CN") %>%
@@ -1089,6 +1101,7 @@ t.test.by.sex_z <- mean.z.diffs.by.sex2 %>%
 
 t.test.by.sex_z
 ```
+
 
 Same results as centiles.
 

@@ -1,6 +1,11 @@
 #load libraries
 library(stats)
 
+#contains 2 functions for running welch's t-test on data rankings (accounting for both skew and unequal variances - Zimmerman & Zumbo, 1993)
+
+# rank.welch.t.test() - analogous to t.test()
+# pairwise.rank.welch.t.test() - analogous to pairwise.t.test()
+
 rank.welch.t.test <- function (x, ...) {
   UseMethod("rank.welch.t.test", x)
 }
@@ -29,7 +34,7 @@ rank.welch.t.test.default <- function(x_list, y_list,
 }
 
 
-## S3 method for class 'formula'
+## S3 method for class 'formula' (based on t.test.formula())
 rank.welch.t.test.formula <- function(formula, data, subset, na.action, ...)
 {
   if(missing(formula)
@@ -43,12 +48,12 @@ rank.welch.t.test.formula <- function(formula, data, subset, na.action, ...)
   m[[1L]] <- quote(stats::model.frame)
   m$... <- NULL
   mf <- eval(m, parent.frame())
-  print(mf)
   DNAME <- paste(names(mf), collapse = " by ")
   names(mf) <- NULL
   response <- attr(attr(mf, "terms"), "response")
-  ## rank
+  # rank values
   mf[[response]] <- rank(mf[[response]])
+  # group
   g <- factor(mf[[-response]])
   if(nlevels(g) != 2L)
     stop("grouping factor must have exactly 2 levels")
