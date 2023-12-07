@@ -9,9 +9,9 @@ og_data=$base/data/ukb_CN_data_agefilt.csv #path to original data for which site
 save_data_path=$base/data/ukb_ratios
 pheno_path=$base/pheno_lists #path to .txt files listing phenotypes (global & regional)
 # paths to R scripts
-permute_script=$base/R_scripts/permute_sites_varying_ratio.R.R
-cf_script=$base/R_scripts/combat_apply.R
-mod_script=$base/R_scripts/fit_perm_basic_mod.R
+permute_script=$base/cubic_scripts/R_scripts/permute_sites_varying_ratio.R.R
+cf_script=$base/cubic_scripts/R_scripts/combat_apply.R
+mod_script=$base/cubic_scripts/R_scripts/fit_perm_basic_mod.R
 #######################################################################################
 cd $base #to source functions correctly
 #######################################################################################
