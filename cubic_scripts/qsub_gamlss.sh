@@ -4,6 +4,7 @@
 
 #######################################################################################
 # SET PATHS
+img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
 pheno_path=$base/pheno_lists #path to .txt files listing phenotypes (global & regional)
 mod_script=$base/cubic_scripts/R_scripts/fit_lifespan_mod.R #path to .R script
@@ -60,7 +61,7 @@ then
 				#write bash script
 				bash_script=$bash_dir/${pheno}_${csv_name}_fit.sh
 				touch $bash_script
-				echo "Rscript --save $mod_script $1 $pheno $glob_pheno $gamlss_dir" > $bash_script
+				echo "singularity run --cleanenv $img Rscript --save $mod_script $1 $pheno $glob_pheno $gamlss_dir" > $bash_script
 
 				#qsub bash script
 				qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
@@ -78,7 +79,7 @@ then
 				#write bash script
 				bash_script=$bash_dir/${pheno}_${csv_name}_fit.sh
 				touch $bash_script
-				echo "Rscript --save $mod_script $1 $pheno $glob_pheno $gamlss_dir" > $bash_script
+				echo "singularity run --cleanenv $img Rscript --save $mod_script $1 $pheno $glob_pheno $gamlss_dir" > $bash_script
 
 				#qsub bash script
 				qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
@@ -96,7 +97,7 @@ then
 				#write bash script
 				bash_script=$bash_dir/${pheno}_${csv_name}_fit.sh
 				touch $bash_script
-				echo "Rscript --save $mod_script $1 $pheno $glob_pheno $gamlss_dir" > $bash_script
+				echo "singularity run --cleanenv $img Rscript --save $mod_script $1 $pheno $glob_pheno $gamlss_dir" > $bash_script
 
 				#qsub bash script
 				qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
@@ -114,7 +115,7 @@ then
 				#write bash script
 				bash_script=$bash_dir/${pheno}_${csv_name}_fit.sh
 				touch $bash_script
-				echo "Rscript --save $mod_script $1 $pheno $glob_pheno $gamlss_dir" > $bash_script
+				echo "singularity run --cleanenv $img Rscript --save $mod_script $1 $pheno $glob_pheno $gamlss_dir" > $bash_script
 
 				#qsub bash script
 				qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
@@ -146,7 +147,7 @@ then
 					#write bash script
 					bash_script=$bash_dir/${pheno}_${csv_name}_fit.sh
 					touch $bash_script
-					echo "Rscript --save $mod_script $csv_file $pheno $glob_pheno $gamlss_dir" > $bash_script
+					echo "singularity run --cleanenv $img Rscript --save $mod_script $csv_file $pheno $glob_pheno $gamlss_dir" > $bash_script
 
 					#qsub bash script
 					qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
@@ -164,7 +165,7 @@ then
 					#write bash script
 					bash_script=$bash_dir/${pheno}_${csv_name}_fit.sh
 					touch $bash_script
-					echo "Rscript --save $mod_script $csv_file $pheno $glob_pheno $gamlss_dir" > $bash_script
+					echo "singularity run --cleanenv $img Rscript --save $mod_script $csv_file $pheno $glob_pheno $gamlss_dir" > $bash_script
 
 					#qsub bash script
 					qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
@@ -182,7 +183,7 @@ then
 					#write bash script
 					bash_script=$bash_dir/${pheno}_${csv_name}_fit.sh
 					touch $bash_script
-					echo "Rscript --save $mod_script $csv_file $pheno $glob_pheno $gamlss_dir" > $bash_script
+					echo "singularity run --cleanenv $img Rscript --save $mod_script $csv_file $pheno $glob_pheno $gamlss_dir" > $bash_script
 
 					#qsub bash script
 					qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
@@ -200,7 +201,7 @@ then
 					#write bash script
 					bash_script=$bash_dir/${pheno}_${csv_name}_fit.sh
 					touch $bash_script
-					echo "Rscript --save $mod_script $csv_file $pheno $glob_pheno $gamlss_dir" > $bash_script
+					echo "singularity run --cleanenv $img Rscript --save $mod_script $csv_file $pheno $glob_pheno $gamlss_dir" > $bash_script
 
 					#qsub bash script
 					qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
