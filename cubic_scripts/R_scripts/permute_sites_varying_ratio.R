@@ -28,14 +28,18 @@ for(prop in prop.male) {
   # Separate samples for each site
   balanced_weights <- ifelse(df$sex == "Male", 0.5, 0.5)
   balanced <- df %>%
-    slice_sample(n=14000, weight_by=balanced_weights, replace=TRUE)
+    slice_sample(n=14000, weight_by=balanced_weights, replace=TRUE) %>%
+    mutate(sim.site = "Balanced")
   
   imbalanced_weights <- ifelse(df$sex == "Male", prop, (1-prop))
   imbalanced <- df %>%
-    slice_sample(n=14000, weight_by=imbalanced_weights, replace=TRUE)
+    slice_sample(n=14000, weight_by=imbalanced_weights, replace=TRUE)%>%
+    mutate(sim.site = "Imbalanced")
   
   #assign to df
   new_df <- rbind(balanced, imbalanced)
+  new_df <- new_df %>%
+    mutate(sim.site = as.factor(sim.site))
   
   #save out csv w count number in filename
   n_count <- str_pad(i, 2, pad = "0")
