@@ -15,6 +15,7 @@ pacman::p_load(gamlss, gamlss.cens, gamlss.dist, gamlss.mx, gamlss.tr, ggplot2, 
 
 source("./cubic_scripts/R_scripts/gamlss_helper_funs.R")
 source("./cubic_scripts/R_scripts/ranked_welch_tests.R")
+source("/Users/megardn/Desktop/BGD_Repos/GAMLSS/plotting_functions.R")
 # 
 # # Enable this universe
 # options(repos = c(
@@ -72,6 +73,57 @@ ggplot(ukb_df_age.filt) +
   geom_bar(aes(x=sim.site, fill=sex), color="black", alpha=0.6) +
   theme_linedraw(base_size=12)
 ```
+
+## Plot Centiles
+
+```{r}
+#load data csvs
+ukb_df_cf.gam <- fread(file="data/ukb_to_model/cf.gam_data.csv")
+ukb_df_cf.gamlss <- fread(file="data/ukb_to_model/cf.gamlss_data.csv")
+ukb_df_cf.lm <- fread(file="data/ukb_to_model/cf.lm_data.csv")
+```
+
+plot data distributions (not loading models for now)
+```{r}
+ven_raw <- ggplot(ukb_df_age.filt) +
+  geom_point(aes(x=log_age, y=Ventricles, color=sex), alpha =0.3) +
+  ggtitle("Raw Data")
+
+ven_lm <- ggplot(ukb_df_cf.lm) +
+  geom_point(aes(x=log_age, y=Ventricles, color=sex), alpha =0.3) +
+  ggtitle("ComBat")
+
+ven_gam <- ggplot(ukb_df_cf.gam) +
+  geom_point(aes(x=log_age, y=Ventricles, color=sex), alpha =0.3) +
+  ggtitle("ComBat-GAM")
+
+ven_gamlss <- ggplot(ukb_df_cf.gamlss) +
+  geom_point(aes(x=log_age, y=Ventricles, color=sex), alpha =0.3) +
+  ggtitle("ComBatLS")
+
+ggarrange(ven_raw, ven_lm, ven_gam, ven_gamlss, ncol=2, nrow=2, common.legend=TRUE)
+```
+
+```{r}
+rh_CT_bankssts_raw <- ggplot(ukb_df_age.filt) +
+  geom_point(aes(x=log_age, y=rh_CT_bankssts, color=sex), alpha =0.3) +
+  ggtitle("Raw Data")
+
+rh_CT_bankssts_lm <- ggplot(ukb_df_cf.lm) +
+  geom_point(aes(x=log_age, y=rh_CT_bankssts, color=sex), alpha =0.3) +
+  ggtitle("ComBat")
+
+rh_CT_bankssts_gam <- ggplot(ukb_df_cf.gam) +
+  geom_point(aes(x=log_age, y=rh_CT_bankssts, color=sex), alpha =0.3) +
+  ggtitle("ComBat-GAM")
+
+rh_CT_bankssts_gamlss <- ggplot(ukb_df_cf.gamlss) +
+  geom_point(aes(x=log_age, y=rh_CT_bankssts, color=sex), alpha =0.3) +
+  ggtitle("ComBatLS")
+
+ggarrange(rh_CT_bankssts_raw, rh_CT_bankssts_lm, rh_CT_bankssts_gam, rh_CT_bankssts_gamlss, ncol=2, nrow=2, common.legend=TRUE)
+```
+
 
 ## By Moment
 
@@ -655,7 +707,7 @@ attach(cent.diffs2)
 for (pheno in pheno_diff.list) {
   
   #group-wise
-  df.aov <- tidy(kruskal.test(cent.diffs2[[pheno]] ~ cent.diffs2[["dataset"]]))
+  df.aov <- tidy(kruskal.test(cent.diffs2[[pheno]] ~ cent.diffs2[["dataset"]])) #nonparametric b/c distribution but also data is paired? ask andrews
   df.aov$pheno <- pheno
   sum.df <- rbind(sum.df, df.aov)
 
