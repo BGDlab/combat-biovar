@@ -20,6 +20,8 @@ library(mgcv)
 library(gamlss)
 library(ComBatFamily)
 
+source("/cubic_scripts/R_scripts/gamlss_helper_funs.R")
+
 ##########################################################################
 
 #GET ARGS
@@ -99,6 +101,12 @@ for (l in list_of_feature_lists){
   pheno.df <- raw.df %>%
     dplyr::select(all_of(l))
   
+  #log-transform global vals - added for lifespan data analyses, not sure if i should rerun for ukb analyses
+  if (names(list_of_feature_lists[i]) = "VolGlob"){
+    pheno.df <- pheno.df %>%
+      mutate(across(c(l), \(x) log(x, base=10)))
+  }
+  
   #make sure batch, covars, and pheno dfs are all the same length
   stopifnot(nrow(pheno.df) == length(batch))
   
@@ -123,6 +131,12 @@ for (l in list_of_feature_lists){
     } else {
       cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.args, ")")))
     }
+  }
+  
+  #un-log-transform global vals
+  if (names(list_of_feature_lists[i]) = "VolGlob"){
+    cf.obj$dat.combat <- cf.obj$dat.combat %>%
+      mutate(across(c(l), \(x) un_log(x)))
   }
   
   #save cf.obj

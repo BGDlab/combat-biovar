@@ -15,6 +15,7 @@ library(broom)
 # get.sigma.df()
 # get.sigma.nl.df()
 # get.moment.formula()
+# un_log()
 ################
 
 drop1_all <- function(mod_obj, list = c("mu", "sigma"), name = NA, dataset = NA){
@@ -441,3 +442,6 @@ get.og.data.centiles <- function(gamlss.rds.file, og.data, get.zscores = FALSE){
     return(df)
   }
 }
+
+### UN-LOG-SCALE - used to un-transform log_age values
+un_log <- function(x){return(10^(x))}
