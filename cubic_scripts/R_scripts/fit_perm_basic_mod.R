@@ -15,7 +15,7 @@ df <- fread(args[1], stringsAsFactors = TRUE, na.strings = "")
 save_path <- args[2]
 
 #LIST PHENOTYPES
-pheno_list <- readRDS(file="/cbica/home/gardnerm/combat-biovar/R_scripts/pheno_list.rds")
+pheno_list <- readRDS(file="/cbica/home/gardnerm/combat-biovar/cubic_scripts/R_scripts/pheno_list.rds")
 
 #FIT BASIC MODEL
 

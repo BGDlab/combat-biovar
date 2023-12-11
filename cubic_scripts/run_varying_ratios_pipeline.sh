@@ -7,7 +7,7 @@ img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity ima
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
 og_data=$base/data/ukb_CN_data_agefilt.csv #path to original data for which site assignments should be permuted
 save_data_path=$base/data/ukb_ratios
-pheno_path=$base/pheno_lists #path to .txt files listing phenotypes (global & regional)
+
 # paths to R scripts
 permute_script=$base/cubic_scripts/R_scripts/permute_sites_varying_ratio.R
 cf_script=$base/cubic_scripts/R_scripts/combat_apply.R
