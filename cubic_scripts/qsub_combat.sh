@@ -7,7 +7,7 @@
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
-cf_script=$base/R_scripts/combat_apply.R #path to .R script
+cf_script=$base/cubic_scripts/R_scripts/combat_apply.R #path to .R script
 save_path=$base/data/lifespan
 #######################################################################################
 helpFunction()
