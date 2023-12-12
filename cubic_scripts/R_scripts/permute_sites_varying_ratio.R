@@ -22,18 +22,34 @@ prop.male <- seq(0, 1, by=0.1)
 # setup to count iterations
 i <- 1
 
+#get size of each sample so that sampling can be done w/o replacement
+
+#find lower of n male or n female
+n_female <- table(df$sex)["Female"]
+n_male <- table(df$sex)["Male"]
+n_min <- min(c(n_female, n_male))
+
+#define sample size as 2/3 of n_min, rounded down to nearest 100
+n_sample <- plyr::round_any((2/3)*n_min, 100, f=floor)
+
 #control # proportions to complete
 for(prop in prop.male) {
   
-  # Separate samples for each site
+  #define M:F in each site
   balanced_weights <- ifelse(df$sex == "Male", 0.5, 0.5)
+  imbalanced_weights <- ifelse(df$sex == "Male", prop, (1-prop))
+  
+  #sample for balanced site
   balanced <- df %>%
-    slice_sample(n=14000, weight_by=balanced_weights, replace=TRUE) %>%
+    slice_sample(n=n_sample, weight_by=balanced_weights, replace=FALSE) %>%
     mutate(sim.site = "Balanced")
   
-  imbalanced_weights <- ifelse(df$sex == "Male", prop, (1-prop))
-  imbalanced <- df %>%
-    slice_sample(n=14000, weight_by=imbalanced_weights, replace=TRUE)%>%
+  #remove ppts that are already sampled
+  df_remaining <- anti_join(df, balanced)
+  
+  #sample for imbalanced site
+  imbalanced <- df_remaining %>%
+    slice_sample(n=n_sample, weight_by=imbalanced_weights, replace=FALSE)%>%
     mutate(sim.site = "Imbalanced")
   
   #assign to df
