@@ -20,7 +20,7 @@ library(mgcv)
 library(gamlss)
 library(ComBatFamily)
 
-source("/cubic_scripts/R_scripts/gamlss_helper_funs.R")
+source("/cbica/home/gardnerm/combat-biovar/cubic_scripts/R_scripts/gamlss_helper_funs.R")
 
 ##########################################################################
 
@@ -102,7 +102,7 @@ for (l in list_of_feature_lists){
     dplyr::select(all_of(l))
   
   #log-transform global vals - added for lifespan data analyses, not sure if i should rerun for ukb analyses
-  if (names(list_of_feature_lists[i]) = "VolGlob"){
+  if (names(list_of_feature_lists[i]) == "VolGlob"){
     pheno.df <- pheno.df %>%
       mutate(across(c(l), \(x) log(x, base=10)))
   }
@@ -134,7 +134,7 @@ for (l in list_of_feature_lists){
   }
   
   #un-log-transform global vals
-  if (names(list_of_feature_lists[i]) = "VolGlob"){
+  if (names(list_of_feature_lists[i]) == "VolGlob"){
     cf.obj$dat.combat <- cf.obj$dat.combat %>%
       mutate(across(c(l), \(x) un_log(x)))
   }

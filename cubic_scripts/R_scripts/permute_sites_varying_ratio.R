@@ -35,13 +35,9 @@ n_sample <- plyr::round_any((2/3)*n_min, 100, f=floor)
 #control # proportions to complete
 for(prop in prop.male) {
   
-  #define M:F in each site
-  balanced_weights <- ifelse(df$sex == "Male", 0.5, 0.5)
-  imbalanced_weights <- ifelse(df$sex == "Male", prop, (1-prop))
-  
   #sample for balanced site
   balanced <- df %>%
-    slice_sample(n=n_sample, weight_by=balanced_weights, replace=FALSE) %>%
+    slice_sample(n=n_sample, weight_by=ifelse(sex == "Male", 0.5, 0.5), replace=FALSE) %>%
     mutate(sim.site = "Balanced")
   
   #remove ppts that are already sampled
@@ -49,7 +45,7 @@ for(prop in prop.male) {
   
   #sample for imbalanced site
   imbalanced <- df_remaining %>%
-    slice_sample(n=n_sample, weight_by=imbalanced_weights, replace=FALSE)%>%
+    slice_sample(n=n_sample, weight_by=ifelse(sex == "Male", prop, (1-prop)), replace=FALSE)%>%
     mutate(sim.site = "Imbalanced")
   
   #assign to df
