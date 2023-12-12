@@ -101,11 +101,11 @@ for (l in list_of_feature_lists){
   pheno.df <- raw.df %>%
     dplyr::select(all_of(l))
   
-  #log-transform global vals - added for lifespan data analyses, not sure if i should rerun for ukb analyses
-  if (names(list_of_feature_lists[i]) = "VolGlob"){
-    pheno.df <- pheno.df %>%
-      mutate(across(c(l), \(x) log(x, base=10)))
-  }
+  # #log-transform global vals - added for lifespan data analyses, not sure if i should rerun for ukb analyses
+  # if (names(list_of_feature_lists[i]) = "VolGlob"){
+  #   pheno.df <- pheno.df %>%
+  #     mutate(across(c(l), \(x) log(x, base=10)))
+  # }
   
   #make sure batch, covars, and pheno dfs are all the same length
   stopifnot(nrow(pheno.df) == length(batch))
@@ -133,11 +133,11 @@ for (l in list_of_feature_lists){
     }
   }
   
-  #un-log-transform global vals
-  if (names(list_of_feature_lists[i]) = "VolGlob"){
-    cf.obj$dat.combat <- cf.obj$dat.combat %>%
-      mutate(across(c(l), \(x) un_log(x)))
-  }
+  # #un-log-transform global vals
+  # if (names(list_of_feature_lists[i]) = "VolGlob"){
+  #   cf.obj$dat.combat <- cf.obj$dat.combat %>%
+  #     mutate(across(c(l), \(x) un_log(x)))
+  # }
   
   #save cf.obj
   saveRDS(cf.obj, file=paste0(save_path, "/combat_objs/",csv_basename,"_", config_name,"_", names(list_of_feature_lists[i]), "_cf_obj.rds"))

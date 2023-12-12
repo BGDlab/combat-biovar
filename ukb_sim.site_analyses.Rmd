@@ -80,6 +80,7 @@ ggplot(ukb_df_age.filt) +
 #load data csvs
 ukb_df_cf.gam <- fread(file="data/ukb_to_model/cf.gam_data.csv")
 ukb_df_cf.gamlss <- fread(file="data/ukb_to_model/cf.gamlss_data.csv")
+# length(ukb_df_cf.gamlss$participant) == n_unique(ukb_df_cf.gamlss$participant)
 ukb_df_cf.lm <- fread(file="data/ukb_to_model/cf.lm_data.csv")
 ```
 

@@ -22,8 +22,10 @@ pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, gg
 # Sys.setenv(GITHUB_PAT = "") #if needed to access private BGDlab GAMLSS repo
 # source_url(plot.func.url) #sometimes doesn't work....?
 
+base_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/"
+
 source("/Users/megardn/Desktop/BGD_Repos/GAMLSS/plotting_functions.R")
-source("/Users/megardn/Desktop/BGD_Repos/combat_biovar/R_scripts/gamlss_helper_funs.R")
+source(paste0(base_path, "cubic_scripts/R_scripts/gamlss_helper_funs.R"))
 ```
 
 ## Load Data
@@ -31,7 +33,7 @@ source("/Users/megardn/Desktop/BGD_Repos/combat_biovar/R_scripts/gamlss_helper_f
 Load UKB Data from Jakob
 
 ```{r}
-cn_data <- fread(file="data/lifespan_dataset_dkatlas_CNonly.csv")
+cn_data <- fread(file= paste0(base_path, "data/lifespan_dataset_dkatlas_CNonly.csv"))
 #table(cn_data$study)
 names(cn_data)
 ```
@@ -64,24 +66,24 @@ Write lists of phenotypes
 col_list <- colnames(ukb_df)
 pheno_list <- col_list[grepl("^lh_|^rh_|^GMV$|^WMV$|^sGMV$|^Ventricles$", col_list)]
 length(pheno_list) #total number of models to run
-saveRDS(pheno_list, file="R_scripts/pheno_list.rds")
+saveRDS(pheno_list, file=paste0(base_path, "cubic_scripts/R_scripts/pheno_list.rds"))
 
 #split by measure type (Vol, SA, CT)
 vol_list_global <- c("GMV", "sGMV", "WMV", "Ventricles")
-writeLines(vol_list_global, con = "pheno_lists/Vol_list_global.txt")
-saveRDS(vol_list_global, file="R_scripts/vol_list_global.rds")
+writeLines(vol_list_global, con = paste0(base_path,"pheno_lists/Vol_list_global.txt"))
+saveRDS(vol_list_global, file=paste0(base_path,"cubic_scripts/R_scripts/vol_list_global.rds"))
 
 vol_list_regions <- col_list[grepl("^lh_Vol|^rh_Vol", col_list)]
-writeLines(vol_list_regions, con = "pheno_lists/Vol_list_regions.txt")
-saveRDS(vol_list_regions, file="R_scripts/Vol_list_regions.rds")
+writeLines(vol_list_regions, con = paste0(base_path,"pheno_lists/Vol_list_regions.txt"))
+saveRDS(vol_list_regions, file=paste0(base_path, "cubic_scripts/R_scripts/Vol_list_regions.rds"))
 
 sa_list <- col_list[grepl("^lh_SA|^rh_SA", col_list)]
-writeLines(sa_list, con = "pheno_lists/SA_list.txt")
-saveRDS(sa_list, file="R_scripts/SA_list.rds")
+writeLines(sa_list, con = paste0(base_path,"pheno_lists/SA_list.txt"))
+saveRDS(sa_list, file=paste0(base_path,"cubic_scripts/R_scripts/SA_list.rds"))
 
 ct_list <- col_list[grepl("^lh_CT|^rh_CT", col_list)]
-writeLines(ct_list, con = "pheno_lists/CT_list.txt")
-saveRDS(ct_list, file="R_scripts/CT_list.rds")
+writeLines(ct_list, con = paste0(base_path,"pheno_lists/CT_list.txt"))
+saveRDS(ct_list, file=paste0(base_path,"cubic_scripts/R_scripts/CT_list.rds"))
 ```
 
 Add brainwide phenotypes!
@@ -96,7 +98,7 @@ ukb_df_totals <- ukb_df %>%
          CT_total=rowSums(dplyr::select(., .dots=all_of(c(ct_list)))))
 
 #write data
-write_csv(ukb_df_totals, file="data/ukb_CN_data.csv")
+write_csv(ukb_df_totals, file=paste0(base_path,"data/ukb_CN_data.csv"))
 ```
 
 
@@ -134,7 +136,7 @@ Restricting to ages 50-80, since that's when there's roughly ~100 ppts per sex
 ukb_df_age.filt <- ukb_df_totals %>%
   dplyr::filter(age_yrs >= 50 & age_yrs <= 80)
 #write data
-fwrite(ukb_df_age.filt, file="data/ukb_CN_data_agefilt.csv")
+fwrite(ukb_df_age.filt, file=paste0(base_path,"data/ukb_CN_data_agefilt.csv"))
 ```
 
 ## EDA
@@ -250,7 +252,7 @@ ukb_df_sites <- ukb_df_age.filt %>%
   mutate(sim.site = as.factor(ifelse(sex == "Male", sampled_males, sampled_females)))
 
 #write out
-write_csv(ukb_df_sites, file="data/ukb_to_model/ukb_CN_data_simsites.csv")
+write_csv(ukb_df_sites, file=paste0(base_path, "data/ukb_to_model/ukb_CN_data_simsites.csv"))
 ```
 
 ```{r}
@@ -322,66 +324,4 @@ ggplot() +
  geom_density(aes(x=centered.site_df$GMV, fill=centered.site_df$sim.site, color=centered.site_df$sim.site), alpha=.4) +
   geom_vline(aes(xintercept=centered.site_sum_df$sd_below.gmv, color=centered.site_sum_df$sim.site)) +
   geom_vline(aes(xintercept=centered.site_sum_df$sd_above.gmv, color=centered.site_sum_df$sim.site))
-```
-
-## Simulate Sites - Permutations
-
-```{r}
-set.seed(1010101)
-sim.site.list <- c("Site_A", "Site_B", "Site_C")
-n_female <- table(ukb_df_age.filt$sex)["Female"]
-n_male <- table(ukb_df_age.filt$sex)["Male"]
-
-# Sample probabilities
-male_prob <- c(0.33, 0.0825, 0.5875)
-female_prob <- c(0.33, 0.5875, 0.0825)
-
-# Create a list to store data frames
-df_list <- list()
-
-for(i in 1:5) {
-  new_col_name <- paste0("SimSite", i)
-  # Separate samples for males and females
-  sampled_males <- sample(sim.site.list, size = n_male, replace = TRUE, prob = male_prob)
-  sampled_females <- sample(sim.site.list, size = n_female, replace = TRUE, prob = female_prob)
-
-  new_df <- ukb_df_age.filt %>%
-    mutate(!!new_col_name := as.factor(ifelse(sex == "Male", sampled_males, sampled_females)))%>%
-    dplyr::select(!!new_col_name)
-  
-  # Store the data frame in the list
-  df_list[[i]] <- new_df
-}
-
-# Combine data frames into a single data frame
-ukb_df_sites_perm <- bind_cols(ukb_df_age.filt, !!!df_list)
-
-# View the final dataframe
-#names(ukb_df_sites_perm)
-```
-
-```{r}
-sim.perm.long <- ukb_df_sites_perm %>%
-  dplyr::select(sex, age_days, contains("SimSite")) %>%
-  pivot_longer(!c(sex, age_days), names_to = "permutation", names_prefix = "SimSite", values_to = "site")
-
-prop <- sim.perm.long %>%
-  group_by(permutation, site, sex) %>%
-  summarize(Count = n(), avg_age = mean(age_days)) %>%
-  group_by(permutation, site) %>%
-  mutate(Proportion = Count / sum(Count))
-
-summary.prop.male <- prop %>%
-  dplyr::filter(sex=="Male") %>%
-  group_by(site) %>%
-  summarize(avg_prop = mean(Proportion), min_prop = min(Proportion), max_prop = max(Proportion))
-
-summary.prop.male <- prop %>%
-  group_by(site, sex) %>%
-  summarize(avg_age_days = mean(avg_age), min_age = min(avg_age), max_age = max(avg_age))
-```
-
-```{r}
-#write out
-write_csv(ukb_df_sites_perm, file="data/ukb_CN_data_simsites_perm.csv")
 ```
