@@ -20,7 +20,7 @@ library(mgcv)
 library(gamlss)
 library(ComBatFamily)
 
-source("/cubic_scripts/R_scripts/gamlss_helper_funs.R")
+source("/cbica/home/gardnerm/combat-biovar/cubic_scripts/R_scripts/gamlss_helper_funs.R")
 
 ##########################################################################
 
