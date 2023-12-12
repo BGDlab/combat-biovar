@@ -32,7 +32,7 @@ then
    helpFunction
 fi
 #######################################################################################
-cd $base #to source functions correctly
+cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
 # MAKE DIRECTORIES 
 #study dir
@@ -47,6 +47,9 @@ bash_dir=$study_dir/combat_qsub_scripts
 if ! [ -d $bash_dir ]
 	then
 	mkdir $bash_dir
+	else
+	#remove old error messages if necessary
+	rm -rf $bash_dir/*.txt
 	fi
 
 #combat output obj dir
