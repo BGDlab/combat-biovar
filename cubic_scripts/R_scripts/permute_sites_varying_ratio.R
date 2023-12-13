@@ -41,7 +41,7 @@ for(prop in prop.male) {
   
   #sample for balanced site
   balanced <- df %>%
-    slice_sample(n=n_sample, weight_by=balanced_weights, replace=FALSE) %>%
+    slice_sample(n=n_sample, weight_by=ifelse(df$sex == "Male", 0.5, 0.5), replace=FALSE) %>%
     mutate(sim.site = "Balanced")
   
   #remove ppts that are already sampled
