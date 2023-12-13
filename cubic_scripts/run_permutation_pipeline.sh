@@ -1,5 +1,6 @@
 #!/bin/bash
-# Permute site assignment simulations, then qsub_combat.sh, qsub_basic_gamlss.sh, qsub_centiles.sh, gamlss_parse.sh **need to qsub this**
+# Permute site assignment simulations, then qsub_combat.sh, qsub_basic_gamlss.sh. 
+# Next steps are to run qsub_centiles.sh, gamlss_parse.sh **need to qsub this**
 
 #######################################################################################
 # SET PATHS
