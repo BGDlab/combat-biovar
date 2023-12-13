@@ -8,6 +8,8 @@ library(dplyr)
 library(data.table)
 library(tibble)
 
+print(getwd())
+
 source("R_scripts/gamlss_helper_funs.R")
 
 #pheno lists
