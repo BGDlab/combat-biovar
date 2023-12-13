@@ -6,11 +6,11 @@
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic) - also path that output csvs will be saved to
-r_script=$base/R_scripts/fit_centiles.R #path to .R script
+r_script=$base/cubic_scripts/R_scripts/fit_centiles.R #path to .R script
 csv_path=$base/data/ukb_ratios #path to data csvs
 mod_path=$base/ukb_ratios/gamlss_objs #path to gamlss .rds objs
 #######################################################################################
-cd $base #to source functions correctly
+cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
 # MAKE DIRECTORY
 
@@ -19,6 +19,9 @@ bash_dir=$base/ukb_ratios/centile_qsubs
 if ! [ -d $bash_dir ]
 	then
 	mkdir $bash_dir
+	else
+	#remove old error messages if necessary
+	rm -rf $bash_dir/*.txt
 	fi
 #######################################################################################
 #LIST POSSIBLE CONFIGS, INCLUDING NAME OF ORIGINAL RAW DATA
