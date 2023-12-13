@@ -7,29 +7,41 @@
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
-cf_script=$base/cubic_scripts/R_scripts/combat_apply_w_transform.R #path to .R script - set to apply log-transform to global vols before combatting
 save_path=$base/data/lifespan
 #######################################################################################
 helpFunction()
 {
    echo ""
-   echo "Usage: $0 -c data.csv"
+   echo "Usage: $0 -c data.csv -t true"
    echo -e "\t-c Path to data as .csv file"
+   echo -e "\t-t true/false to log-transform"
    exit 1 # Exit script after printing help
 }
 #######################################################################################
 # GET ARGS
-while getopts ":c:" opt
+while getopts ":c:t:" opt
 do
    case "$opt" in
 	c ) csv="$OPTARG" ;;
+	t ) transform="$OPTARG" ;;
    esac
 done
 
-if [ -z "$csv" ]
+if [ -z "$csv" ] || [ -z "$transform" ]
 then
-   echo "provide path to data";
+   echo "provide: path to data and whether to log-transform global vols before running ComBat";
    helpFunction
+fi
+#######################################################################################
+# DEFINE COMBAT .R SCRIPT (DEPENDING ON TRANSFORMATION OPTION)
+if [ "$transform" = true ]
+then
+cf_script=$base/cubic_scripts/R_scripts/combat_apply_w_transform.R #path to .R script - set to apply log-transform to global vols before combatting
+elif [ "$transform" = false ]
+then
+cf_script=$base/cubic_scripts/R_scripts/combat_apply.R #path to .R script
+else
+echo "Help! Invalid selection for transform true/false"
 fi
 #######################################################################################
 cd $base/cubic_scripts #to source functions correctly
