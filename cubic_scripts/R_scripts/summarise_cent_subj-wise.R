@@ -1,6 +1,14 @@
+
 #subject-wise centile and Z score error summaries 
 #from permuted dfs (output by qsub_perm_centiles.sh) or 
 #M:F varying dfs (output by qsub_ratio_centiles.sh
+
+########################################
+## Expects args:
+# "perm" vs "prop"
+# number of perm/prop iteration
+# path to csvs (both read and save)
+########################################
 
 #LOAD PACKAGES
 library(dplyr)

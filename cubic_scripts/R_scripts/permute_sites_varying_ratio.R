@@ -47,9 +47,11 @@ for(prop in prop.male) {
       df_male_remaining <- anti_join(df_male, balanced_m)
   
       #sample for imbalanced site
+      if (prop > 0) {
       imbalanced_m <- df_male_remaining %>%
         slice_sample(n=round(n_sample*prop), replace=FALSE) %>%
         mutate(sim.site = "Imbalanced")
+      }
       
   #sample females
   df_female <- df %>%
@@ -63,14 +65,22 @@ for(prop in prop.male) {
       df_female_remaining <- anti_join(df_female, balanced_f)
       
       #sample for imbalanced site
+      if ((1-prop) > 0) {
       imbalanced_f <- df_female_remaining %>%
         slice_sample(n=round(n_sample*(1-prop)), replace=FALSE) %>%
         mutate(sim.site = "Imbalanced")
-  
+      }
+
   #assign to df
-  new_df <- rbind(balanced_m, imbalanced_m, balanced_f, imbalanced_f)
-  new_df <- new_df %>%
-    mutate(sim.site = as.factor(sim.site))
+      if (prop == 0) {
+        new_df <- rbind(balanced_m, balanced_f, imbalanced_f)
+      } else if (prop == 1) {
+        new_df <- rbind(balanced_m, balanced_f, imbalanced_m)
+      } else {
+        new_df <- rbind(balanced_m, balanced_f, imbalanced_m, imbalanced_f)
+      }
+    new_df <- new_df %>%
+      mutate(sim.site = as.factor(sim.site))
   
   #save out csv w count number in filename
   n_count <- str_pad(i, 2, pad = "0")
