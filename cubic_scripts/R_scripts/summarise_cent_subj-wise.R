@@ -1,4 +1,14 @@
-#subject-wise centile and Z score error summaries from varying M:F dataframes
+
+#subject-wise centile and Z score error summaries 
+#from permuted dfs (output by qsub_perm_centiles.sh) or 
+#M:F varying dfs (output by qsub_ratio_centiles.sh
+
+########################################
+## Expects args:
+# "perm" vs "prop"
+# number of perm/prop iteration
+# path to csvs (both read and save)
+########################################
 
 #LOAD PACKAGES
 library(dplyr)
@@ -16,20 +26,41 @@ pheno.list <- readRDS(file="R_scripts/pheno_list.rds")
 
 #get args
 args <- commandArgs(trailingOnly = TRUE)
-prop_n <- str_pad(args[1], 2, pad = "0") #each prop. as different qsub
-path_to_csvs <- args[2]
-save_path <- args[3]
-#def how to find correct csvs
-prop_str <- paste0("prop-", prop_n)
 
-#READ INTO DATAFRAME
-ratio_predictions <- get.predictions.ratio(prop_str, df_path = path_to_csvs)
+##### PERMUTATION PIPELINE RESULTS #####
+# parse outputs from 
+
+if (arg[1] == "perm"){
+
+  perm_n <- str_pad(args[2], 3, pad = "0") #each perm as different qsub
+  path_to_csvs <- args[3]
+  #def how to find correct csvs
+  str <- paste0("perm-", perm_n)
+  
+  #READ INTO DATAFRAME
+  predictions <- get.predictions.perm(str, df_path = path_to_csvs)
+  
+}
+
+##### VARYING M:F PROPORTION PIPELINE RESULTS #####
+if (arg[1] == "prop"){
+  
+  prop_n <- str_pad(args[2], 2, pad = "0") #each prop. as different qsub
+  path_to_csvs <- args[3]
+  #def how to find correct csvs
+  prop_str <- paste0("prop-", prop_n)
+  
+  #READ INTO DATAFRAME
+  predictions <- get.predictions.ratio(prop_str, df_path = path_to_csvs)
+}
+
+##### CALC AND SAVE #####
 
 #GET CENTILE & Z ERRORS
-ratio_pred_err <- get.diffs(ratio_predictions, pheno_list=pheno.list)
-
+pred_err <- get.diffs(predictions, pheno_list=pheno.list)
+  
 #CALC SUBJECT-WISE MEANS
-subj_mean_preds <- means.by.subj(ratio_pred_err, pheno_list=pheno.list)
-
+subj_mean_preds <- means.by.subj(predictions, pheno_list=pheno.list)
+  
 #SAVE RESULTS
-fwrite(subj_mean_preds, paste0(save_path, "/", prop_str, "_subj_pred.csv"))
+fwrite(subj_mean_preds, paste0(path_to_csvs, "/subject-wise/", str, "_subj_pred.csv"))
