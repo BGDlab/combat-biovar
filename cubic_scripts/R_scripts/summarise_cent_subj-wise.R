@@ -14,6 +14,7 @@
 library(dplyr)
 library(data.table)
 library(tibble)
+library(stringr)
 
 source("R_scripts/gamlss_helper_funs.R")
 
@@ -43,7 +44,7 @@ if (args[1] == "perm"){
 }
 
 ##### VARYING M:F PROPORTION PIPELINE RESULTS #####
-if (arg[1] == "prop"){
+if (args[1] == "prop"){
   
   prop_n <- str_pad(args[2], 2, pad = "0") #each prop. as different qsub
   path_to_csvs <- args[3]
