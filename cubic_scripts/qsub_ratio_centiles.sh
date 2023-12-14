@@ -1,6 +1,8 @@
 #!/bin/bash
 # Apply ComFam() with different arguments to specified dataset
 
+#writes 3 csvs per loop
+
 #######################################################################################
 # GET ARGS
 if [ $# -lt 1 ]
@@ -21,14 +23,14 @@ cd $base #to source functions correctly
 # MAKE DIRECTORY
 
 #qsub script & job outputs
-bash_dir=$base/ukb_permute/centile_qsubs
+bash_dir=$base/ukb_ratios/centile_qsubs
 if ! [ -d $bash_dir ]
 	then
 	mkdir $bash_dir
 	fi
 
 #csv outputs outputs
-save_dir=$base/ukb_permute/perm_centile_csvs
+save_dir=$base/ukb_ratios/perm_centile_csvs
 if ! [ -d $save_dir ]
 	then
 	mkdir $save_dir

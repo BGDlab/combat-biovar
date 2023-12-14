@@ -3,7 +3,7 @@
 #Fit GAMLSS growth chart models for each phenotype
 #pass as argument EITHER path to .csv containing data OR directory of .csvs to iterate across
 
-#STEP 3 OF VALIDATION PIPELINE#
+#STEP 3 OF ANALYSIS PIPELINE#
 
 #######################################################################################
 # SET PATHS

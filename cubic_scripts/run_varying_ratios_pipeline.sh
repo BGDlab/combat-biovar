@@ -9,15 +9,16 @@ og_data=$base/data/ukb_CN_data_agefilt.csv #path to original data for which site
 save_data_path=$base/data/ukb_ratios
 
 # paths to R scripts
-permute_script=$base/cubic_scripts/R_scripts/permute_sites_varying_ratio.R
-cf_script=$base/cubic_scripts/R_scripts/combat_apply.R
-mod_script=$base/cubic_scripts/R_scripts/fit_perm_basic_mod.R
+r_base=$base/cubic_scripts/R_scripts
+permute_script=$r_base/permute_sites_varying_ratio.R
+cf_script=$r_base/combat_apply.R
+mod_script=$r_base/fit_perm_basic_mod.R
+centile_script=$r_base/fit_centiles.R
 #######################################################################################
 cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
 #######################################################################################
 # MAKE DIRECTORIES
-
 if ! [ -d $save_data_path ]
 	then
 	mkdir $save_data_path
@@ -64,6 +65,19 @@ if ! [ -d $gamlss_dir ]
 	mkdir $gamlss_dir
 	fi
 
+#centile qsubs
+cent_bash_dir=$study_dir/centile_qsubs
+if ! [ -d $cent_bash_dir ]
+	then
+	mkdir $cent_bash_dir
+	fi
+
+#centile output csvs
+cent_save_dir=$study_dir/perm_centile_csvs
+if ! [ -d $cent_save_dir ]
+	then
+	mkdir $cent_save_dir
+	fi
 #######################################################################################
 #######################################################################################
 # SUBMIT PERMUTAITON JOBS
@@ -241,6 +255,55 @@ do
 	exit 2
     fi
 	echo "${count_mods} gamlss models found"
+    sleep 60    # wait for 1min before detecting again
+done
+echo "getting centiles"
+######################################################################################
+# SUBMIT CENTILE MODELING JOBS
+
+config_list_plusraw="cf_data cf.lm_data cf.gam_data cf.gamlss_data raw"
+
+#LIST permutations
+for p in $(seq -f "%02g" 1 11) #11 sims
+do
+	#iterate through combat configs
+	for config in $config_list_plusraw
+	do
+		f_string=prop-${p}-${config}
+		echo "Prepping $f_string"
+		#write bash script
+		bash_script=$cent_bash_dir/${f_string}_cent.sh
+		touch $bash_script
+		
+		echo "singularity run --cleanenv $img Rscript --save $centile_script $save_data_path $gamlss_dir $cent_save_dir $f_string" > $bash_script
+
+		#qsub bash script
+		qsub -N $f_string -o $bash_dir/${f_string}_out.txt -e $bash_dir/${f_string}_err.txt $bash_script
+	done
+done
+#######################################################################################
+# CHECK FOR OUTPUTS
+#expect 3 csvs per centile script iteration
+num_configs=$(echo $config_list_plusraw | wc -w)
+cent_csv_count=$(${num_configs}*11*3)
+echo "looking for ${cent_csv_count} output csvs"
+
+SECONDS=0
+
+while :    # while TRUE
+do
+	count_cent=$(find $cent_save_dir -type f -name '*.csv' | wc -l)
+    # detect the expected output from 1st job
+    if [ $count_cent -eq $cent_csv_count ] 
+	then    # 1st job successfully finished
+        echo "${count_cent} gamlss models written"
+        break
+    elif [ $SECONDS -gt 172800 ] #kill if taking more than 2 days
+	then
+	echo "taking too long, abort!"
+	exit 2
+    fi
+	echo "${count_cent} csvs found"
     sleep 60    # wait for 1min before detecting again
 done
 

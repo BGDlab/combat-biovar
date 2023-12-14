@@ -501,7 +501,7 @@ get.diffs <- function(x, pheno_list){
     ungroup() %>%
     dplyr::filter(dataset != "raw") %>% #drop raw
     dplyr::mutate(across(starts_with("diff_"), 
-                         .fns = list(abs(.)),
+                         .fns = list( ~ abs(.)),
                          .names = "abs.{col}")) #new set of cols w abs. err vals
   return(df)
 }
