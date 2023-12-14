@@ -30,7 +30,7 @@ args <- commandArgs(trailingOnly = TRUE)
 ##### PERMUTATION PIPELINE RESULTS #####
 # parse outputs from 
 
-if (arg[1] == "perm"){
+if (args[1] == "perm"){
 
   perm_n <- str_pad(args[2], 3, pad = "0") #each perm as different qsub
   path_to_csvs <- args[3]
