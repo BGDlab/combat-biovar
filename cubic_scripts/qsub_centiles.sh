@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#STEP 4 OF VALIDATION PIPELINE#
+#STEP 4 OF ANALYSIS PIPELINE#
 
 #######################################################################################
 # SET PATHS

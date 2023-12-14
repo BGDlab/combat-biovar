@@ -1,7 +1,7 @@
 #!/bin/bash
 # Apply ComFam() with different arguments to specified dataset
 
-#STEP 2 OF VALIDATION PIPELINE#
+#STEP 2 OF ANALYSIS PIPELINE#
 
 #######################################################################################
 # SET PATHS
