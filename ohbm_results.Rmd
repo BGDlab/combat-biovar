@@ -366,10 +366,12 @@ p_annotate <- annotate_figure(p, top = text_grob("Figure 1. Standardized effect 
 
 ggsave("figs/male_variance_ohbm_big.jpeg", p_annotate, width=7, height=8)
 ```
-# Replication
+# Replication 
+Permuting site assignments 3x
 
 ```{r}
-permutation_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/ukb_perm_csvs"
+#path to csvs scp'd from cubic
+permutation_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives/ukb_perm_csvs"
 ```
 
 ## CENTILES

@@ -445,3 +445,100 @@ get.og.data.centiles <- function(gamlss.rds.file, og.data, get.zscores = FALSE){
 
 ### UN-LOG-SCALE - used to un-transform log_age values
 un_log <- function(x){return(10^(x))}
+
+### PARSE ACROSS VARYING M:F PERMUTAITON CENTILE CSVS
+#loads prediction csvs and returns as list of dataframes
+get.predictions.ratio <- function(x, df_path){
+  df <- data.frame() #new empty dataframe
+  pred.csvs.p <- list.files(path = df_path, pattern = paste0(x, ".+_predictions.csv"), full.names = TRUE)
+  for (file in pred.csvs.p) {
+    # Read each CSV file
+    data <- fread(file)
+    
+    # Add a "Source_File" column with the file name
+    data <- data %>%
+      mutate(Source_File = as.factor(basename(file)),
+             prop = as.factor(x)) %>%
+      mutate(dataset = gsub("_data|_predictions.csv|prop-|[0-9]|-", "", Source_File))
+    
+    # Bind the data to the combined dataframe
+    df <- bind_rows(df, data, .id = "File_ID")
+  }
+  return(df)
+}
+
+### PARSE ACROSS PERMUTAITON CENTILE CSVS
+#loads prediction csvs and returns as list of dataframes
+get.predictions.perm <- function(x){
+  df <- data.frame() #new empty dataframe
+  pred.csvs.p <- list.files(path = ratio_path, pattern = paste0(x, ".+_predictions.csv"), full.names = TRUE)
+  for (file in pred.csvs.p) {
+    # Read each CSV file
+    data <- fread(file)
+    
+    # Add a "Source_File" column with the file name
+    data <- data %>%
+      mutate(Source_File = as.factor(basename(file)),
+             perm = as.factor(x)) %>%
+      mutate(dataset = gsub("_data|_predictions.csv|perm-|[0-9]|-", "", Source_File))
+    
+    # Bind the data to the combined dataframe
+    df <- bind_rows(df, data, .id = "File_ID")
+  }
+  return(df)
+}
+
+### CALC CENTILE ERROR
+#requires that pheno_list obj be defined, assumes ref. level (non-combatted data) named "raw"
+get.diffs <- function(x, pheno_list){
+  df <- x %>%
+    mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
+    mutate(dataset = relevel(dataset, ref= "raw")) %>%
+    arrange(dataset) %>%
+    group_by(participant) %>%
+    dplyr::mutate(across(all_of(pheno_list), ~ (. - first(.)), .names = "diff_{.col}")) %>% #centile err
+    dplyr::mutate(across(ends_with(".z"), ~ (. - first(.)), .names = "diff_{.col}")) %>% #z-score err
+    ungroup() %>%
+    dplyr::filter(dataset != "raw") %>% #drop raw
+    dplyr::mutate(across(starts_with("diff_"), 
+                         .fns = list(abs(.)),
+                         .names = "abs.{col}")) #new set of cols w abs. err vals
+  return(df)
+}
+
+### GET W/IN SUBJ MEAN SCORES AND ERRS
+#requires that pheno_list obj be defined
+means.by.subj <- function(df, pheno_list){
+  #def. columns to average across
+  pheno_list.z <- paste0(pheno_list, ".z")
+  pheno_list.diff <- paste0("diff_", pheno_list)
+  pheno_list.diff.z <- paste0("diff_", pheno_list, ".z")
+  pheno_list.abs.diff <- paste0("abs.diff_", pheno_list)
+  pheno_list.abs.diff.z <- paste0("abs.diff_", pheno_list, ".z")
+  
+  mean.diffs.subj <- df %>%
+    mutate(dataset = factor(dataset, levels = c("cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+    group_by(dataset) %>%
+    rowwise() %>%
+    #centile
+    dplyr::mutate(mean_centile = mean(c_across(pheno_list))) %>%
+    dplyr::select(!pheno_list) %>% #drop cols that have already been averaged
+    #z-score
+    dplyr::mutate(mean_z = mean(c_across(pheno_list.z))) %>%
+    dplyr::select(!pheno_list.z) %>%
+    #diff.centile
+    dplyr::mutate(mean_cent_diff = mean(c_across(pheno_list.diff))) %>%
+    dplyr::select(!pheno_list.diff) %>%
+    #diff.z
+    dplyr::mutate(mean_z_diff = mean(c_across(pheno_list.diff.z))) %>%
+    dplyr::select(!pheno_list.diff.z) %>%
+    #abs.diff.centile
+    dplyr::mutate(mean_cent_abs.diff = mean(c_across(pheno_list.abs.diff))) %>%
+    dplyr::select(!pheno_list.abs.diff) %>%
+    #abs.diff.z
+    #diff.z
+    dplyr::mutate(mean_z_abs.diff = mean(c_across(pheno_list.abs.diff.z))) %>%
+    dplyr::select(!pheno_list.abs.diff.z)
+    
+  return(mean.diffs.subj)
+}

@@ -35,21 +35,40 @@ n_sample <- plyr::round_any((2/3)*n_min, 100, f=floor)
 #control # proportions to complete
 for(prop in prop.male) {
   
-  #sample for balanced site
-  balanced <- df %>%
-    slice_sample(n=n_sample, weight_by=ifelse(sex == "Male", 0.5, 0.5), replace=FALSE) %>%
-    mutate(sim.site = "Balanced")
+  #sample males
+  df_male <- df %>%
+    dplyr::filter(sex == "Male")
+    #sample for balanced site
+    balanced_m <- df_male %>%
+      slice_sample(n=round(n_sample*0.5), replace=FALSE) %>%
+      mutate(sim.site = "Balanced")
+    
+      #remove ppts that are already sampled
+      df_male_remaining <- anti_join(df_male, balanced_m)
   
-  #remove ppts that are already sampled
-  df_remaining <- anti_join(df, balanced)
-  
-  #sample for imbalanced site
-  imbalanced <- df_remaining %>%
-    slice_sample(n=n_sample, weight_by=ifelse(sex == "Male", prop, (1-prop)), replace=FALSE)%>%
-    mutate(sim.site = "Imbalanced")
+      #sample for imbalanced site
+      imbalanced_m <- df_male_remaining %>%
+        slice_sample(n=round(n_sample*prop), replace=FALSE) %>%
+        mutate(sim.site = "Imbalanced")
+      
+  #sample females
+  df_female <- df %>%
+    dplyr::filter(sex == "Female")
+      #sample for balanced site
+      balanced_f <- df_female %>%
+        slice_sample(n=round(n_sample*0.5), replace=FALSE) %>%
+        mutate(sim.site = "Balanced")
+      
+      #remove ppts that are already sampled
+      df_female_remaining <- anti_join(df_female, balanced_f)
+      
+      #sample for imbalanced site
+      imbalanced_f <- df_female_remaining %>%
+        slice_sample(n=round(n_sample*(1-prop)), replace=FALSE) %>%
+        mutate(sim.site = "Imbalanced")
   
   #assign to df
-  new_df <- rbind(balanced, imbalanced)
+  new_df <- rbind(balanced_m, imbalanced_m, balanced_f, imbalanced_f)
   new_df <- new_df %>%
     mutate(sim.site = as.factor(sim.site))
   

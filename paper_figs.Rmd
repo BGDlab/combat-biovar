@@ -35,7 +35,7 @@ dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat
 dataset_colors <- c(cf = "#3D5983FF", cf.lm = "#5A8A54FF", cf.gam ="#262626FF", cf.gamlss ="#CFB023FF")
 
 #ukb data from ohbm_results.Rmd
-cent_err.p <- readRDS("data/ukb_perm_csvs/centile_errors.RDS")
+cent_err.p <- readRDS("derivatives/ukb_perm_csvs/centile_errors.RDS")
 z_diffs2 <- readRDS("ukb_basic/z_diffs.RDS")
 cent.diffs3 <- readRDS("ukb_basic/cent_diffs.RDS")
 ukb_data <- fread("data/ukb_to_model/ukb_CN_data_simsites.csv")
