@@ -31,7 +31,7 @@ cd $base/cubic_scripts #to source functions correctly
 # MAKE DIRECTORY FOR OUTPUTS
 mkdir $csv_path/subject-wise
 #######################################################################################
-for n_prop in $2 #input number of simulations
+for n_prop in $(seq 1 $2) #input number of simulations
 do
 	echo "Prepping prop-$n_prop"
 	#write bash script
