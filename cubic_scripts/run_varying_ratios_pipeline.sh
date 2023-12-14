@@ -21,6 +21,8 @@ cd $base/cubic_scripts #to source functions correctly
 if ! [ -d $save_data_path ]
 	then
 	mkdir $save_data_path
+	else
+	rm -f $save_data_path/*.*
 	fi
 
 #study dir
@@ -35,6 +37,8 @@ perm_bash_dir=$study_dir/perm_qsub_scripts
 if ! [ -d $perm_bash_dir ]
 	then
 	mkdir $perm_bash_dir
+	else
+        rm -f $perm_bash_dir/*.*
 	fi
 	
 #combat qsub script & outputs
@@ -42,12 +46,16 @@ cf_bash_dir=$study_dir/combat_qsub_scripts
 if ! [ -d $cf_bash_dir ]
 	then
 	mkdir $cf_bash_dir
+	else
+        rm -f $cf_bash_dir/*.*
 	fi
 
 #combat output obj dir
 if ! [ -d ${save_data_path}/combat_objs ]
 	then
 	mkdir ${save_data_path}/combat_objs
+	else
+        rm -f $save_data_path/combat_objs/*.*
 	fi
 
 #qsub script & outputs
@@ -55,6 +63,8 @@ gamlss_bash_dir=$study_dir/qsub_scripts
 if ! [ -d $gamlss_bash_dir ]
 	then
 	mkdir $gamlss_bash_dir
+	else
+        rm -f $gamlss_bash_dir/*.*
 	fi
 
 #model outputs
@@ -62,6 +72,8 @@ gamlss_dir=$study_dir/gamlss_objs
 if ! [ -d $gamlss_dir ]
 	then
 	mkdir $gamlss_dir
+	else
+        rm -f $gamlss_dir/*.*
 	fi
 
 #######################################################################################
