@@ -29,9 +29,12 @@ bash_dir=$study_dir/centile_qsubs
 cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
 # MAKE DIRECTORY FOR OUTPUTS
-mkdir $csv_path/subject-wise
+if ! [ -d $csv_path/subject-wise ]
+	then
+	mkdir $csv_path/subject-wise
+	fi
 #######################################################################################
-for n_prop in $(seq 1 $2) #input number of simulations
+for n_prop in $(seq -f "%02g" 1 $2) #input number of simulations
 do
 	echo "Prepping prop-$n_prop"
 	#write bash script
