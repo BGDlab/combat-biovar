@@ -44,5 +44,5 @@ do
 	echo "singularity run --cleanenv $img Rscript --save $r_script $1 $n_prop $csv_path" > $bash_script
 
 	#qsub bash script
-	qsub -N prop-${n_prop}_sum -o $bash_dir/prop-${n_prop}_sum_out.txt -e $bash_dir/prop-${n_prop}_sum_err.txt $bash_script
+	qsub -N prop-${n_prop}_sum -o $bash_dir/prop-${n_prop}_sum_out.txt -e $bash_dir/prop-${n_prop}_sum_err.txt -l h_vmem=64G,s_vmem=64G $bash_script
 done
