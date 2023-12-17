@@ -469,9 +469,9 @@ get.predictions.ratio <- function(x, df_path){
 
 ### PARSE ACROSS PERMUTAITON CENTILE CSVS
 #loads prediction csvs and returns as list of dataframes
-get.predictions.perm <- function(x){
+get.predictions.perm <- function(x, df_path){
   df <- data.frame() #new empty dataframe
-  pred.csvs.p <- list.files(path = ratio_path, pattern = paste0(x, ".+_predictions.csv"), full.names = TRUE)
+  pred.csvs.p <- list.files(path = df_path, pattern = paste0(x, ".+_predictions.csv"), full.names = TRUE)
   for (file in pred.csvs.p) {
     # Read each CSV file
     data <- fread(file)
