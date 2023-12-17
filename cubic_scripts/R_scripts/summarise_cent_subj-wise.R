@@ -34,9 +34,9 @@ args <- commandArgs(trailingOnly = TRUE)
 if (args[1] == "perm"){
 
   perm_n <- str_pad(args[2], 3, pad = "0") #each perm as different qsub
-  path_to_csvs <- args[3]
+  path_to_csvs <- as.character(args[3])
   #def how to find correct csvs
-  str <- paste0("perm-", perm_n)
+  str <- as.character(paste0("perm-", perm_n))
   
   #READ INTO DATAFRAME
   predictions <- get.predictions.perm(str, df_path = path_to_csvs)
@@ -49,10 +49,10 @@ if (args[1] == "prop"){
   prop_n <- str_pad(args[2], 2, pad = "0") #each prop. as different qsub
   path_to_csvs <- args[3]
   #def how to find correct csvs
-  prop_str <- paste0("prop-", prop_n)
+  str <- as.character(paste0("prop-", prop_n))
   
   #READ INTO DATAFRAME
-  predictions <- get.predictions.ratio(prop_str, df_path = path_to_csvs)
+  predictions <- get.predictions.ratio(str, df_path = path_to_csvs)
 }
 
 ##### CALC AND SAVE #####
@@ -61,7 +61,10 @@ if (args[1] == "prop"){
 pred_err <- get.diffs(predictions, pheno_list=pheno.list)
 
 #CALC SUBJECT-WISE MEANS
-#subj_mean_preds <- means.by.subj(pred_err, pheno_list=pheno.list)
+subj_mean_preds <- means.by.subj(pred_err, pheno_list=pheno.list)
   
 #SAVE RESULTS
-#fwrite(subj_mean_preds, paste0(path_to_csvs, "/subject-wise/", str, "_subj_pred.csv"))
+f <- paste0(path_to_csvs, "/subject-wise/", str, "_subj_pred.csv")
+print(paste("writing results to", f))
+fwrite(subj_mean_preds, file=f)
+print("DONE")
