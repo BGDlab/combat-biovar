@@ -137,7 +137,7 @@ print(names(cent.list[1:4]))
 
 #compile into dataframe
 cent.df <- df %>%
-  dplyr::select(participant, sex, age_days)
+  dplyr::select(participant, sex, age_days, sim.site)
 
 #loop through centiles for each phenotype
 for (name in names(cent.list)){
