@@ -312,7 +312,7 @@ done
 # CHECK FOR OUTPUTS
 #expect 3 csvs per centile script iteration
 num_configs=$(echo $config_list_plusraw | wc -w)
-cent_csv_count=$(${num_configs}*11*3)
+cent_csv_count=$((${num_configs}*11*3))
 echo "looking for ${cent_csv_count} output csvs"
 
 SECONDS=0
