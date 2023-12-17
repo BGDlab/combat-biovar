@@ -14,6 +14,7 @@ permute_script=$r_base/permute_sites_varying_ratio.R
 cf_script=$r_base/combat_apply.R
 mod_script=$r_base/fit_perm_basic_mod.R
 centile_script=$r_base/fit_centiles.R
+cent_subj_parse=$r_base/summarise_cent_subj-wise.R 
 #######################################################################################
 cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
@@ -39,7 +40,7 @@ if ! [ -d $perm_bash_dir ]
 	then
 	mkdir $perm_bash_dir
 	else
-        rm -f $perm_bash_dir/*.*
+    rm -f $perm_bash_dir/*.*
 	fi
 	
 #combat qsub script & outputs
@@ -48,7 +49,7 @@ if ! [ -d $cf_bash_dir ]
 	then
 	mkdir $cf_bash_dir
 	else
-        rm -f $cf_bash_dir/*.*
+    rm -f $cf_bash_dir/*.*
 	fi
 
 #combat output obj dir
@@ -56,7 +57,7 @@ if ! [ -d ${save_data_path}/combat_objs ]
 	then
 	mkdir ${save_data_path}/combat_objs
 	else
-        rm -f $save_data_path/combat_objs/*.*
+    rm -f $save_data_path/combat_objs/*.*
 	fi
 
 #qsub script & outputs
@@ -65,7 +66,7 @@ if ! [ -d $gamlss_bash_dir ]
 	then
 	mkdir $gamlss_bash_dir
 	else
-        rm -f $gamlss_bash_dir/*.*
+    rm -f $gamlss_bash_dir/*.*
 	fi
 
 #model outputs
@@ -74,7 +75,7 @@ if ! [ -d $gamlss_dir ]
 	then
 	mkdir $gamlss_dir
 	else
-        rm -f $gamlss_dir/*.*
+    rm -f $gamlss_dir/*.*
 	fi
 
 #centile qsubs
@@ -82,6 +83,8 @@ cent_bash_dir=$study_dir/centile_qsubs
 if ! [ -d $cent_bash_dir ]
 	then
 	mkdir $cent_bash_dir
+	else
+    rm -f $cent_bash_dir/*.*
 	fi
 
 #centile output csvs
@@ -89,7 +92,19 @@ cent_save_dir=$study_dir/perm_centile_csvs
 if ! [ -d $cent_save_dir ]
 	then
 	mkdir $cent_save_dir
+	else
+    rm -f $cent_save_dir/*.*
 	fi
+
+# ... with subdir for subject-level outputs
+cent_subj_dir=$cent_save_dir/subject-wise
+if ! [ -d $cent_subj_dir ]
+	then
+	mkdir $cent_subj_dir
+	else
+    rm -f $cent_subj_dir/*.*
+	fi
+
 #######################################################################################
 #######################################################################################
 # SUBMIT PERMUTAITON JOBS
@@ -290,7 +305,7 @@ do
 		echo "singularity run --cleanenv $img Rscript --save $centile_script $save_data_path $gamlss_dir $cent_save_dir $f_string" > $bash_script
 
 		#qsub bash script
-		qsub -N $f_string -o $bash_dir/${f_string}_out.txt -e $bash_dir/${f_string}_err.txt $bash_script
+		qsub -N $f_string -o $cent_bash_dir/${f_string}_out.txt -e $cent_bash_dir/${f_string}_err.txt $bash_script
 	done
 done
 #######################################################################################
@@ -308,7 +323,7 @@ do
     # detect the expected output from 1st job
     if [ $count_cent -eq $cent_csv_count ] 
 	then    # 1st job successfully finished
-        echo "${count_cent} gamlss models written"
+        echo "all ${count_cent} csvs written"
         break
     elif [ $SECONDS -gt 172800 ] #kill if taking more than 2 days
 	then
@@ -319,4 +334,46 @@ do
     sleep 60    # wait for 1min before detecting again
 done
 
+echo "getting subject-level summary stats"
+
+######################################################################################
+# SUBMIT SUBJ-LEVEL SUMMARY JOBS
+
+#LIST permutations
+for p in $(seq -f "%02g" 1 11) #11 sims
+do
+	echo "Prepping prop-$n_prop"
+	#write bash script
+	bash_script=$bash_dir/prop-${n_prop}_cent_sum.sh
+	touch $bash_script
+		
+	echo "singularity run --cleanenv $img Rscript --save $cent_subj_parse $n_prop $cent_save_dir" > $bash_script
+
+	#qsub bash script
+	qsub -N prop-${n_prop}_sum -o $cent_bash_dir/prop-${n_prop}_sum_out.txt -e $cent_bash_dir/prop-${n_prop}_sum_err.txt -l h_vmem=64G,s_vmem=64G $bash_script
+
+done
+#######################################################################################
+# CHECK FOR OUTPUTS
+#expect 11 csvs
+echo "looking for 11 output csvs"
+
+SECONDS=0
+
+while :    # while TRUE
+do
+	count_cent_subj=$(find $cent_subj_dir -type f -name '*.csv' | wc -l)
+    # detect the expected output from 1st job
+    if [ $count_cent_subj -eq 11 ] 
+	then    # 1st job successfully finished
+        echo "all ${count_cent_subj} csvs written"
+        break
+    elif [ $SECONDS -gt 172800 ] #kill if taking more than 2 days
+	then
+	echo "taking too long, abort!"
+	exit 2
+    fi
+	echo "${count_cent_subj} csvs found"
+    sleep 60    # wait for 1min before detecting again
+done
 echo "SUCCESS! All done :)"
