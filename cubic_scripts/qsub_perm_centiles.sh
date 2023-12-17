@@ -26,6 +26,8 @@ bash_dir=$base/ukb_permute/centile_qsubs
 if ! [ -d $bash_dir ]
 	then
 	mkdir $bash_dir
+	else
+	rm -rf $bash_dir/*.*
 	fi
 
 #csv outputs outputs
