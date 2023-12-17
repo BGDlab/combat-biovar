@@ -176,6 +176,7 @@ get.moment.dist <- function(gamlss.rds.file) {
 get.var.at.mean.age <- function(gamlss.rds.file, og_df) {
   #USE WITH sapply(USE.NAMES=TRUE) to keep file names with values!
   gamlss.rds.file <- as.character(gamlss.rds.file)
+  print(gamlss.rds.file)
   gamlss.obj <- readRDS(gamlss.rds.file)
   
   #get mean age
