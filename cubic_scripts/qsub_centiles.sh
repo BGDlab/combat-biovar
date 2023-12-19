@@ -23,10 +23,20 @@ if ! [ -d $bash_dir ]
 	#remove old error messages if necessary
 	rm -rf $bash_dir/*.txt
 	fi
+
+#csv outputs
+save_path=$base/lifespan/centile_csvs
+if ! [ -d $save_path ]
+	then
+	mkdir $save_path
+	else
+	#remove old error messages if necessary
+	rm -rf $save_path/*.*
+	fi
 #######################################################################################
 #LIST POSSIBLE CONFIGS, INCLUDING NAME OF ORIGINAL RAW DATA
 #be sure to include "data" at the end of the string so refA options aren't confused
-config_list="cf.gam cf.gamlss" #cf_data cf.lm_data cf.gam_data cf.gamlss_data #cf.lm_refA_data cf.gam_refA_data cf.gamlss_refA_data ukb_CN_data
+config_list="site-level_cf.gam site-level_cf.gamlss imp-sites_cf.gamlss imp-sites_cf.gam" #cf_data cf.lm_data cf.gam_data cf.gamlss_data #cf.lm_refA_data cf.gam_refA_data cf.gamlss_refA_data ukb_CN_data
 #######################################################################################
 for config in $config_list
 do
@@ -35,7 +45,7 @@ do
 	bash_script=$bash_dir/${config}_cent.sh
 	touch $bash_script
 	
-	echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path $mod_path $base/lifespan $config" > $bash_script
+	echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path $mod_path $save_path $config" > $bash_script
 
 	#qsub bash script
 	qsub -N $config -o $bash_dir/${config}_out.txt -e $bash_dir/${config}_err.txt $bash_script
