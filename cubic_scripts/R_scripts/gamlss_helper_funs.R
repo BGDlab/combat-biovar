@@ -193,6 +193,38 @@ get.var.at.mean.age <- function(gamlss.rds.file, og_df) {
              "pheno" = as.character(gamlss.obj$mu.terms[[2]]))
   return(var.df)
 }
+get.var.across.ages.lbcc <- function(gamlss.rds.file, og_df) {
+  #sim data for centiles
+  minAge <- min(df$log_age)
+  maxAge <- max(df$log_age)
+  ageRange <- seq(minAge, maxAge, 0.5)
+  
+  #sim data
+  dataToPredictM <- data.frame(log_age=ageRange,
+                               sexMale=c(rep(1, length(ageRange))),
+                               fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
+                               sex.age=ageRange)
+  dataToPredictM$TBV <- mean.tb.sim(df, "Male", ageRange, "TBV")
+  dataToPredictM$Vol_total <- mean.tb.sim(df, "Male", ageRange, "Vol_total")
+  dataToPredictM$SA_total <- mean.tb.sim(df, "Male", ageRange, "SA_total")
+  dataToPredictM$CT_total <- mean.tb.sim(df, "Male", ageRange, "CT_total")
+  
+  dataToPredictF <- data.frame(log_age=ageRange,
+                               sexMale=c(rep(0, length(ageRange))),
+                               fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
+                               sex.age=c(rep(0, length(ageRange))))
+  dataToPredictF$TBV <- mean.tb.sim(df, "Female", ageRange, "TBV")
+  dataToPredictF$Vol_total <- mean.tb.sim(df, "Female", ageRange, "Vol_total")
+  dataToPredictF$SA_total <- mean.tb.sim(df, "Female", ageRange, "SA_total")
+  dataToPredictF$CT_total <- mean.tb.sim(df, "Female", ageRange, "CT_total")
+  
+  # List of centiles for the fan plot
+  var.df <- data.frame("m.var" = exp(predict(gamlss.obj, what="sigma", data = og_df, newdata=dataToPredictM)),
+                       "f.var" = exp(predict(gamlss.obj, what="sigma", data = og_df, newdata=dataToPredictF)),
+                       "pheno" = as.character(gamlss.obj$mu.terms[[2]]))
+  return(var.df)
+}
+
 ################
 # COMBAT
 ################
@@ -218,8 +250,10 @@ mean.tb.sim <- function(df, sex_level, ageRange, measure){
   for (i in ageRange){
     tb.df <- df %>% 
       dplyr::filter(sex == sex_level) %>%
-      arrange(age_days) %>%
-      dplyr::filter(age_days >= (i-183) & age_days <= (i+183)) %>%
+      # arrange(age_days) %>%
+      # dplyr::filter(age_days >= (i-183) & age_days <= (i+183)) %>%
+      arrange(log_age) %>%
+      dplyr::filter(log_age >= (i-log(183, base=10)) & age_days <= (i+log(183, base=10))) %>%
       as.data.frame() # +- 1.5 yrs
     tb.val <- mean(tb.df[[measure]], na.rm = TRUE)
     tb_list <- append(tb_list, tb.val)
@@ -443,6 +477,50 @@ get.og.data.centiles <- function(gamlss.rds.file, og.data, get.zscores = FALSE){
     return(df)
   }
 }
+
+get.og.data.centiles.lbcc <- function(gamlss.rds.file, og.data, get.zscores = FALSE){
+  gamlss.rds.file <- as.character(gamlss.rds.file)
+  gamlss.obj <- readRDS(gamlss.rds.file)
+  pheno <- gamlss.obj$mu.terms[[2]]
+  
+  newData <- data.frame(log_age=og.data$log_age,
+                        sexMale=og.data$sexMale,
+                        sex.age=ag.data$sex.age,
+                        fs_version=og.data$fs_version,
+                        TBV=og.data$TBV,
+                        Vol_total=og.data$Vol_total,
+                        SA_total=og.data$SA_total,
+                        CT_total=og.data$CT_total
+                        )
+  
+  predModel <- predictAll(gamlss.obj, newdata=newData, data=og.data, type= "response")
+  
+  #get dist type (e.g. GG, BCCG) and write out function
+  fname <- gamlss.obj$family[1]
+  qfun <- paste0("p", fname)
+  
+  centiles <- c()
+  #iterate through participants
+  for (i in 1:nrow(og.data)){
+    centiles[i] <- eval(call(qfun, og.data[[pheno]][[i]], mu=predModel$mu[[i]], sigma=predModel$sigma[[i]], nu=predModel$nu[[i]]))
+  }
+  if (get.zscores == FALSE){
+    return(centiles)
+  } else {
+    #check to make sure distribution family is LMS
+    if (fname != "BCCG") 
+      stop(paste("This gamlss model does not use the BCCG family distribution, can't get z scores.", "\n If you think this message was returned in error, update code to include appropriate dist. families.", ""))
+    
+    #get z scores from normed centiles - how z.score() does it, but double check
+    rqres <- qnorm(centiles)
+    
+    #return dataframe
+    df <- data.frame("centile" = centiles,
+                     "z_score" = rqres)
+    return(df)
+  }
+}
+
 
 ### UN-LOG-SCALE - used to un-transform log_age values
 un_log <- function(x){return(10^(x))}
