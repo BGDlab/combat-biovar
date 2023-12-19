@@ -35,8 +35,8 @@ if ! [ -d $save_path ]
 	fi
 #######################################################################################
 #LIST POSSIBLE CONFIGS, INCLUDING NAME OF ORIGINAL RAW DATA
-#be sure to include "data" at the end of the string so refA options aren't confused
-config_list="site-level_cf.gam site-level_cf.gamlss imp-sites_cf.gamlss imp-sites_cf.gam" #cf_data cf.lm_data cf.gam_data cf.gamlss_data #cf.lm_refA_data cf.gam_refA_data cf.gamlss_refA_data ukb_CN_data
+#be sure to include "data" at the end of the string so gam/gamlss and refA options aren't confused
+config_list="site-level_cf.gam_data site-level_cf.gamlss_data imp-sites_cf.gamlss_data imp-sites_cf.gam_data" #cf_data cf.lm_data cf.gam_data cf.gamlss_data #cf.lm_refA_data cf.gam_refA_data cf.gamlss_refA_data ukb_CN_data
 #######################################################################################
 for config in $config_list
 do
