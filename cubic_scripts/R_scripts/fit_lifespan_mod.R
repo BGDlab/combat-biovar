@@ -15,9 +15,9 @@ glob_pheno <- as.character(args[3])
 save_path <- args[4]
 
 #FIT BASE MODEL
-base_model <- gamlss(formula = as.formula(paste0(pheno,"~ pb(age_days) + sex + fs_version + pb(sex.age) + pb(", glob_pheno,")")),
-             sigma.formula = as.formula(paste0("~ pb(age_days) + sex + pb(sex.age) + fs_version + pb(", glob_pheno,")")),
-             nu.formula = as.formula(paste0("~ pb(age_days) + sex + pb(sex.age) + fs_version + pb(", glob_pheno,")")),
+base_model <- gamlss(formula = as.formula(paste0(pheno,"~ pb(log_age) + sex + fs_version + pb(sex.age) + pb(", glob_pheno,")")),
+             sigma.formula = as.formula(paste0("~ pb(log_age) + sex + pb(sex.age) + fs_version + pb(", glob_pheno,")")),
+             nu.formula = as.formula(paste0("~ pb(log_age) + sex + pb(sex.age) + fs_version + pb(", glob_pheno,")")),
              control = gamlss.control(n.cyc = 200), 
              family = BCCG, data=df, trace = FALSE)
 
