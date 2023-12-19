@@ -21,10 +21,10 @@ pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
 
 #get args
 args <- commandArgs(trailingOnly = TRUE)
-df_path <- args[1] #path to original data csv
-read_path <- args[2] #path to gamlss models
-save_path <- args[3] #path to save output csv
-fname_str <- args[4] #string to look for in data .csv and model .rds files
+df_path <- as.character(args[1]) #path to original data csv
+read_path <- as.character(args[2]) #path to gamlss models
+save_path <- as.character(args[3]) #path to save output csv
+fname_str <- as.character(args[4]) #string to look for in data .csv and model .rds files
 #make sure - and _ are searched interchangeably
 fname_str_search <- gsub("_|-", "[-_]", fname_str)
 print(fname_str)
@@ -33,6 +33,7 @@ print(fname_str_search)
 #find correct df
 all.csvs <- list.files(path = df_path, pattern = ".csv", full.names = TRUE)
 matched_csv <- all.csvs[grep(fname_str_search, all.csvs)]
+print(paste("csv:", matched_csv))
 df <- fread(matched_csv, stringsAsFactors = TRUE)
 #print("data dim:")
 #print(dim(df))
