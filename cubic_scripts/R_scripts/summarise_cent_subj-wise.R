@@ -60,11 +60,16 @@ if (args[1] == "prop"){
 #GET CENTILE & Z ERRORS
 pred_err <- get.diffs(predictions, pheno_list=pheno.list)
 
+#save out
+f1 <- paste0(path_to_csvs, "/", str, "_diffs.csv")
+print(paste("writing results to", f1))
+fwrite(pred_err, file=f1)
+
 #CALC SUBJECT-WISE MEANS
 subj_mean_preds <- means.by.subj(pred_err, pheno_list=pheno.list)
   
 #SAVE RESULTS
-f <- paste0(path_to_csvs, "/subject-wise/", str, "_subj_pred.csv")
-print(paste("writing results to", f))
-fwrite(subj_mean_preds, file=f)
+f2 <- paste0(path_to_csvs, "/subject-wise/", str, "_subj_pred.csv")
+print(paste("writing results to", f2))
+fwrite(subj_mean_preds, file=f2)
 print("DONE")
