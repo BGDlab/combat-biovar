@@ -1,5 +1,5 @@
 ---
-title: "ohbm_results"
+title: "hbm_paper_results"
 output: html_document
 date: '2023-11-12'
 ---
@@ -688,25 +688,49 @@ perm_var_info <- inner_join(perm_var.all, sigma.sex.df)
 
 # Secondary: Vary M:F
 
+## Load Data
+
+Read in centile/z-score errors
+
 ```{r}
 ratio_data_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives/ukb_ratio"
-raw_files <- list.files(path = ratio_data_path, pattern = "_pred.csv", full.names = TRUE)
+raw_files <- list.files(path = ratio_data_path, pattern = "_diffs.csv", full.names = TRUE)
+
+df_list <- list() #new empty list
+for (file in raw_files) {
+  print(paste("reading file", file))
+  # Read each CSV file
+    data <- fread(file)
+    
+    data <- data %>%
+     mutate(dataset = gsub("_data|_data_predictions.csv|prop-|[0-9]|-", "", Source_File))
+
+    # Bind the data to the combined dataframe
+    df_list[[file]] <- as.data.frame(data)
+    assign("ratio_list", df_list)
+}
+length(ratio_list)
+```
+
+Read in subject-wise summary stats
+
+```{r}
+raw_files <- list.files(path = ratio_data_path, pattern = "_subj_pred.csv", full.names = TRUE)
 
 df_list <- list() #new empty list
 for (file in raw_files) {
   # Read each CSV file
     data <- fread(file)
 
-    # Add a "Source_File" column with the file name
     data <- data %>%
-      mutate(Source_File = as.factor(basename(file))) %>%
-      mutate(dataset = gsub("_data|_raw.csv|prop-|[0-9]|-", "", Source_File))
+      mutate(dataset = gsub("_data|_data_predictions.csv|prop-|[0-9]|-", "", Source_File))
 
     # Bind the data to the combined dataframe
     df_list <- c(df_list, list(data))
-    assign("ratio_sites_list", df_list)
+    assign("ratio_subj_list", df_list)
 }
-length(ratio_sites_list)
+length(ratio_subj_list)
+ratio_subj.df <- bind_rows(ratio_subj_list)
 ```
 
 
@@ -722,25 +746,25 @@ lapply(ratio_sites_list, plot.cent.diffs)
 
 Plot boxplots to compare across prop.
 ```{r}
-ratio_diffs.df <- bind_rows(ratio_diffs) %>% 
-  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
-  group_by(perm, dataset) %>%
-  dplyr::summarize(across(starts_with("abs.diff_"), mean)) %>%
-  ungroup() %>%
-  dplyr::select(-ends_with(".z")) %>% #drop z-score cols
-  pivot_longer(cols=starts_with("abs.diff_"), values_to="centile_abs.diff", names_to = "pheno", names_prefix = "abs.diff_") %>%
-  mutate(pheno_cat = as.factor(case_when(
-      pheno %in% vol_list_global ~ "Global Volume",
-      pheno %in% vol_list_regions ~ "Regional Volume",
-      pheno %in% sa_list ~ "Regional SA",
-      pheno %in% ct_list ~ "Regional CT",
-      TRUE ~ NA_character_)),
-      label = sub("_[^_]*_", "_", pheno))
+# ratio_diffs.df <- bind_rows(ratio_diffs) %>% 
+#   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+#   group_by(perm, dataset) %>%
+#   dplyr::summarize(across(starts_with("abs.diff_"), mean)) %>%
+#   ungroup() %>%
+#   dplyr::select(-ends_with(".z")) %>% #drop z-score cols
+#   pivot_longer(cols=starts_with("abs.diff_"), values_to="centile_abs.diff", names_to = "pheno", names_prefix = "abs.diff_") %>%
+#   mutate(pheno_cat = as.factor(case_when(
+#       pheno %in% vol_list_global ~ "Global Volume",
+#       pheno %in% vol_list_regions ~ "Regional Volume",
+#       pheno %in% sa_list ~ "Regional SA",
+#       pheno %in% ct_list ~ "Regional CT",
+#       TRUE ~ NA_character_)),
+#       label = sub("_[^_]*_", "_", pheno))
 
-ratio_diffs.df %>%
-  mutate(centile_abs.diff = centile_abs.diff * 100) %>%
+ratio_subj.df %>%
+  mutate(mean_cent_abs.diff = mean_cent_abs.diff * 100) %>%
   ggplot() +
-    geom_boxplot(aes(x=perm, y=centile_abs.diff, fill=dataset)) +
+    geom_boxplot(aes(x=prop, y=mean_cent_abs.diff, fill=dataset)) +
   labs(y= "Magnitude Centile Error", x = "M:F Ratio in Site B") +
   ggtitle("Within-feature mean magnitude of error in centile scores across ComBat \nconfigurations as sex imbalance changes")
 ```
