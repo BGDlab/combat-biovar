@@ -1244,12 +1244,15 @@ for (dset in c("cf", "cf.gam", "cf.gamlss", "cf.lm")) {
 
 ## Varying M:F
 
-Visualize simulated sites (`scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/data/ukb_ratios/*.csv' ./data/ukb_ratios/`)
+pulled centile/z error calcs from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_ratios/perm_centile_csvs/*_diffs.csv' .`
 
+pulled within-subj summaries from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_ratios/perm_centile_csvs/subject-wise/*.csv' .`
+
+Visualize simulated sites
 
 ```{r}
-ratio_data_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/data/ukb_ratios"
-raw_files <- list.files(path = ratio_data_path, pattern = "_raw.csv", full.names = TRUE)
+ratio_data_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives/ukb_ratio"
+raw_files <- list.files(path = ratio_data_path, pattern = "_pred.csv", full.names = TRUE)
 
 df <- data.frame() #new empty dataframe
 for (file in raw_files) {
@@ -1258,12 +1261,11 @@ for (file in raw_files) {
 
     # Add a "Source_File" column with the file name
     data <- data %>%
-      dplyr::select(c(sim.site, participant, sex, site, age_days)) %>%
       mutate(Source_File = as.factor(basename(file))) %>%
       mutate(dataset = gsub("_data|_raw.csv|prop-|[0-9]|-", "", Source_File))
 
     # Bind the data to the combined dataframe
-    df <- bind_rows(df, data, .id = "File_ID")
+    df <- bind_rows(df, data)
     assign("ratio_sites", df)
 }
 length(unique(ratio_sites$Source_File))
@@ -1287,37 +1289,4 @@ ggplot(ratio_sites) +
   geom_histogram(aes(x=age_days, fill=Source_File, color=Source_File), position = "identity", alpha=0.4, binwidth = 365)
 ```
 
-```{r}
-#path to csvs scp'd from cubic
-ratio_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives/ukb_ratio"
-```
-
 ### Centiles
-Do centile scores change based on combat version?
-
-```{r}
-n_ratio_list <- lapply(c(1:11), str_pad, 2, pad = "0")
-n_ratio_list <- paste0("prop-", n_ratio_list)
-pheno_list.z <- paste0(pheno_list, ".z")
-
-# combined_preds.p <- data.frame()
-get.predictions.ratio <- function(x){
-  df <- data.frame() #new empty dataframe
-  pred.csvs.p <- list.files(path = ratio_path, pattern = paste0(x, ".+_predictions.csv"), full.names = TRUE)
-  for (file in pred.csvs.p) {
-    # Read each CSV file
-    data <- fread(file)
-
-    # Add a "Source_File" column with the file name
-    data <- data %>%
-      mutate(Source_File = as.factor(basename(file)),
-             perm = as.factor(x)) %>%
-      mutate(dataset = gsub("_data|_predictions.csv|prop-|[0-9]|-", "", Source_File))
-
-    # Bind the data to the combined dataframe
-    df <- bind_rows(df, data, .id = "File_ID")
-  }
-  return(df)
-}
-ratio_predictions <- mclapply(n_ratio_list, get.predictions.ratio, mc.preschedule = FALSE)
-```

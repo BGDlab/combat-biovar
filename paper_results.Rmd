@@ -492,7 +492,7 @@ cent_t.tests.p %>%
 
 Little plots
 ```{r}
-#define plotting functions
+#define plotting
 plot.cent.diffs <- function(df){
 mean.diffs.long <- df %>%
   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
