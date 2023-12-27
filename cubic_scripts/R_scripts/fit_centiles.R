@@ -50,12 +50,15 @@ model.files <- all.model.files[grep(fname_str_search, all.model.files)]
 sim.df <- sim.data.ukb(df)
 print("simulated data:")
 print(sim.df$dataToPredictM[1:4,])
+print(sim.df$dataToPredictF[1:4,])
 
 #predict centiles from each gamlss model
 pred.list <- lapply(model.files, get.centile.pred, og.data = df, sim=sim.df)
 names(pred.list) <- lapply(model.files, function(x) {sub("_mod\\.rds$", "", basename(x))})
+print("pred.list names:")
+print(names(pred.list[[1]]))
 print("dim predicted centiles:")
-print(dim(pred.list))
+print(dim(pred.list[[1]][["fanCentiles_M"]]))
 
 #compile into dataframe
 # Calculate the number of iterations
