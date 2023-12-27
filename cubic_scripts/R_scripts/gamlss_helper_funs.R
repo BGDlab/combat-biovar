@@ -399,9 +399,9 @@ centile_predict <- function(gamlssModel, dataToPredictM, dataToPredictF, ageRang
   }
   
   print(paste("length:", length(fanCentiles)))
-  print(paste("max:", max(fanCentiles)))
-  print(paste("male max:", max(fanCentiles_M)))
-  print(paste("female max:", max(fanCentiles_F)))
+  print(fanCentiles)
+  #print(paste("male max:", max(fanCentiles_M)))
+  #print(paste("female max:", max(fanCentiles_F)))
   
   # to get peaks, match median point with age ranges
   med.idx <- ceiling(length(desiredCentiles) / 2) #find median centile
