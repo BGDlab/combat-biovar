@@ -376,7 +376,7 @@ centile_predict <- function(gamlssModel, dataToPredictM, dataToPredictF, ageRang
   
   #get dist type (e.g. GG, BCCG) and write out function
   fname <- gamlss.obj$family[1]
-  qfun <- paste0("p", fname)
+  qfun <- paste0("q", fname)
 
   # For each desired centile
   fanCentiles <- c()
@@ -462,12 +462,12 @@ get.og.data.centiles <- function(gamlss.rds.file, og.data, get.zscores = FALSE){
   
   #get dist type (e.g. GG, BCCG) and write out function
   fname <- gamlss.obj$family[1]
-  qfun <- paste0("p", fname)
+  pfun <- paste0("p", fname)
   
   centiles <- c()
   #iterate through participants
   for (i in 1:nrow(og.data)){
-      centiles[i] <- eval(call(qfun, og.data[[pheno]][[i]], mu=predModel$mu[[i]], sigma=predModel$sigma[[i]], nu=predModel$nu[[i]]))
+      centiles[i] <- eval(call(pfun, og.data[[pheno]][[i]], mu=predModel$mu[[i]], sigma=predModel$sigma[[i]], nu=predModel$nu[[i]]))
       
       #don't let centile = 1!
       if (centiles[i] == 1) {
@@ -514,12 +514,12 @@ get.og.data.centiles.lbcc <- function(gamlss.rds.file, og.data, get.zscores = FA
   
   #get dist type (e.g. GG, BCCG) and write out function
   fname <- gamlss.obj$family[1]
-  qfun <- paste0("p", fname)
+  pfun <- paste0("p", fname)
   
   centiles <- c()
   #iterate through participants
   for (i in 1:nrow(og.data)){
-    centiles[i] <- eval(call(qfun, og.data[[pheno]][[i]], mu=predModel$mu[[i]], sigma=predModel$sigma[[i]], nu=predModel$nu[[i]]))
+    centiles[i] <- eval(call(pfun, og.data[[pheno]][[i]], mu=predModel$mu[[i]], sigma=predModel$sigma[[i]], nu=predModel$nu[[i]]))
     
   }
   if (get.zscores == FALSE){
