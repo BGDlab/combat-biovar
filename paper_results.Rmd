@@ -192,7 +192,13 @@ qc_z_df <- combined_preds %>%
   filter_at(vars(pheno_list.z), any_vars(. %in% c(1, 0, Inf, -Inf, NA)))
 
 unique(qc_z_df$participant)
-ppt.list
+
+qc_cent_df %>%
+  dplyr::filter(centile != 1) %>%
+  summarize(sprintf("%.100f", (1 - max(centile))))
+
+qc_cent_df %>%
+  summarize(sprintf("%.100f", min(centile)))
 ```
 
 *MOVE TO CUBIC*
