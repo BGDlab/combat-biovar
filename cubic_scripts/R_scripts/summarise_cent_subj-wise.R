@@ -41,7 +41,7 @@ if (args[1] == "basic"){
   pred_err <- get.diffs(predictions, pheno_list=pheno.list, ref_level = "ukb_CN")
   
   str <- as.character("ukb_basic")
-  
+
 }
 
 ##### PERMUTATION PIPELINE RESULTS #####
