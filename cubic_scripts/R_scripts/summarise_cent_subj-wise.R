@@ -37,6 +37,9 @@ if (args[1] == "basic"){
   #READ INTO DATAFRAME
   predictions <- get.predictions(df_path = path_to_csvs)
   
+  #GET CENTILE & Z ERRORS
+  pred_err <- get.diffs(predictions, pheno_list=pheno.list, ref_level = "ukb_CN")
+  
 }
 
 ##### PERMUTATION PIPELINE RESULTS #####
@@ -52,6 +55,9 @@ if (args[1] == "perm"){
   #READ INTO DATAFRAME
   predictions <- get.predictions.perm(str, df_path = path_to_csvs)
   
+  #GET CENTILE & Z ERRORS
+  pred_err <- get.diffs(predictions, pheno_list=pheno.list)
+  
 }
 
 ##### VARYING M:F PROPORTION PIPELINE RESULTS #####
@@ -64,12 +70,12 @@ if (args[1] == "prop"){
   
   #READ INTO DATAFRAME
   predictions <- get.predictions.ratio(str, df_path = path_to_csvs)
+  
+  #GET CENTILE & Z ERRORS
+  pred_err <- get.diffs(predictions, pheno_list=pheno.list)
 }
 
 ##### CALC AND SAVE #####
-
-#GET CENTILE & Z ERRORS
-pred_err <- get.diffs(predictions, pheno_list=pheno.list)
 
 #save out
 f1 <- paste0(path_to_csvs, "/", str, "_diffs.csv")

@@ -600,16 +600,16 @@ get.predictions.perm <- function(x, df_path){
 
 ### CALC CENTILE ERROR
 #requires that pheno_list obj be defined, assumes ref. level (non-combatted data) named "raw"
-get.diffs <- function(x, pheno_list){
+get.diffs <- function(x, pheno_list, ref_level = "raw"){
   df <- x %>%
     mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
-    mutate(dataset = relevel(dataset, ref= "raw")) %>%
+    mutate(dataset = relevel(dataset, ref= ref_level)) %>%
     arrange(dataset) %>%
     group_by(participant) %>%
     dplyr::mutate(across(all_of(pheno_list), ~ (. - first(.)), .names = "diff_{.col}")) %>% #centile err
     dplyr::mutate(across(ends_with(".z"), ~ (. - first(.)), .names = "diff_{.col}")) %>% #z-score err
     ungroup() %>%
-    dplyr::filter(dataset != "raw") %>% #drop raw
+    dplyr::filter(dataset != ref_level) %>% #drop raw
     dplyr::mutate(across(starts_with("diff_"), 
                          .fns = list( ~ abs(.)),
                          .names = "abs.{col}")) #new set of cols w abs. err vals
