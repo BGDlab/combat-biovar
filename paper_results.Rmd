@@ -138,6 +138,7 @@ extremeness.lm <- function(df, f, comp_multiplier=1){
 # tidy(lm(mean_centile ~ mean_cent_diff, data= ratio_subj_list[[1]]))
 # summary(lm(mean_centile ~ mean_cent_diff, data= ratio_subj_list[[1]]))
 ```
+
 # Main Analyses
 
 ## CENTILES
@@ -552,6 +553,85 @@ p_annotate <- annotate_figure(p, top = text_grob("Figure 1. Standardized effect 
                color = "black", size = 14, hjust=.65))
 
 ggsave("figs/male_variance_ohbm_big.jpeg", p_annotate, width=7, height=8)
+```
+
+##CENTILE FANS
+
+pulled predicted centiles from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/*_centiles.csv' .`
+
+```{r}
+basic_data_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives/ukb_basic"
+raw_files <- list.files(path = basic_data_path, pattern = "_centiles.csv", full.names = TRUE)
+
+df_list <- list() #new empty list
+for (file in raw_files) {
+  print(paste("reading file", file))
+  # Read each CSV file
+    data <- fread(file)
+    
+    data <- data %>%
+     mutate(dataset = gsub("-data", "", dataset))
+
+    # Bind the data to the combined dataframe
+    df_list[[file]] <- as.data.frame(data)
+    assign("basic_centiles", df_list)
+}
+length(basic_centiles)
+centiles.df <- bind_rows(basic_centiles)
+skimr::skim(centiles.df)
+```
+
+```{r}
+#also load raw data
+ukb_cn_df <- fread("/Users/megardn/Desktop/BGD_Repos/combat_biovar/data/ukb_to_model/ukb_CN_data_simsites.csv")
+```
+
+just work with global volumes for now
+
+```{r}
+global.cent.df <- centiles.df %>%
+  dplyr::filter(pheno_cat == "Global Volume")
+
+global.cent.df %>%
+  group_by(pheno) %>%
+  summarise(max=max(centile_5))
+
+names(global.cent.df)
+
+
+gmv.df <- global.cent.df
+
+gmv.df <- centiles.df %>%
+  dplyr::filter(pheno =="GMV")
+
+  ggplot(gmv.df) +
+      #geom_point(aes(x=ukb_cn_df$age_days, y=ukb_cn_df$GMV), alpha=0.5) +
+      #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
+      geom_line(aes(x=gmv.df$age_days, y=gmv.df$M_centile_1, color=gmv.df$dataset)) +
+      geom_line(aes(x=gmv.df$age_days, y=gmv.df$M_centile_2, color=gmv.df$dataset)) +
+      geom_line(aes(x=gmv.df$age_days, y=gmv.df$M_centile_3, color=gmv.df$dataset)) +
+      geom_line(aes(x=gmv.df$age_days, y=gmv.df$M_centile_4, color=gmv.df$dataset)) +
+      geom_line(aes(x=gmv.df$age_days, y=gmv.df$M_centile_5, color=gmv.df$dataset)) +
+      facet_wrap(~ pheno, scales="free_y") + 
+      labs(title="Male GMV brain charts")
+  
+      geom_line(aes(x=ages, y=pred$fanCentiles[[2]])) +
+      geom_line(aes(x=ages, y=pred$fanCentiles[[3]]), alpha=0.6) +
+      geom_line(aes(x=ages, y=pred$fanCentiles[[4]]), alpha=0.8) +
+      geom_line(aes(x=ages, y=pred$fanCentiles[[5]])) +
+      geom_line(aes(x=ages, y=pred$fanCentiles[[6]]), alpha=0.8) +
+      geom_line(aes(x=ages, y=pred$fanCentiles[[7]]), alpha=0.6) +
+      geom_line(aes(x=ages, y=pred$fanCentiles[[8]]), alpha=0.4) +
+      geom_line(aes(x=ages, y=pred$fanCentiles[[9]]), alpha=0.2) +
+      geom_point(aes(x=peak_age, y=pred$peak), size=3) +
+      scale_x_continuous(breaks=tickMarks, labels=tickLabels,
+                         limits=c(tickMarks[[1]], max(age_col))) +
+      labs(title=deparse(substitute(gamlssModel))) +
+      theme(legend.title= element_blank())+
+      xlab(paste("Age at Scan", unit_text)) +
+      ylab(deparse(substitute(phenotype)))
+    annotate("text", x = max(age_col)-0.5, y = max(yvar)-10000, label = paste0("BIC=",gamlssModel$sbc))
+    print(sampleCentileFan)
 ```
 
 # Replication 
