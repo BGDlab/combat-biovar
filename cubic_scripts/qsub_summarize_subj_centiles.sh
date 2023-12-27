@@ -17,16 +17,18 @@ r_script=$base/cubic_scripts/R_scripts/summarise_cent_subj-wise.R #path to .R sc
 if [ $1 = "prop" ]
 then
 	study_dir=$base/ukb_ratios
+	csv_path=$study_dir/perm_centile_csvs #path to csvs with predicted centile and z scores
 elif [ $1 = "perm" ]
 then
 	study_dir=$base/ukb_permute
+	csv_path=$study_dir/perm_centile_csvs #path to csvs with predicted centile and z scores
 elif [ $1 = "basic" ]
 then
 	study_dir=$base/ukb_basic
+	csv_path=$study_dir/centile_csvs #path to csvs with predicted centile and z scores
 else
 	echo "Help! Please indicate 'prop' or 'perm'"
 fi
-csv_path=$study_dir/perm_centile_csvs #path to csvs with predicted centile and z scores
 bash_dir=$study_dir/centile_qsubs
 #######################################################################################
 cd $base/cubic_scripts #to source functions correctly
