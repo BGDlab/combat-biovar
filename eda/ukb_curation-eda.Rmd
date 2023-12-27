@@ -103,16 +103,52 @@ write_csv(ukb_df_totals, file=paste0(base_path,"data/ukb_CN_data.csv"))
 
 
 ```{r}
+ukb_df.ppt.qc <- ukb_df %>%
+  dplyr::filter(participant %in% ppt.list)
+
+ggplot(data=ukb_df, aes(x=log_age, y=GMV)) +
+  geom_point(aes(color=sex), alpha=0.6) +
+  geom_text(data=ukb_df.ppt.qc,
+            aes(x=log_age, y=GMV, label=participant))
+
+ggplot(data=ukb_df, aes(x=log_age, y=lh_CT_cuneus)) +
+  geom_point(aes(color=sex), alpha=0.6) +
+  geom_text(data=ukb_df.ppt.qc,
+            aes(x=log_age, y=lh_CT_cuneus, label=participant)) +
+  geom_hline(yintercept=median(ukb_df$lh_CT_cuneus) + 7*stats::mad(ukb_df$lh_CT_cuneus))
+
+ggplot(data=ukb_df, aes(x=log_age, y=lh_CT_pericalcarine)) +
+  geom_point(aes(color=sex), alpha=0.6) +
+  geom_text(data=ukb_df.ppt.qc,
+            aes(x=log_age, y=lh_CT_pericalcarine, label=participant)) +
+  geom_hline(yintercept=median(ukb_df$lh_CT_pericalcarine) + 7*stats::mad(ukb_df$lh_CT_pericalcarine))
+
+ggplot(data=ukb_df, aes(x=log_age, y=lh_Vol_parahippocampal)) +
+  geom_point(aes(color=sex), alpha=0.6) +
+  geom_text(data=ukb_df.ppt.qc,
+            aes(x=log_age, y=lh_Vol_parahippocampal, label=participant)) +
+    geom_hline(yintercept=median(ukb_df$lh_Vol_parahippocampal) + 7*stats::mad(ukb_df$lh_Vol_parahippocampal))
+
+ggplot(data=ukb_df, aes(x=log_age, y=rh_CT_medialorbitofrontal)) +
+  geom_point(aes(color=sex), alpha=0.6) +
+  geom_text(data=ukb_df.ppt.qc,
+            aes(x=log_age, y=rh_CT_medialorbitofrontal, label=participant)) +
+  geom_hline(yintercept=median(ukb_df$rh_CT_medialorbitofrontal) + 7*stats::mad(ukb_df$rh_CT_medialorbitofrontal))
+```
+
+
+```{r}
 ggplot(data=ukb_df, aes(x=age_days)) +
   geom_histogram(aes(fill=sex), alpha=0.6, position="identity", binwidth = 365)
 ggplot(data=ukb_df, aes(x=log_age)) +
   geom_histogram(aes(fill=sex), alpha=0.6, position="identity")
 
-ggplot(data=ukb_df, aes(x=log_age, y=GMV)) +
-  geom_point(aes(color=sex), alpha=0.6)
 ggplot(data=ukb_df, aes(x=age_days, y=GMV)) +
   geom_point(aes(color=sex), alpha=0.6)
 ```
+
+looking into subj. with centiles = 1
+
 
 ### Condense age range
 
