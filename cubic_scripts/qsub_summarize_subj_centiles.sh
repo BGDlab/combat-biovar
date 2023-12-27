@@ -20,6 +20,9 @@ then
 elif [ $1 = "perm" ]
 then
 	study_dir=$base/ukb_permute
+elif [ $1 = "basic" ]
+then
+	study_dir=$base/ukb_basic
 else
 	echo "Help! Please indicate 'prop' or 'perm'"
 fi
