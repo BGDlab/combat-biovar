@@ -35,16 +35,16 @@ all.csvs <- list.files(path = df_path, pattern = ".csv", full.names = TRUE)
 matched_csv <- all.csvs[grep(fname_str_search, all.csvs)]
 print(paste("csv:", matched_csv))
 df <- fread(matched_csv, stringsAsFactors = TRUE)
-print("data dim:")
-print(dim(df))
+#print("data dim:")
+#print(dim(df))
 
 #find correct models
 all.model.files <- list.files(path = read_path, pattern = "mod.rds", full.names = TRUE)
-print("all model files:")
-print(all.model.files[1:4])
+#print("all model files:")
+#print(all.model.files[1:4])
 model.files <- all.model.files[grep(fname_str_search, all.model.files)]
-print("selected model files:")
-print(model.files[1:4])
+#print("selected model files:")
+#print(model.files[1:4])
 
 #sim data
 sim.df <- sim.data.ukb(df)
