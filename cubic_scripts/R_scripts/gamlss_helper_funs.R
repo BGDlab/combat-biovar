@@ -399,7 +399,7 @@ centile_predict <- function(gamlssModel, dataToPredictM, dataToPredictF, ageRang
   }
   
   print(paste("length:", length(fanCentiles)))
-  print(paste("max:", max(fanCentile)))
+  print(paste("max:", max(fanCentiles)))
   print(paste("male max:", max(fanCentiles_M)))
   print(paste("female max:", max(fanCentiles_F)))
   
