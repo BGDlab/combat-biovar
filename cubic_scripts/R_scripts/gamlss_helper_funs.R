@@ -286,7 +286,7 @@ sim.data.ukb <- function(df){
   #dataToPredictF$CT_total <- mean.tb.sim(df, "Female", ageRange, "CT_total")
   
   # List of centiles for the fan plot
-  desiredCentiles <- c(0.1, 0.25, 0.5, 0.75, 0.9)
+  desiredCentiles <- c(0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99)
   
   # return
   sim <- list(ageRange, dataToPredictM, dataToPredictF, desiredCentiles)

@@ -578,60 +578,68 @@ for (file in raw_files) {
 }
 length(basic_centiles)
 centiles.df <- bind_rows(basic_centiles)
-skimr::skim(centiles.df)
+#skimr::skim(centiles.df)
 ```
 
 ```{r}
 #also load raw data
 ukb_cn_df <- fread("/Users/megardn/Desktop/BGD_Repos/combat_biovar/data/ukb_to_model/ukb_CN_data_simsites.csv")
+
+global.df.long <- ukb_cn_df %>%
+  dplyr::select(participant, age_days, sex, vol_list_global) %>%
+  pivot_longer(cols = vol_list_global, values_to = "value", names_to="pheno")
 ```
 
 just work with global volumes for now
 
 ```{r}
 global.cent.df <- centiles.df %>%
-  dplyr::filter(pheno_cat == "Global Volume")
-
-global.cent.df %>%
-  group_by(pheno) %>%
-  summarise(max=max(centile_5))
-
-names(global.cent.df)
+  dplyr::filter(pheno_cat == "Global Volume") %>%
+  dplyr::filter(!grepl('-refA', dataset))
 
 
-gmv.df <- global.cent.df
+for (feature in unique(global.cent.df$pheno)) {
 
-gmv.df <- centiles.df %>%
-  dplyr::filter(pheno =="GMV")
-
-  ggplot(gmv.df) +
-      #geom_point(aes(x=ukb_cn_df$age_days, y=ukb_cn_df$GMV), alpha=0.5) +
-      #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
-      geom_line(aes(x=gmv.df$age_days, y=gmv.df$M_centile_1, color=gmv.df$dataset)) +
-      geom_line(aes(x=gmv.df$age_days, y=gmv.df$M_centile_2, color=gmv.df$dataset)) +
-      geom_line(aes(x=gmv.df$age_days, y=gmv.df$M_centile_3, color=gmv.df$dataset)) +
-      geom_line(aes(x=gmv.df$age_days, y=gmv.df$M_centile_4, color=gmv.df$dataset)) +
-      geom_line(aes(x=gmv.df$age_days, y=gmv.df$M_centile_5, color=gmv.df$dataset)) +
-      facet_wrap(~ pheno, scales="free_y") + 
-      labs(title="Male GMV brain charts")
+  df <- global.cent.df %>%
+    dplyr::filter(pheno == feature)
   
-      geom_line(aes(x=ages, y=pred$fanCentiles[[2]])) +
-      geom_line(aes(x=ages, y=pred$fanCentiles[[3]]), alpha=0.6) +
-      geom_line(aes(x=ages, y=pred$fanCentiles[[4]]), alpha=0.8) +
-      geom_line(aes(x=ages, y=pred$fanCentiles[[5]])) +
-      geom_line(aes(x=ages, y=pred$fanCentiles[[6]]), alpha=0.8) +
-      geom_line(aes(x=ages, y=pred$fanCentiles[[7]]), alpha=0.6) +
-      geom_line(aes(x=ages, y=pred$fanCentiles[[8]]), alpha=0.4) +
-      geom_line(aes(x=ages, y=pred$fanCentiles[[9]]), alpha=0.2) +
-      geom_point(aes(x=peak_age, y=pred$peak), size=3) +
-      scale_x_continuous(breaks=tickMarks, labels=tickLabels,
-                         limits=c(tickMarks[[1]], max(age_col))) +
-      labs(title=deparse(substitute(gamlssModel))) +
-      theme(legend.title= element_blank())+
-      xlab(paste("Age at Scan", unit_text)) +
-      ylab(deparse(substitute(phenotype)))
-    annotate("text", x = max(age_col)-0.5, y = max(yvar)-10000, label = paste0("BIC=",gamlssModel$sbc))
-    print(sampleCentileFan)
+ plot <- ggplot() +
+      geom_point(aes(x=ukb_cn_df$age_days, y=ukb_cn_df[[feature]]), alpha=0.5) +
+      #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
+      geom_line(aes(x=df$age_days, y=df$M_centile_1, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$M_centile_2, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$M_centile_3, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$M_centile_4, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$M_centile_5, color=df$dataset)) +
+      labs(title=paste("Male", feature, "brain chart"))
+ 
+ print(plot)
+ 
+ plot <- ggplot() +
+      geom_point(aes(x=ukb_cn_df$age_days, y=ukb_cn_df[[feature]]), alpha=0.5) +
+      #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
+      geom_line(aes(x=df$age_days, y=df$F_centile_1, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$F_centile_2, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$F_centile_3, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$F_centile_4, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$F_centile_5, color=df$dataset)) +
+      labs(title=paste("Female", feature, "brain chart"))
+ 
+ print(plot)
+ 
+ plot <- ggplot() +
+      geom_point(aes(x=ukb_cn_df$age_days, y=ukb_cn_df[[feature]]), alpha=0.5) +
+      #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
+      geom_line(aes(x=df$age_days, y=df$centile_1, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$centile_2, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$centile_3, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$centile_4, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$centile_5, color=df$dataset)) +
+      labs(title=paste(feature, "brain chart"))
+ 
+ print(plot)
+  
+}
 ```
 
 # Replication 
