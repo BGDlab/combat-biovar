@@ -397,6 +397,12 @@ centile_predict <- function(gamlssModel, dataToPredictM, dataToPredictF, ageRang
     
     fanCentiles[[i]] <- (fanCentiles_M[[i]] + fanCentiles_F[[i]])/2
   }
+  
+  print(paste("length:", length(fanCentiles)))
+  print(paste("max:", max(fanCentile)))
+  print(paste("male max:", max(fanCentiles_M)))
+  print(paste("female max:", max(fanCentiles_F)))
+  
   # to get peaks, match median point with age ranges
   med.idx <- ceiling(length(desiredCentiles) / 2) #find median centile
   
@@ -432,7 +438,9 @@ get.centile.pred <- function(gamlss.rds.file, og.data, sim) {
   df.M <- sim[["dataToPredictM"]]
   df.F <- sim[["dataToPredictF"]]
   age <- sim[["ageRange"]]
+  print(paste("age length:", length(age)))
   cent <- sim[["desiredCentiles"]]
+  print(paste("centile length:", length(cent)))
   
   centiles <- centile_predict(gamlss.obj, df.M, df.F, age, cent, og.data)
   assign(sub("_mod\\.rds$", "", basename(gamlss.rds.file)), centiles)
