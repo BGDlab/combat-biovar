@@ -556,6 +556,27 @@ get.predictions.ratio <- function(x, df_path){
   return(df)
 }
 
+### PARSE CENTILE CSV
+#loads prediction csvs and returns as list of dataframes
+get.predictions <- function(df_path){
+  df <- data.frame() #new empty dataframe
+  pred.csvs.p <- list.files(path = df_path, pattern = ".+_predictions.csv", full.names = TRUE)
+  for (file in pred.csvs.p) {
+    # Read each CSV file
+    data <- fread(file)
+    
+    # Add a "Source_File" column with the file name
+    data <- data %>%
+      mutate(Source_File = as.factor(basename(file))) %>%
+      mutate(dataset = gsub("_data|_predictions.csv|-", "", Source_File))
+    
+    # Bind the data to the combined dataframe
+    df <- bind_rows(df, data, .id = "File_ID")
+  }
+  return(df)
+}
+
+
 ### PARSE ACROSS PERMUTAITON CENTILE CSVS
 #loads prediction csvs and returns as list of dataframes
 get.predictions.perm <- function(x, df_path){

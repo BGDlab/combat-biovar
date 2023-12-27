@@ -28,6 +28,17 @@ pheno.list <- readRDS(file="R_scripts/pheno_list.rds")
 #get args
 args <- commandArgs(trailingOnly = TRUE)
 
+##### BASIC MODEL RESULTS #####
+# parse outputs from 
+
+if (args[1] == "basic"){
+  
+  path_to_csvs <- as.character(args[3])
+  #READ INTO DATAFRAME
+  predictions <- get.predictions(df_path = path_to_csvs)
+  
+}
+
 ##### PERMUTATION PIPELINE RESULTS #####
 # parse outputs from 
 
