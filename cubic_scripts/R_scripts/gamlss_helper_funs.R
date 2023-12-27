@@ -460,6 +460,15 @@ get.og.data.centiles <- function(gamlss.rds.file, og.data, get.zscores = FALSE){
   #iterate through participants
   for (i in 1:nrow(og.data)){
       centiles[i] <- eval(call(qfun, og.data[[pheno]][[i]], mu=predModel$mu[[i]], sigma=predModel$sigma[[i]], nu=predModel$nu[[i]]))
+      
+      #don't let centile = 1!
+      if (centiles[i] == 1) {
+        centiles[i] <- 0.9999999999999999999999999 #25 dec places, should be plenty based on next-highest non-1 centile value
+      }
+      #don't let centile = 0!
+      if (centiles[i] == 0) {
+        centiles[i] <- 0.0000000000000000000000001 #25 dec places, should be plenty based on min centile
+      }
   }
   if (get.zscores == FALSE){
   return(centiles)
@@ -503,6 +512,7 @@ get.og.data.centiles.lbcc <- function(gamlss.rds.file, og.data, get.zscores = FA
   #iterate through participants
   for (i in 1:nrow(og.data)){
     centiles[i] <- eval(call(qfun, og.data[[pheno]][[i]], mu=predModel$mu[[i]], sigma=predModel$sigma[[i]], nu=predModel$nu[[i]]))
+    
   }
   if (get.zscores == FALSE){
     return(centiles)
@@ -557,7 +567,7 @@ get.predictions.perm <- function(x, df_path){
     
     # Add a "Source_File" column with the file name
     data <- data %>%
-      mutate(Source_File = as.factor(basename(file)),
+      mutate(Source_File = as.factor(basename(file)), #get cf configuration!
              perm = as.factor(x)) %>%
       mutate(dataset = gsub("_data|_predictions.csv|perm-|[0-9]|-", "", Source_File))
     
