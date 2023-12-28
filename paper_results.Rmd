@@ -4,12 +4,13 @@ output: html_document
 date: '2023-11-12'
 ---
 
+# Setup 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions)
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel)
 #Sys.setenv("MC_CORES"=10L)
 options("mc.cores")
 
@@ -20,11 +21,9 @@ aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg
 
 single script to parse outputs & get results (condensed from `ukb_sim.site_analyses.Rmd`)
 
-
 ```{r}
-data_path <- "./ukb_basic"
+data_path <- "./derivatives"
 
-### LOAD ###
 pheno_list <- readRDS(file="cubic_scripts/R_scripts/pheno_list.rds")
 vol_list_global <- readRDS(file="cubic_scripts/R_scripts/vol_list_global.rds")
 vol_list_regions <- readRDS(file="cubic_scripts/R_scripts/Vol_list_regions.rds")
@@ -32,6 +31,8 @@ sa_list <- readRDS(file="cubic_scripts/R_scripts/SA_list.rds")
 ct_list <- readRDS(file="cubic_scripts/R_scripts/CT_list.rds")
 
 pheno_list.z <- paste0(pheno_list, ".z")
+#also load raw data
+ukb_cn_df <- fread("/Users/megardn/Desktop/BGD_Repos/combat_biovar/data/ukb_to_model/ukb_CN_data_simsites.csv")
 ```
 
 # Define Functions
@@ -141,11 +142,14 @@ extremeness.lm <- function(df, f, comp_multiplier=1){
 
 # Main Analyses
 
-## CENTILES
-Do centile scores change based on combat version?
+##Load Data
+
+pulled centile/z error calcs from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/*_diffs.csv' .`
+
+pulled predicted centiles from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/*_predictions.csv' .`
 
 ```{r}
-pred.csvs <- list.files(path = data_path, pattern = "_predictions.csv", full.names = TRUE)
+pred.csvs <- list.files(path = paste0(data_path, "/ukb_basic"), pattern = "_predictions.csv", full.names = TRUE)
 combined_preds <- data.frame()
 
 for (file in pred.csvs) {
@@ -165,8 +169,10 @@ for (file in pred.csvs) {
 **qc - find ppts with centiles at 1 or 0**
 
 ```{r}
-qc_cent_df <- combined_preds %>% 
-  filter_at(vars(pheno_list), any_vars(. %in% c(1, 0, Inf, -Inf, NA))) %>%
+combined_preds %>% 
+  filter_at(vars(pheno_list), any_vars(. %in% c(1))) %>%
+  dplyr::select(participant) %>%
+  unique()
   dplyr::select(File_ID, participant, sex, dataset, pheno_list) %>%
   pivot_longer(cols=pheno_list, names_to="pheno", values_to="centile")
 skimr::skim(qc_cent_df)
@@ -201,27 +207,9 @@ qc_cent_df %>%
 qc_cent_df %>%
   summarize(sprintf("%.100f", min(centile)))
 ```
+## CENTILES
 
-*MOVE TO CUBIC*
-
-```{r, eval=FALSE}
-#calculate abs error
-cent_abs.diffs <- combined_preds %>%
-  dplyr::filter(!str_detect(dataset, "refA")) %>% #drop ref site results
-  mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
-  mutate(dataset = relevel(dataset, ref= "ukb_CN")) %>%
-  arrange(dataset) %>%
-  group_by(participant) %>%
-  mutate(across(all_of(pheno_list), ~ abs(. - first(.)), .names = "abs.diff_{.col}")) %>%
-  ungroup() %>%
-  dplyr::filter(dataset != "ukb_CN") #drop raw
-
-saveRDS(cent_abs.diffs, "data/centile_abs_diffs.rds")
-```
-
-```{r}
-cent_abs.diffs <- readRDS("data/centile_abs_diffs.rds")
-```
+Do centile scores change based on combat version?
 
 Test for differences in abs. error distributions across combat configurations using nonparametric kruskal-wallace test (instead of anova. good that it's nonparametric b/c non-normal distributions BUT also the data is paired!). **confirm with andrew**
 Within each phenotype, iterate paired t test of ranks between each combo of combat dfs (nonparametric per discussion with Andrew). (see Zimmerman & Zumbo, 1993). Using custom functions from `ranked_welch_tests.R`.
@@ -579,12 +567,10 @@ for (file in raw_files) {
 length(basic_centiles)
 centiles.df <- bind_rows(basic_centiles)
 #skimr::skim(centiles.df)
+names(centiles.df)
 ```
 
 ```{r}
-#also load raw data
-ukb_cn_df <- fread("/Users/megardn/Desktop/BGD_Repos/combat_biovar/data/ukb_to_model/ukb_CN_data_simsites.csv")
-
 global.df.long <- ukb_cn_df %>%
   dplyr::select(participant, age_days, sex, vol_list_global) %>%
   pivot_longer(cols = vol_list_global, values_to = "value", names_to="pheno")
@@ -604,25 +590,33 @@ for (feature in unique(global.cent.df$pheno)) {
     dplyr::filter(pheno == feature)
   
  plot <- ggplot() +
-      geom_point(aes(x=ukb_cn_df$age_days, y=ukb_cn_df[[feature]]), alpha=0.5) +
+      #geom_point(aes(x=ukb_cn_df$age_days, y=ukb_cn_df[[feature]]), alpha=0.5) +
       #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
       geom_line(aes(x=df$age_days, y=df$M_centile_1, color=df$dataset)) +
       geom_line(aes(x=df$age_days, y=df$M_centile_2, color=df$dataset)) +
       geom_line(aes(x=df$age_days, y=df$M_centile_3, color=df$dataset)) +
       geom_line(aes(x=df$age_days, y=df$M_centile_4, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$M_centile_5, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$M_centile_5, color=df$dataset), linewidth=1.5) +
+      geom_line(aes(x=df$age_days, y=df$M_centile_6, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$M_centile_7, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$M_centile_8, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$M_centile_9, color=df$dataset)) +
       labs(title=paste("Male", feature, "brain chart"))
  
  print(plot)
  
  plot <- ggplot() +
-      geom_point(aes(x=ukb_cn_df$age_days, y=ukb_cn_df[[feature]]), alpha=0.5) +
+      #geom_point(aes(x=ukb_cn_df$age_days, y=ukb_cn_df[[feature]]), alpha=0.5) +
       #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
       geom_line(aes(x=df$age_days, y=df$F_centile_1, color=df$dataset)) +
       geom_line(aes(x=df$age_days, y=df$F_centile_2, color=df$dataset)) +
       geom_line(aes(x=df$age_days, y=df$F_centile_3, color=df$dataset)) +
       geom_line(aes(x=df$age_days, y=df$F_centile_4, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$F_centile_5, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$F_centile_5, color=df$dataset), linewidth=1.5) +
+      geom_line(aes(x=df$age_days, y=df$F_centile_6, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$F_centile_7, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$F_centile_8, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$F_centile_9, color=df$dataset)) +
       labs(title=paste("Female", feature, "brain chart"))
  
  print(plot)
@@ -634,12 +628,130 @@ for (feature in unique(global.cent.df$pheno)) {
       geom_line(aes(x=df$age_days, y=df$centile_2, color=df$dataset)) +
       geom_line(aes(x=df$age_days, y=df$centile_3, color=df$dataset)) +
       geom_line(aes(x=df$age_days, y=df$centile_4, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$centile_5, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$centile_5, color=df$dataset), linewidth=1.5) +
+      geom_line(aes(x=df$age_days, y=df$centile_6, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$centile_7, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$centile_8, color=df$dataset)) +
+      geom_line(aes(x=df$age_days, y=df$centile_9, color=df$dataset)) +
       labs(title=paste(feature, "brain chart"))
  
  print(plot)
   
 }
+```
+
+Looking at WMV more specifically for visualizations
+```{r}
+#wm centile lines
+wmv.df <- centiles.df %>%
+  dplyr::filter(pheno == "WMV") %>%
+  dplyr::filter(dataset == "ukb-CN-simsites" | dataset == "cf.gam" | dataset == "cf.gamlss" | dataset == "cf.lm") %>%
+  #pivot_longer(cols=contains("centile"), name)  %>%
+  pivot_longer(
+    cols = contains("centile"),
+    names_to = c("sex", ".value"),
+    names_pattern = "([MF]?)_(centile_\\d+)",
+    values_to = "value"
+  ) %>%
+ dplyr::filter(!if_all(c(sex,contains("centile")), is.na)) %>%
+  mutate(sex = as.factor(case_when(sex == "M" ~ "Male",
+                                   sex == "F" ~ "Female")),
+         dataset = fct_relevel(dataset, "ukb-CN-simsites", after = Inf ))
+```
+
+```{r}
+ggplot(wmv.df) +
+  geom_jitter(data = ukb_cn_df, aes(x=ukb_cn_df$age_days, y=ukb_cn_df$WMV), alpha=0.7, width=150, color="lightgray") +
+  #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
+  geom_line(aes(x=age_days, y=centile_1, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_2, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_3, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_4, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_5, color=dataset, linetype=dataset), linewidth=1.5) +
+  geom_line(aes(x=age_days, y=centile_6, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_7, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_8, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_9, color=dataset, linetype=dataset)) +
+  facet_wrap(~sex) + 
+  scale_linetype_manual(values = c('ukb-CN-simsites'= "dotted", cf.gam = "solid", cf.gamlss = "solid", cf.lm = "dashed")) +
+  scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#E84617", cf.gamlss = "#17E846", cf.lm = "purple")) +
+  theme_minimal() +
+  geom_text_repel(aes(x = max(ukb_cn_df$age_days), y = min(centile_1)),
+                  label="test",
+                  nudge_x = 1,
+                  na.rm = TRUE) + 
+  labs(title="WMV brain charts")
+```
+
+```{r}
+#looking at other phenotypes
+ven.df <- centiles.df %>%
+  dplyr::filter(pheno == "Ventricles") %>%
+  dplyr::filter(dataset == "ukb-CN-simsites" | dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  #pivot_longer(cols=contains("centile"), name)  %>%
+  pivot_longer(
+    cols = contains("centile"),
+    names_to = c("sex", ".value"),
+    names_pattern = "([MF]?)_(centile_\\d+)",
+    values_to = "value"
+  ) %>%
+ dplyr::filter(!if_all(c(sex,contains("centile")), is.na)) %>%
+  mutate(sex = as.factor(case_when(sex == "M" ~ "Male",
+                                   sex == "F" ~ "Female")),
+         dataset = fct_relevel(dataset, "ukb-CN-simsites", after = Inf ))
+
+ggplot(ven.df) +
+  geom_jitter(data = ukb_cn_df, aes(x=ukb_cn_df$age_days, y=ukb_cn_df$Ventricles), alpha=0.7, width=150, color="lightgray") +
+  #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
+  geom_line(aes(x=age_days, y=centile_1, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_2, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_3, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_4, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_5, color=dataset, linetype=dataset), linewidth=1.5) +
+  geom_line(aes(x=age_days, y=centile_6, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_7, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_8, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_9, color=dataset, linetype=dataset)) +
+  facet_wrap(~sex) + 
+  scale_linetype_manual(values = c('ukb-CN-simsites'= "dotted", cf.gam = "solid", cf.gamlss = "solid")) +
+  scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#E84617", cf.gamlss = "#17E846")) +
+  theme_minimal() +
+  labs(title="sGMV brain charts")
+```
+```{r}
+#wm centile lines
+r.sa.pc.df <- centiles.df %>%
+  dplyr::filter(pheno == "rh_SA_postcentral") %>%
+  dplyr::filter(dataset == "ukb-CN-simsites" | dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  #pivot_longer(cols=contains("centile"), name)  %>%
+  pivot_longer(
+    cols = contains("centile"),
+    names_to = c("sex", ".value"),
+    names_pattern = "([MF]?)_(centile_\\d+)",
+    values_to = "value"
+  ) %>%
+ dplyr::filter(!if_all(c(sex,contains("centile")), is.na)) %>%
+  mutate(sex = as.factor(case_when(sex == "M" ~ "Male",
+                                   sex == "F" ~ "Female")),
+         dataset = fct_relevel(dataset, "ukb-CN-simsites", after = Inf ))
+
+ggplot(r.sa.pc.df) +
+  geom_jitter(data = ukb_cn_df, aes(x=ukb_cn_df$age_days, y=ukb_cn_df$rh_SA_postcentral), alpha=0.7, width=150, color="lightgray") +
+  #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
+  geom_line(aes(x=age_days, y=centile_1, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_2, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_3, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_4, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_5, color=dataset, linetype=dataset), linewidth=1.5) +
+  geom_line(aes(x=age_days, y=centile_6, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_7, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_8, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_days, y=centile_9, color=dataset, linetype=dataset)) +
+  facet_wrap(~sex) + 
+  scale_linetype_manual(values = c('ukb-CN-simsites'= "dotted", cf.gam = "solid", cf.gamlss = "solid")) +
+  scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#E84617", cf.gamlss = "#17E846")) +
+  theme_minimal() +
+  labs(title="SA of right postcentral brain charts")
 ```
 
 # Replication 

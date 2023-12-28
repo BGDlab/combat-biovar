@@ -471,13 +471,17 @@ get.og.data.centiles <- function(gamlss.rds.file, og.data, get.zscores = FALSE){
       
       #don't let centile = 1!
       if (centiles[i] == 1) {
-        centiles[i] <- 0.9999999999999999999999999 #25 dec places, should be plenty based on next-highest non-1 centile value
+        centiles[i] <- 0.99999999999999994 #largest number i could get w/o rounding to 1 (trial & error)
       }
       #don't let centile = 0!
       if (centiles[i] == 0) {
         centiles[i] <- 0.0000000000000000000000001 #25 dec places, should be plenty based on min centile
       }
   }
+  #double check there are no impossible centiles
+  if(c(1,0) %in% centiles) 
+    stop("Error: predicted centiles include 0 or 1!")
+  
   if (get.zscores == FALSE){
   return(centiles)
   } else {
