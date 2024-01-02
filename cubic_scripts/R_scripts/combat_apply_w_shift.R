@@ -101,10 +101,6 @@ for (l in list_of_feature_lists){
   pheno.df <- raw.df %>%
     dplyr::select(all_of(l))
   
-  #log-transform ALL pheno vals - added for lifespan data analyses, not sure if i should rerun for ukb analyses
-  pheno.df <- pheno.df %>%
-    mutate(across(c(l), \(x) log(x, base=10)))
-  
   #make sure batch, covars, and pheno dfs are all the same length
   stopifnot(nrow(pheno.df) == length(batch))
   
@@ -131,10 +127,6 @@ for (l in list_of_feature_lists){
     }
   }
   
-  #un-log-transform vals
-   cf.obj$dat.combat <- cf.obj$dat.combat %>%
-     mutate(across(c(l), \(x) un_log(x)))
-  
   #save cf.obj
   saveRDS(cf.obj, file=paste0(save_path, "/combat_objs/",csv_basename,"_", config_name,"_", names(list_of_feature_lists[i]), "_cf_obj.rds"))
   
@@ -145,16 +137,21 @@ for (l in list_of_feature_lists){
   #add in combatted values
   cf <- base::merge(cf, cf.obj.df, 
               by = "id")
-  
 }
 
-#check for negative (impossible) features
+#check for & correct negative (impossible) features
+#correction based on jfortin's comments at https://github.com/Jfortin1/neuroCombat/issues/5
 total_negative_values <- sum(cf < 0)
 if (total_negative_values > 0) {
   print(paste("WARNING!", total_negative_values, "negative values found across the following features:"))
   #get names of features with neg. values
   columns_with_negatives <- names(cf)[colSums(cf < 0) > 0]
   print(columns_with_negatives)
+  print("correcting based on jfortin's comments at https://github.com/Jfortin1/neuroCombat/issues/5")
+  
+  cf <- cf %>%
+    mutate(across(all_of(columns_with_negatives), ~ . + abs(min(.))))
+  
 } else {
   print("ComBat successful")
 }
@@ -180,7 +177,7 @@ final.df <- cf.merged %>%
 #WRITE OUT
 
 #append config name
-datafile <- paste0(save_path, "/", csv_basename, "_log-cf_", config_name, "_data.csv")
+datafile <- paste0(save_path, "/", csv_basename, "_shift-cf_", config_name, "_data.csv")
 fwrite(final.df, file=datafile)
 
 print("DONE")
