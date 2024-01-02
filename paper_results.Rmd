@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel)
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain)
 #Sys.setenv("MC_CORES"=10L)
 options("mc.cores")
 
@@ -22,7 +22,7 @@ aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg
 single script to parse outputs & get results (condensed from `ukb_sim.site_analyses.Rmd`)
 
 ```{r}
-data_path <- "./derivatives"
+data_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives"
 
 pheno_list <- readRDS(file="cubic_scripts/R_scripts/pheno_list.rds")
 vol_list_global <- readRDS(file="cubic_scripts/R_scripts/vol_list_global.rds")
@@ -31,9 +31,13 @@ sa_list <- readRDS(file="cubic_scripts/R_scripts/SA_list.rds")
 ct_list <- readRDS(file="cubic_scripts/R_scripts/CT_list.rds")
 
 pheno_list.z <- paste0(pheno_list, ".z")
+pheno_abs.diff.list <- paste0("abs.diff_", pheno_list)
+z.pheno_abs.diff.list <- paste0("abs.diff_", pheno_list, ".z")
+
 #also load raw data
 ukb_cn_df <- fread("/Users/megardn/Desktop/BGD_Repos/combat_biovar/data/ukb_to_model/ukb_CN_data_simsites.csv")
 ```
+
 
 # Define Functions
 
@@ -84,7 +88,7 @@ centile.t.tests <- function(df, feature_list=pheno_diff.list, comp_multiplier=1)
 # cent_t.tests.p <- bind_rows(perm_t.tests, .id = "column_label")
 ```
 
-Within each combat config, test if there are significant differences in M and F subject's mean abs. centile error. Can test mean (not abs) centile errors, Z errors, etc, using `to_test` arg. FDR corrects for number of 
+Within each combat config, test if there are significant differences in M and F subject's mean abs. centile error. Can test mean (not abs) centile errors, Z errors, etc, using `to_test` arg. FDR corrects for number of datasets tested
 
 ```{r}
 sex.bias.t.tests <- function(df, to_test = "mean_cent_abs.diff", comp_multiplier=1){
@@ -99,9 +103,9 @@ sex.bias.t.tests <- function(df, to_test = "mean_cent_abs.diff", comp_multiplier
     ungroup()
 
   #apply fdr correction
-  n_comp=nrow(df)
+  n_comp=length(unique(df$dataset))
   df.sex.t <- df.sex.t %>%
-    dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = (n_comp*comp_multiplier)),
+    dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = (n_comp*comp_multiplier)), #use comp_multiplier if using fun with lapply
            sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
                                p.val_fdr >= 0.05 ~ FALSE))
   return(df.sex.t)
@@ -125,7 +129,7 @@ extremeness.lm <- function(df, f, comp_multiplier=1){
               t.stat = tail(tidy(lm(as.formula(f)))$statistic[2], n=1),
               std.error = tail(tidy(lm(as.formula(f)))$std.error[2]), n=1) %>%
     ungroup()
-  n_comp=nrow(df)
+  n_comp=length(unique(df$dataset))
 
   #apply fdr correction
   df.lm <- df.lm %>%
@@ -142,11 +146,12 @@ extremeness.lm <- function(df, f, comp_multiplier=1){
 
 # Main Analyses
 
-##Load Data
+## Load Data
 
-pulled centile/z error calcs from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/*_diffs.csv' .`
+pulled variance from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/*_variance.csv' .`
 
-pulled predicted centiles from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/*_predictions.csv' .`
+Get predicted centiles
+- pulled from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/*_predictions.csv' .`
 
 ```{r}
 pred.csvs <- list.files(path = paste0(data_path, "/ukb_basic"), pattern = "_predictions.csv", full.names = TRUE)
@@ -170,43 +175,45 @@ for (file in pred.csvs) {
 
 ```{r}
 combined_preds %>% 
-  filter_at(vars(pheno_list), any_vars(. %in% c(1))) %>%
+  filter_at(vars(pheno_list), any_vars(. %in% c(1, 0))) %>%
   dplyr::select(participant) %>%
   unique()
-  dplyr::select(File_ID, participant, sex, dataset, pheno_list) %>%
-  pivot_longer(cols=pheno_list, names_to="pheno", values_to="centile")
-skimr::skim(qc_cent_df)
 
-qc_cent_df %>%
-  dplyr::filter(centile == 0)
-
-qc_cent1_df <- qc_cent_df %>%
-  dplyr::filter(centile == 1) 
-
-qc_cent1_df %>%
-  ggplot() +
-  geom_bar(aes(dataset, fill=participant)) +
-  facet_wrap(~pheno)
-
-ppt.list <- qc_cent1_df %>%
+combined_preds %>% 
+  filter_at(vars(pheno_list.z), any_vars(. %in% c(NA, Inf, -Inf))) %>%
   dplyr::select(participant) %>%
-  unique() %>%
-  as.list() %>%
-  unname() %>%
-  unlist()
+  unique()
 
-qc_z_df <- combined_preds %>% 
-  filter_at(vars(pheno_list.z), any_vars(. %in% c(1, 0, Inf, -Inf, NA)))
-
-unique(qc_z_df$participant)
-
-qc_cent_df %>%
-  dplyr::filter(centile != 1) %>%
-  summarize(sprintf("%.100f", (1 - max(centile))))
-
-qc_cent_df %>%
-  summarize(sprintf("%.100f", min(centile)))
+# test.df <- combined_preds %>% 
+#   dplyr::select(pheno_list)
+# 
+# test.df[test.df==1] <- 0
+# 
+# format(round(max(do.call(pmax, test.df)), 20), nsmall = 20)
 ```
+
+saving out csv forces some centile scores to round up to 1, BUT it appears z scores are still being calculated correctly so just going to proceed!
+
+Get errors
+- pulled centile/z error calcs from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/*_diffs.csv' .`
+
+```{r}
+raw_files <- list.files(path = paste0(data_path, "/ukb_basic"), pattern = "_diffs.csv", full.names = TRUE) %>% unlist()
+
+diffs.df <- fread(file = raw_files, sep=",") %>%
+     mutate(dataset = gsub("_data|_data_predictions.csv|prop-|[0-9]|-", "", Source_File))
+```
+
+Get subject-wise summaries
+- pulled from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/subject-wise/*.csv' .`
+
+```{r}
+raw_files <- list.files(path = paste0(data_path, "/ukb_basic"), pattern = "_subj_pred.csv", full.names = TRUE) %>% unlist()
+
+subj_sum.df <- fread(file = raw_files, sep=",") %>%
+     mutate(dataset = gsub("_data|_data_predictions.csv|prop-|[0-9]|-", "", Source_File))
+```
+
 ## CENTILES
 
 Do centile scores change based on combat version?
@@ -229,16 +236,15 @@ t.df <- data.frame("pheno" = character(),
                    "group1" = character(),
                    "group2" = character(),
                    "p.value" = double())
-pheno_diff.list <- paste0("abs.diff_", pheno_list)
 
 #run tests
-attach(cent_abs.diffs)
+attach(diffs.df)
 for (pheno in pheno_diff.list) {
-  # df.aov <- tidy(kruskal.test(cent_abs.diffs[[pheno]] ~ cent_abs.diffs[["dataset"]]))
+  # df.aov <- tidy(kruskal.test(diffs.df[[pheno]] ~ diffs.df[["dataset"]]))
   # df.aov$pheno <- pheno
   # sum.df <- rbind(sum.df, df.aov)
   
-  df.pairwise.t <- tidy(pairwise.rank.welch.t.test(x=cent_abs.diffs[[pheno]], g=cent_abs.diffs[["dataset"]], paired = TRUE, p.adj = "none"))
+  df.pairwise.t <- tidy(pairwise.rank.welch.t.test(x=diffs.df[[pheno]], g=diffs.df[["dataset"]], paired = TRUE, p.adj = "none"))
   df.pairwise.t$pheno <- pheno
   t.df <- rbind(t.df, df.pairwise.t)
 }
@@ -257,19 +263,20 @@ t.df <- t.df %>%
   unite(comp, c("group1", "group2")) %>%
   mutate(comp = as.factor(comp))
 
-# t.df.sum <- t.df %>%
-#   group_by(comp) %>%
-#   summarize(n_sig_regions = sum(sig_fdr),
-#             n_compare = n(),
-#             min_pval = min(p.val_fdr),
-#             max_pval = max(p.val_fdr))
-# t.df.sum
+t.df.sum <- t.df %>%
+  group_by(comp) %>%
+  summarize(n_sig_regions = sum(sig_fdr),
+            n_compare = n(),
+            min_pval = min(p.val_fdr),
+            max_pval = max(p.val_fdr))
+t.df.sum
 ```
 
 Little plot
 ```{r}
 #get means w/in feature 
-mean.diffs.long <- cent_abs.diffs %>%
+mean.diffs.long <- diffs.df %>%
+  dplyr::select(sex, dataset, pheno, pheno_abs.diff.list) %>%
   mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
   group_by(dataset) %>%
   summarize(across(starts_with("abs.diff_"), mean)) %>%
@@ -304,27 +311,51 @@ cent.diffs.plot
 ggsave("figs/win_feature_mean_cent_abs.diffs.jpeg", cent.diffs.plot)
 ```
 
+### Sex-Biases
+
+Visualize magnitude mean w/in subj error
+
+```{r}
+subj_sum.df %>%
+  mutate(mean_cent_abs.diff = mean_cent_abs.diff*100) %>% #for visuals
+  ggplot() +
+  geom_violin(aes(x=dataset, y=mean_cent_abs.diff, fill=sex)) +
+  labs(y= "Magnitude Centile Error", x = "ComBat Configurations") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ggtitle("Within-subject mean magnitude of error in centile scores across ComBat configurations")
+
+subj_sum.df %>%
+  mutate(mean_cent_diff = mean_cent_diff*100) %>% #for visuals
+  ggplot(aes(x=dataset, y=mean_cent_diff, fill=sex)) +
+  geom_boxplot(trim=FALSE, scale="width") +
+  labs(y="Centile Error", x = "ComBat Configurations") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ggtitle("Within-subject mean error in centile scores across ComBat configurations")
+
+subj_sum.df %>%
+  dplyr::filter(dataset == "cf.gamlss" | dataset == "cf.gam" | dataset == "cf.lm") %>%
+  mutate(mean_cent_abs.diff = mean_cent_abs.diff*100) %>% #for visuals
+  ggplot(aes(x=sim.site, y=mean_cent_abs.diff, fill=sex)) +
+  geom_violin(trim=FALSE) +
+  facet_wrap(~dataset) +
+  labs(y="Magnitude Centile Error", x = "Simulated Site") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ggtitle("Within-subject mean magnitude error in centile scores across ComBat configurations")
+
+subj_sum.df %>%
+  ggplot() +
+  geom_bar(aes(x=sim.site, fill=sex))
+```
+
+Significance testing (w/in sub. mean abs centile error) *ask about this - might be better to use wilcox since variances are ~= across sexes*
+
+```{r}
+sex.bias.t.tests(subj_sum.df)
+```
+
 ## Z-SCORES
 
 look for skew in distribution
-
-```{r, eval=FALSE}
-#calc errors
-z_abs.diffs <- combined_preds %>%
-  dplyr::filter(!str_detect(dataset, "refA")) %>% #drop ref site results
-  mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
-  mutate(dataset = relevel(dataset, ref = "ukb_CN")) %>%
-  arrange(dataset) %>%
-  group_by(participant) %>%
-  mutate(across(ends_with(".z"), ~ abs(. - first(.)), .names = "abs.diff_{.col}")) %>%
-  ungroup() %>%
-  dplyr::filter(dataset != "ukb_CN") #drop raw
-saveRDS(z_abs.diffs, "data/z_abs.diffs.rds")
-```
-
-```{r}
-z_abs.diffs <- readRDS("data/z_abs.diffs.rds")
-```
 
 significance testing
 
@@ -342,16 +373,14 @@ z.t.df <- data.frame("pheno" = character(),
                      "group2" = character(),
                      "p.value" = double())
 
-z.pheno_abs.diff.list <- paste0("abs.diff_", pheno_list, ".z")
-
 #run tests
-attach(z_abs.diffs)
+attach(diffs.df)
 for (pheno in z.pheno_abs.diff.list) {
-  # df.aov <- tidy(kruskal.test(z_abs.diffs[[pheno]] ~ z_abs.diffs[["dataset"]]))
+  # df.aov <- tidy(kruskal.test(diffs.df[[pheno]] ~ diffs.df[["dataset"]]))
   # df.aov$pheno <- pheno
   # z.sum.df <- rbind(z.sum.df, df.aov)
   
-  df.pairwise.t <- tidy(pairwise.rank.welch.t.test(x=z_abs.diffs[[pheno]], g=z_abs.diffs[["dataset"]], paired = TRUE, p.adj = "none"))
+  df.pairwise.t <- tidy(pairwise.rank.welch.t.test(x=diffs.df[[pheno]], g=diffs.df[["dataset"]], paired = TRUE, p.adj = "none"))
   df.pairwise.t$pheno <- pheno
   z.t.df <- rbind(z.t.df, df.pairwise.t)
 }
@@ -371,20 +400,21 @@ z.t.df <- z.t.df %>%
   unite(comp, c("group1", "group2")) %>%
   mutate(comp = as.factor(comp))
 
-# sum_z.t.df <- z.t.df %>%
-#   group_by(comp) %>%
-#   summarize(n_sig_regions = sum(sig_fdr),
-#             n_compare = n(),
-#             min.pval = min(p.val_fdr),
-#             max.pval = max(p.val_fdr))
-# 
-# sum_z.t.df
+sum_z.t.df <- z.t.df %>%
+  group_by(comp) %>%
+  summarize(n_sig_regions = sum(sig_fdr),
+            n_compare = n(),
+            min.pval = min(p.val_fdr),
+            max.pval = max(p.val_fdr))
+
+sum_z.t.df
 ```
 
 Little plot
 ```{r}
 #get means w/in feature 
-z.mean.diffs.long <- z_abs.diffs %>%
+z.mean.diffs.long <- diffs.df %>%
+  dplyr::select(sex, dataset, pheno, z.pheno_abs.diff.list) %>%
   mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
   group_by(dataset) %>%
   summarize(across(starts_with("abs.diff_"), mean)) %>%
@@ -416,9 +446,52 @@ z.diffs.plot
 ggsave("figs/win_feature_mean_z_abs.diffs.jpeg", z.diffs.plot)
 ```
 
+### Sex-Biases
+
+Visualize magnitude mean w/in subj error
+
+```{r}
+subj_sum.df %>%
+  ggplot() +
+  geom_violin(aes(x=dataset, y=mean_z_abs.diff, fill=sex)) +
+  labs(y= "Magnitude Z-Score Error", x = "ComBat Configurations") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ggtitle("Within-subject mean magnitude error in z-scores across ComBat configurations")
+
+subj_sum.df %>%
+  ggplot(aes(x=sex, y=mean_z_diff, fill=sex)) +
+  geom_boxplot(trim=FALSE, scale="width") +
+  facet_wrap(~dataset, scale="free_y") +
+  labs(y="Z-Score Error", x = "ComBat Configurations") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ggtitle("Within-subject mean error in z-scores across ComBat configurations")
+
+subj_sum.df %>%
+  dplyr::filter(dataset == "cf.gamlss" | dataset == "cf.gam" | dataset == "cf.lm") %>%
+  ggplot(aes(x=sim.site, y=mean_z_abs.diff, fill=sex)) +
+  geom_violin(trim=FALSE) +
+  facet_wrap(~dataset) +
+  labs(y="Magnitude Z Error", x = "Simulated Site") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  ggtitle("Within-subject mean magnitude error in z-scores across ComBat configurations")
+
+subj_sum.df %>%
+  ggplot() +
+  geom_bar(aes(x=sim.site, fill=sex))
+```
+
+Significance testing (w/in sub. mean abs z error) *ask about this - might be better to use wilcox since variances are ~= across sexes*
+
+```{r}
+sex.bias.t.tests(subj_sum.df, to_test="mean_z_abs.diff")
+sex.bias.t.tests(subj_sum.df, to_test="mean_z_diff")
+```
+
 
 ## SCALE EFFECTS OF SEX
+
 fix age, get diff between male and female pred. variance
+
 ```{r}
 pred.csvs <- list.files(path = data_path, pattern = "_variance.csv", full.names = TRUE)
 combined_var <- data.frame()
@@ -543,7 +616,7 @@ p_annotate <- annotate_figure(p, top = text_grob("Figure 1. Standardized effect 
 ggsave("figs/male_variance_ohbm_big.jpeg", p_annotate, width=7, height=8)
 ```
 
-##CENTILE FANS
+## CENTILE FANS
 
 pulled predicted centiles from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/*_centiles.csv' .`
 
@@ -1046,7 +1119,7 @@ perm_var <- mclapply(n_perm_list, get.var, mc.preschedule = FALSE)
 perm_var.all <- bind_rows(perm_var, .id = "column_label")
 ```
 
-maybe better to get sex_summary.csv - just need signifigance
+maybe better to get sex_summary.csv - just need significance
 
 ```{r}
 #get summary df for p vals, plotting
@@ -1327,7 +1400,6 @@ sex_bias_ratio_abs.tests_df %>%
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
     coord_fixed()
 ```
--log(p)
 
 test actual (not abs. val) centile errors
 
