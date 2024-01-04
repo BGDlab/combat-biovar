@@ -74,7 +74,7 @@ csv_fname=$(basename $csv .csv)
 
 #######################################################################################
 #SET COVAR COLS
-covar_list="age_days,sexMale,sex.age"
+covar_list="log_age,sexMale,sex.age" #age_days
 #SET BATCH COL
 batch="site"
 
