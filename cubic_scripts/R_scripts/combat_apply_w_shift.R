@@ -28,8 +28,6 @@ source("/cbica/home/gardnerm/combat-biovar/cubic_scripts/R_scripts/gamlss_helper
 args <- commandArgs(trailingOnly = TRUE)
 raw.df <- fread(args[1], stringsAsFactors = TRUE, na.strings = "")
 
-print(paste("col names:", names(raw.df)))
-
 batch.arg <- args[2]
 #if batch arg is csv, merge csv into raw.df and designate last col as batch ID
 if (endsWith(batch.arg, '.csv')){
@@ -171,7 +169,6 @@ final.df <- cf.merged %>%
          Vol_total=rowSums(dplyr::select(., .dots=all_of(c(vol_list_regions)))),
          SA_total=rowSums(dplyr::select(., .dots=all_of(c(sa_list)))),
          CT_total=rowSums(dplyr::select(., .dots=all_of(c(ct_list)))))
-
 
 ##########################################################################
 #WRITE OUT

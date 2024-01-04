@@ -75,6 +75,7 @@ csv_fname=$(basename $csv .csv)
 #######################################################################################
 #SET COVAR COLS
 covar_list="log_age,sexMale,sex.age" #age_days
+
 #SET BATCH COL
 batch="site"
 
@@ -85,7 +86,7 @@ for config in $config_list
 do
 	echo "Prepping $config"
 	#write bash script
-	bash_script=$bash_dir/${csv_fname}_${config}_combat.sh
+	bash_script=$bash_dir/${csv_fname}_${config}_test_combat.sh
 	touch $bash_script
 
 	#SIMPLE COMBAT, NO COVARS
@@ -125,5 +126,5 @@ do
 	fi
 
 #qsub bash script
-	qsub -l h_vmem=64G,s_vmem=64G -N ${config}.${csv_fname} -o $bash_dir/${config}.${csv_fname}_out.txt -e $bash_dir/${config}.${csv_fname}_err.txt $bash_script
+	qsub -l h_vmem=64G,s_vmem=64G -N ${config}.${csv_fname}_test -o $bash_dir/${config}.${csv_fname}_test_out.txt -e $bash_dir/${config}.${csv_fname}_test_err.txt $bash_script
 done
