@@ -172,7 +172,6 @@ final.df <- cf.merged %>%
          SA_total=rowSums(dplyr::select(., .dots=all_of(c(sa_list)))),
          CT_total=rowSums(dplyr::select(., .dots=all_of(c(ct_list)))))
 
-
 ##########################################################################
 #WRITE OUT
 

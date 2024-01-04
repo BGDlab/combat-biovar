@@ -351,7 +351,34 @@ Significance testing (w/in sub. mean abs centile error) *ask about this - might 
 
 ```{r}
 sex.bias.t.tests(subj_sum.df)
+sex.bias.t.tests(subj_sum.df, to_test="mean_cent_diff")
 ```
+
+### Extremeness-Biases
+
+Group at 0-0.25, >0.25 - .75 <, 0.75-1
+
+```{r}
+subj_sum.df <- subj_sum.df %>%
+  mutate(cent_cat = as.factor(case_when(mean_centile <= 0.25 ~ "low",
+                              mean_centile > 0.25 & mean_centile < 0.75 ~ "mid",
+                              mean_centile >= 0.75 ~ "high")),
+         z_cat = as.factor(case_when(mean_z <= -1 ~ "low",
+                              mean_z > -1 & mean_z < 1 ~ "mid",
+                              mean_z >= 1 ~ "high")))
+``` 
+
+
+
+```{r}
+subj_sum.df %>%
+  dplyr::filter(dataset == "cf.gamlss" | dataset == "cf.gam" | dataset == "cf.lm") %>%
+  ggplot(aes(x=mean_z, y=mean_z_diff, color=sex)) +
+  geom_point(alpha=0.5) +
+  geom_smooth() +
+  facet_wrap(~dataset, scales="free_y")
+```
+
 
 ## Z-SCORES
 
