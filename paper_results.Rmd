@@ -218,10 +218,7 @@ subj_sum.df <- fread(file = raw_files, sep=",") %>%
 
 Do centile scores change based on combat version?
 
-Test for differences in abs. error distributions across combat configurations using nonparametric kruskal-wallace test (instead of anova. good that it's nonparametric b/c non-normal distributions BUT also the data is paired!). **confirm with andrew**
 Within each phenotype, iterate paired t test of ranks between each combo of combat dfs (nonparametric per discussion with Andrew). (see Zimmerman & Zumbo, 1993). Using custom functions from `ranked_welch_tests.R`.
-
-**need to confirm w andrew then update output table formatting as needed - skipping for now**
 
 ```{r}
 #initalize empty dfs to store outputs
@@ -360,9 +357,9 @@ Group at 0-0.25, >0.25 - .75 <, 0.75-1
 
 ```{r}
 subj_sum.df <- subj_sum.df %>%
-  mutate(cent_cat = as.factor(case_when(mean_centile <= 0.25 ~ "low",
+  mutate(cent_cat = factor(case_when(mean_centile <= 0.25 ~ "low",
                               mean_centile > 0.25 & mean_centile < 0.75 ~ "mid",
-                              mean_centile >= 0.75 ~ "high")),
+                              mean_centile >= 0.75 ~ "high"), levels= c("low", "mid", "high"), ordered=TRUE),
          z_cat = as.factor(case_when(mean_z <= -1 ~ "low",
                               mean_z > -1 & mean_z < 1 ~ "mid",
                               mean_z >= 1 ~ "high")))
@@ -373,12 +370,25 @@ subj_sum.df <- subj_sum.df %>%
 ```{r}
 subj_sum.df %>%
   dplyr::filter(dataset == "cf.gamlss" | dataset == "cf.gam" | dataset == "cf.lm") %>%
-  ggplot(aes(x=mean_z, y=mean_z_diff, color=sex)) +
-  geom_point(alpha=0.5) +
+  ggplot(aes(x=mean_centile, y=mean_cent_diff, color=sex)) +
+  geom_point(alpha=0.3) +
   geom_smooth() +
-  facet_wrap(~dataset, scales="free_y")
+  facet_grid(dataset ~ sim.site, scales="free_y")
 ```
 
+```{r}
+subj_sum.df %>%
+  dplyr::filter(dataset == "cf.gamlss" | dataset == "cf.gam" | dataset == "cf.lm") %>%
+  ggplot(aes(x=cent_cat, y=mean_cent_diff, color=sex)) +
+  geom_violin() +
+  facet_wrap(~dataset, scales="free_y")
+
+subj_sum.df %>%
+  #dplyr::filter(dataset == "cf.gamlss" | dataset == "cf.gam" | dataset == "cf.lm") %>%
+  ggplot(aes(x=cent_cat, y=mean_cent_diff)) +
+  geom_violin() +
+  facet_wrap(~dataset, scales="free_y")
+```
 
 ## Z-SCORES
 
@@ -520,7 +530,7 @@ sex.bias.t.tests(subj_sum.df, to_test="mean_z_diff")
 fix age, get diff between male and female pred. variance
 
 ```{r}
-pred.csvs <- list.files(path = data_path, pattern = "_variance.csv", full.names = TRUE)
+pred.csvs <- list.files(path = paste0(data_path, "/ukb_basic"), pattern = "_variance.csv", full.names = TRUE)
 combined_var <- data.frame()
 
 for (file in pred.csvs) {
@@ -570,6 +580,7 @@ combined_var <- inner_join(combined_var, plot.info)
 #var plot
 var.plot.df <- combined_var %>%
   dplyr::filter(sig.sum_bf.corr == TRUE & pheno_cat != "Global Volume") %>%
+  dplyr::filter(!grepl('_refA', dataset)) %>% #drop refA levels
   mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
   group_by(dataset, pheno_cat)
 
@@ -648,8 +659,7 @@ ggsave("figs/male_variance_ohbm_big.jpeg", p_annotate, width=7, height=8)
 pulled predicted centiles from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/*_centiles.csv' .`
 
 ```{r}
-basic_data_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives/ukb_basic"
-raw_files <- list.files(path = basic_data_path, pattern = "_centiles.csv", full.names = TRUE)
+raw_files <- list.files(path = paste0(data_path, "/ukb_basic"), pattern = "_centiles.csv", full.names = TRUE)
 
 df_list <- list() #new empty list
 for (file in raw_files) {
@@ -865,7 +875,7 @@ pulled within-subj summaries from cubic using `scp -r 'gardnerm@cubic-login.uphs
 Read in centile/z-score errors
 
 ```{r}
-perm_data_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives/ukb_perm_csvs"
+perm_data_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives/ukb_perm"
 raw_files <- list.files(path = perm_data_path, pattern = "_diffs.csv", full.names = TRUE)
 
 df_list <- list() #new empty list
@@ -1249,6 +1259,19 @@ max(ratio_subj.df$mean_centile)
 min(ratio_subj.df$mean_centile)
 max(ratio_subj.df$mean_z)
 min(ratio_subj.df$mean_z)
+```
+
+```{r}
+for (l in unique(ratio_subj.df$dataset)){
+plot <- ratio_subj.df %>%
+  dplyr::filter(dataset == l) %>%
+  ggplot(aes(x=mean_centile, y=mean_cent_diff, color=sex)) +
+  geom_point(alpha=0.3) +
+  geom_smooth() +
+  facet_grid(sim.site ~ prop) +
+  ggtitle(l)
+print(plot)
+}
 ```
 
 Do centile scores change based on combat version?
