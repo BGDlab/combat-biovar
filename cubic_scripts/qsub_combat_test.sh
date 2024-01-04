@@ -58,9 +58,9 @@ bash_dir=$study_dir/combat_qsub_scripts
 if ! [ -d $bash_dir ]
 	then
 	mkdir $bash_dir
-	else
+	#else
 	#remove old error messages if necessary
-	rm -rf $bash_dir/*.txt
+	#rm -rf $bash_dir/*.txt
 	fi
 
 #combat output obj dir
