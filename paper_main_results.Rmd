@@ -705,10 +705,17 @@ subj_sum.df %>%
   ggplot(aes(x=mean_centile, y=mean_cent_diff, color=sex)) +
   geom_point(alpha=0.3) +
   geom_smooth() +
+  facet_grid(~dataset, scales="free_y")
+
+subj_sum.df %>%
+  dplyr::filter(dataset == "cf.gamlss" | dataset == "cf.gam" | dataset == "cf.lm") %>%
+  ggplot(aes(x=mean_centile, y=mean_cent_diff, color=sex)) +
+  geom_point(alpha=0.3) +
+  geom_smooth() +
   facet_grid(dataset ~ sim.site, scales="free_y")
 ```
 
-test to see if slope is nonzero!!!
+test to see if slope of non-dominant group is nonzero!!!
 
 ```{r}
 subj_sum.df %>%
