@@ -98,6 +98,8 @@ for (l in list_of_feature_lists){
   print(names(list_of_feature_lists[i]))
   pheno.df <- raw.df %>%
     dplyr::select(all_of(l))
+  #replace any 0s w/ 1 pre-log-transform
+  pheno.df <- replace(pheno.df, pheno.df==0, 1)
   
   #log-transform ALL pheno vals - added for lifespan data analyses, not sure if i should rerun for ukb analyses
   pheno.df <- pheno.df %>%
