@@ -3,7 +3,7 @@
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
-r_script=$base/R_scripts/featurewise_sex_bias_test.R
+r_script=$base/cubic_scripts/R_scripts/featurewise_sex_bias_test.R
 #######################################################################################
 cd $base/cubic_scripts #to source functions correctly
 #######################################################################################

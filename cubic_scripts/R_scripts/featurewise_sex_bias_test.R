@@ -46,3 +46,5 @@ z.sex_t_tests_in_feat.df <- mclapply(diffs_perm.list, sex.bias.feat.t.tests, mc.
 
 #save rds
 saveRDS(z.sex_t_tests_in_feat.df, file=paste0(data_path, "/featurewise_z_sex_bias_tests.RDS"))
+
+print("DONE!")
