@@ -5,6 +5,7 @@ set.seed(12345)
 #LOAD PACKAGES
 library(dplyr)
 library(data.table)
+library(parallel)
 
 source("R_scripts/gamlss_helper_funs.R")
 
