@@ -6,8 +6,6 @@ library(data.table)
 library(broom.mixed)
 library(broom)
 
-source("ranked_welch_tests.R")
-
 #note - some of these functions do not seem to work on CUBIC, as they rely on saving environment variables
 
 ### CONTENTS ###
@@ -666,78 +664,4 @@ means.by.subj <- function(df, pheno_list){
     
   return(mean.diffs.subj)
 }
-
-##########
-## STATS
-##########
-# sex.bias.feat.t.tests()
-# Within each combat config, test if there are significant differences in M and F centile errors in each feature 
-# FDR corrects for # datasets * # features tested, can multiply additional corrections (i.e. if using lapply to calc from multiple dataframes)
-
-sex.bias.feat.t.tests <- function(df, feature_list, comp_multiplier=1){
-  
-  pheno_diff_list <- paste0("diff_", feature_list)
-  
-  #initialize empty df to store outputs
-  t.df <- data.frame("dataset" = character(),
-                     "pheno" = character(),
-                     "p.value" = double(),
-                     "sex_diff" = double(),
-                     "t.stat" = double(),
-                     "df" = double())
-  attach(df)
-  for (pheno in pheno_diff_list) {
-    #print(paste("t-test:", pheno))
-    
-    #conduct t test
-    df.sex.t <- df %>%
-      group_by(dataset) %>%
-      summarise(p.value = tidy(rank.welch.t.test.formula(formula=as.formula(paste(pheno, "~ sex")), paired = FALSE, p.adj = "none"))$p.value,
-                sex_diff = tidy(rank.welch.t.test.formula(formula=as.formula(paste(pheno, "~ sex")), paired = FALSE, p.adj = "none"))$estimate,
-                t.stat = tidy(rank.welch.t.test.formula(formula=as.formula(paste(pheno, "~ sex")), paired = FALSE, p.adj = "none"))$statistic,
-                df = tidy(rank.welch.t.test.formula(formula=as.formula(paste(pheno, "~ sex")), paired = FALSE, p.adj = "none"))$parameter) %>%
-      ungroup()
-    
-    df.sex.t$pheno <- sub("diff_", "", pheno)
-    
-    #append to full df
-    t.df <- rbind(t.df, df.sex.t)
-  }
-  detach(df)
-  
-  #also get medians for m and f
-  med_df <- df %>%
-    dplyr::group_by(dataset, sex) %>%
-    summarise_at(pheno_diff_list, median) %>%
-    ungroup() %>%
-    pivot_longer(cols = starts_with("diff_"), names_to="pheno", names_prefix="diff_") %>%
-    pivot_wider(names_from = sex, values_from=value, names_glue = "med_{sex}") %>%
-    mutate(median_sex_diff = (med_Male - med_Female)) %>%
-    ungroup()
-  
-  #combine feature dfs
-  result_df <- left_join(t.df, med_df)  
-  
-  #apply fdr correction
-  n_comp=length(unique(df$dataset))*length(feature_list)
-  result_df <- result_df %>%
-    dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = (n_comp*comp_multiplier)), #use comp_multiplier if using fun with lapply
-                  sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
-                                      p.val_fdr >= 0.05 ~ FALSE),
-                  dataset=as.factor(dataset))
-  
-  # #summarize
-  # df.sex.t.sum <- df.sex.t %>%
-  #   group_by(dataset) %>%
-  #   dplyr::summarize(n_sig_regions = sum(sig_fdr),
-  #             min_pval = min(p.val_fdr),
-  #             max_pval = max(p.val_fdr)) %>%
-  #   ungroup() %>%
-  #   as.data.frame()
-  
-  return(result_df)
-  
-}
-
-
 
