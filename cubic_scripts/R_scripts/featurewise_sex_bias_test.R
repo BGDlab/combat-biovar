@@ -5,7 +5,7 @@ set.seed(12345)
 #LOAD PACKAGES
 library(dplyr)
 library(data.table)
-library(parallel)
+#library(parallel)
 
 devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/stats_tests.R?token=GHSAT0AAAAAACGAYP4HRNME2XTK3N4VLVAMZM5SDFA")
 
