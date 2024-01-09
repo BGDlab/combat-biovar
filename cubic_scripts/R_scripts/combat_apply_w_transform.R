@@ -124,15 +124,40 @@ for (l in list_of_feature_lists){
       ref_batch <- gsub("=", "", cf.args_split[2])
       ref_batch <- trimws(ref_batch)
       
-      #Combat
-      cf.obj <- try(eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", cf.arg1, " ref.batch = '", as.factor(ref_batch),"')"))))
-      #if fail, try method=CG
-      cf.obj <- if("try-error" %in% class(cf.obj)) eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", cf.arg1, " method=CG(), ref.batch = '", as.factor(ref_batch),"')")))
-    } else {
-      cf.obj <- cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.args, ")")))
-      #if fail, try method=CG
-      if("try-error" %in% class(cf.obj)) eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", cf.arg1, " method=CG())")))
+      #Combat w ref
+      cf_try <- function(x, y){
+        result <- tryCatch({
+          eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", x, " ref.batch = '", as.factor(y),"')")))
+        } , warning = function(w) {
+          message("warning")
+          eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", x, " ref.batch = '", as.factor(y),"')")))
+        } , error = function(e) {
+          message("error, trying method=CG()")
+          eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", x, " method=CG(), ref.batch = '", as.factor(y),"')")))
+        } , finally = {
+          message("done")
+        } )
+      }
       
+      cf.obj <- cf_try(cf.arg1, ref_batch)
+      
+    } else {
+      #Combat w/o ref
+      cf_try <- function(x){
+        result <- tryCatch({
+          eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", x, ")")))
+        } , warning = function(w) {
+          message("warning")
+          eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", x, ")")))
+        } , error = function(e) {
+          message("error, trying method=CG()")
+          eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", x, ")")))
+        } , finally = {
+          message("done")
+        } )
+      }
+      
+      cf.obj <- cf_try(cf.arg1)
     }
   }
   
