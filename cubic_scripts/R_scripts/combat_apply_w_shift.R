@@ -119,9 +119,13 @@ for (l in list_of_feature_lists){
       ref_batch <- trimws(ref_batch)
       
       #Combat
-      cf.obj <- eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", cf.arg1, " ref.batch = '", as.factor(ref_batch),"')")))
+      cf.obj <- try(eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", cf.arg1, " ref.batch = '", as.factor(ref_batch),"')"))))
+      #if fail, try method=CG
+      cf.obj <- if("try-error" %in% class(cf.obj)) eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", cf.arg1, " method=CG(), ref.batch = '", as.factor(ref_batch),"')")))
     } else {
-      cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.args, ")")))
+      cf.obj <- cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.args, ")")))
+      #if fail, try method=CG
+      if("try-error" %in% class(cf.obj)) eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", cf.arg1, " method=CG())")))
     }
   }
   
