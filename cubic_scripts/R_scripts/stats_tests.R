@@ -4,9 +4,11 @@ library(ggplot2)
 library(data.table)
 library(broom.mixed)
 library(broom)
+library(purrr)
 
-#source("ranked_welch_tests.R")
-source("/Users/megardn/Desktop/BGD_Repos/combat_biovar/cubic_scripts/R_scripts/ranked_welch_tests.R")
+# devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/ranked_welch_tests.R?token=GHSAT0AAAAAACGAYP4GAPOTD3FZTMHHQOGCZM5SE5Q")
+devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/ranked_welch_tests.R?token=GHSAT0AAAAAACGAYP4GBRV6DV6ZXXAUMDXMZM5SWKQ")
+#source("/Users/megardn/Desktop/BGD_Repos/combat_biovar/cubic_scripts/R_scripts/ranked_welch_tests.R")
 
 pheno_list <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/combat_biovar/cubic_scripts/R_scripts/pheno_list.rds")
 
@@ -154,7 +156,7 @@ sex.bias.t.tests <- function(df, to_test = "mean_cent_abs.diff", comp_multiplier
 # tidy(rank.welch.t.test.formula(formula=mean_cent_abs.diff ~ sex, data= ratio_subj_list[[1]], paired = FALSE, p.adj = "none"))
 # rank.welch.t.test.formula(formula=mean_cent_abs.diff ~ sex, data= ratio_subj_list[[1]], paired = FALSE, p.adj = "none")
 
-#sex.bias.feat.t.tests()
+#sex.bias.feat.t.tests() KEEP THIS ONE
 #modifying to test for sex-biases w/in feature rather than mean centiles
 
 pheno_diff_list <- paste0("diff_", pheno_list)
@@ -197,8 +199,18 @@ sex.bias.feat.t.tests <- function(df, feature_list=pheno_diff_list, comp_multipl
     mutate(median_sex_diff = (med_Male - med_Female)) %>%
     ungroup()
   
+  #also get max for m and f
+  max_df <- df %>%
+    dplyr::group_by(dataset, sex) %>%
+    summarise_at(feature_list, max, na.rm=TRUE) %>%
+    ungroup() %>%
+    pivot_longer(cols = starts_with("diff_"), names_to="pheno", names_prefix="diff_") %>%
+    pivot_wider(names_from = sex, values_from=value, names_glue = "max_{sex}") %>%
+    mutate(max_sex_diff = (max_Male - max_Female)) %>%
+    ungroup()
+  
   #combine feature dfs
-  result_df <- left_join(t.df, med_df)  
+  result_df <- Reduce(left_join, c(list(t.df), list(med_df), list(max_df)))  
   
   #apply fdr correction
   n_comp=length(unique(df$dataset))*length(feature_list)
@@ -313,74 +325,6 @@ sex.bias.t.tests <- function(df, to_test = "mean_cent_abs.diff", comp_multiplier
 
 # tidy(rank.welch.t.test.formula(formula=mean_cent_abs.diff ~ sex, data= ratio_subj_list[[1]], paired = FALSE, p.adj = "none"))
 # rank.welch.t.test.formula(formula=mean_cent_abs.diff ~ sex, data= ratio_subj_list[[1]], paired = FALSE, p.adj = "none")
-
-#sex.bias.feat.t.tests()
-#modifying to test for sex-biases w/in feature rather than mean centiles
-
-pheno_diff_list <- paste0("diff_", pheno_list)
-sex.bias.feat.t.tests <- function(df, feature_list=pheno_diff_list, comp_multiplier=1){
-  
-  #initialize empty df to store outputs
-  t.df <- data.frame("dataset" = character(),
-                     "pheno" = character(),
-                     "p.value" = double(),
-                     "sex_diff" = double(),
-                     "t.stat" = double(),
-                     "df" = double())
-  attach(df)
-  for (pheno in feature_list) {
-    #print(paste("t-test:", pheno))
-    
-    #conduct t test
-    df.sex.t <- df %>%
-      group_by(dataset) %>%
-      summarise(p.value = tidy(rank.welch.t.test.formula(formula=as.formula(paste(pheno, "~ sex")), paired = FALSE, p.adj = "none"))$p.value,
-                sex_diff = tidy(rank.welch.t.test.formula(formula=as.formula(paste(pheno, "~ sex")), paired = FALSE, p.adj = "none"))$estimate,
-                t.stat = tidy(rank.welch.t.test.formula(formula=as.formula(paste(pheno, "~ sex")), paired = FALSE, p.adj = "none"))$statistic,
-                df = tidy(rank.welch.t.test.formula(formula=as.formula(paste(pheno, "~ sex")), paired = FALSE, p.adj = "none"))$parameter) %>%
-      ungroup()
-    
-    df.sex.t$pheno <- sub("diff_", "", pheno)
-    
-    #append to full df
-    t.df <- rbind(t.df, df.sex.t)
-  }
-  detach(df)
-  
-  #also get medians for m and f
-  med_df <- df %>%
-    dplyr::group_by(dataset, sex) %>%
-    summarise_at(feature_list, median, na.rm=FALSE) %>%
-    ungroup() %>%
-    pivot_longer(cols = starts_with("diff_"), names_to="pheno", names_prefix="diff_") %>%
-    pivot_wider(names_from = sex, values_from=value, names_glue = "med_{sex}") %>%
-    mutate(median_sex_diff = (med_Male - med_Female)) %>%
-    ungroup()
-  
-  #combine feature dfs
-  result_df <- left_join(t.df, med_df)  
-  
-  #apply fdr correction
-  n_comp=length(unique(df$dataset))*length(feature_list)
-  result_df <- result_df %>%
-    dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = (n_comp*comp_multiplier)), #use comp_multiplier if using fun with lapply
-                  sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
-                                      p.val_fdr >= 0.05 ~ FALSE),
-                  dataset=as.factor(dataset))
-  
-  # #summarize
-  # df.sex.t.sum <- df.sex.t %>%
-  #   group_by(dataset) %>%
-  #   dplyr::summarize(n_sig_regions = sum(sig_fdr),
-  #             min_pval = min(p.val_fdr),
-  #             max_pval = max(p.val_fdr)) %>%
-  #   ungroup() %>%
-  #   as.data.frame()
-  
-  return(result_df)
-  
-}
-# sex.bias.feat.t.tests(diffs.df, feature_list = global.diff)
 
 #sex.bias.wilcox.tests()
 # Within each combat config, test if there are significant differences in M and F subject's mean abs. centile error. Can test mean (not abs) centile errors, Z errors, etc, using `to_test` arg. FDR corrects for number of datasets tested
