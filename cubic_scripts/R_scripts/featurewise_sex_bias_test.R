@@ -7,7 +7,7 @@ library(dplyr)
 library(data.table)
 library(parallel)
 
-source("R_scripts/gamlss_helper_funs.R")
+devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/stats_tests.R?token=GHSAT0AAAAAACGAYP4HRNME2XTK3N4VLVAMZM5SDFA")
 
 #pheno lists
 pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
@@ -46,3 +46,5 @@ z.sex_t_tests_in_feat.df <- mclapply(diffs_perm.list, sex.bias.feat.t.tests, mc.
 
 #save rds
 saveRDS(z.sex_t_tests_in_feat.df, file=paste0(data_path, "/featurewise_z_sex_bias_tests.RDS"))
+
+print("DONE!")

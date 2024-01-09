@@ -1,4 +1,4 @@
-#!/bin/bash
+\#!/bin/bash
 # Apply ComFam() with different arguments to specified dataset
 # test combat correction with shift
 
@@ -58,9 +58,9 @@ bash_dir=$study_dir/combat_qsub_scripts
 if ! [ -d $bash_dir ]
 	then
 	mkdir $bash_dir
-	else
+	#else
 	#remove old error messages if necessary
-	rm -rf $bash_dir/*.txt
+	#rm -rf $bash_dir/*.txt
 	fi
 
 #combat output obj dir
@@ -107,7 +107,7 @@ do
 	#COMBAT GAM
 	elif [ $config = "cf.gam" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gam, formula = y ~ s(age_days) + sexMale + s(sex.age)'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gam, formula = y ~ s(log_age) + sexMale + s(sex.age)'" > $bash_script
 
 	#COMBAT GAM W/ REF SITE
 	elif [ $config = "cf.gam_refA" ]
@@ -117,7 +117,7 @@ do
 	#COMBAT GAMLSS
 	elif [ $config = "cf.gamlss" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + pb(sex.age), sigma.formula = ~ pb(age_days) + sexMale + pb(sex.age)'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(log_age) + sexMale + pb(sex.age), sigma.formula = ~ pb(log_age) + sexMale + pb(sex.age)'" > $bash_script
 
 	#COMBAT GAMLSS W/ REF SITE
 	elif [ $config = "cf.gamlss_refA" ]
