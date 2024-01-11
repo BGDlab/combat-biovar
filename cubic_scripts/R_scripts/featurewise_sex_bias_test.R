@@ -7,7 +7,7 @@ library(dplyr)
 library(data.table)
 #library(parallel)
 
-devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/stats_tests.R?token=GHSAT0AAAAAACGAYP4HRNME2XTK3N4VLVAMZM5SDFA")
+devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/stats_tests.R?token=GHSAT0AAAAAACGAYP4GRZERZTMJRBBLW4RAZNADGWA")
 
 #pheno lists
 pheno_list <- readRDS(file="R_scripts/pheno_list.rds")

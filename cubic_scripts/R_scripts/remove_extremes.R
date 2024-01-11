@@ -47,7 +47,7 @@ rm_ext_cents <- function(og.data, feat_list, col_select){
 ###############################################################
 # LOAD DATA
 ###############################################################
-pheno_list <- readRDS(file="cubic_scripts/R_scripts/pheno_list.rds")
+pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
 z.pheno_list <- paste0(pheno_list, ".z")
 
 # centile errors
