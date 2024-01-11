@@ -84,7 +84,7 @@ for (file in pred.csvs) {
 }
 ```
 
-**qc - find ppts with centiles at 1 or 0**
+**QC: find ppts with centiles at 1 or 0**
 
 ```{r}
 combined_preds %>% 
@@ -96,13 +96,6 @@ combined_preds %>%
   filter_at(vars(pheno_list.z), any_vars(. %in% c(NA, Inf, -Inf))) %>%
   dplyr::select(participant) %>%
   unique()
-
-# test.df <- combined_preds %>% 
-#   dplyr::select(pheno_list)
-# 
-# test.df[test.df==1] <- 0
-# 
-# format(round(max(do.call(pmax, test.df)), 20), nsmall = 20)
 ```
 
 saving out csv forces some centile scores to round up to 1, BUT it appears z scores are still being calculated correctly so just going to proceed!
@@ -499,6 +492,7 @@ p_sexannotate <- annotate_figure(p_sex, top = text_grob("Figure 2A. Sex-biases i
                color = "black", size = 14, hjust=.65))
 p_sexannotate
 ggsave("figs/sex_diff_win_feat.jpeg", p_sexannotate, width=7, height=8)
+saveRDS(p_sexannotate, file="figs/sex_diff_win_feat.RDS")
 ```
 
 Sex Effect is the median male centile error - median female centile error (i.e. units are in centiles). Therefore, + sex effect (blue) means female scores tend to have more positive errors (TRUE centile > calculated centile) and - sex effect (green) means females have more negative errors (TRUE centile < calculated centile)? Honestly, not the most straightforward interpretation, i know - may make more sense to just plot the median errors separately in males and females than to plot the differences between the two.
@@ -1041,7 +1035,6 @@ wmv_centile_fan <- ggplot(wmv.df) +
   scale_linetype_manual(values = c('ukb-CN-simsites'= "dotted", cf.gam = "solid", cf.gamlss = "solid", cf.lm = "solid"), name = "ComBat \nConfiguration", labels=dataset_names) +
   #scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#E84617", cf.gamlss = "#17E846", cf.lm = "purple")) +
   scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) + 
-  theme_minimal() +
   xlab("Age (yrs)") + ylab("Volume (mm3)") +
   theme_linedraw(base_size = 11) +
   theme(plot.title = element_text(size=12)) +
@@ -1134,7 +1127,21 @@ ggplot(r.sa.pc.df) +
 
 ## FIGURE 1
 
+not sure whether to include
+```{r}
+#look at sex distributions of ppts across sites
+data.p <- subj_sum.df %>%
+  count(sim.site, sex) %>% 
+  group_by(sim.site) %>%
+  mutate(prop = n / sum(n)) %>%
+  ggplot(aes(x = sim.site, y = prop, fill = sex)) +
+  geom_col() +
+  theme_linedraw(base_size = 11) +
+  ggtitle("Distributions of male and female subjects across simulated sites")
+```
+
 Combine plots
+
 ```{r}
 fig_1 <- ggarrange(
   wmv_centile_fan, global_cent_errs_plot,
@@ -1152,3 +1159,30 @@ fig_1_annotate <- annotate_figure(fig_1, top = text_grob("Figure 1. Choice of Co
 fig_1_annotate
 ggsave("figs/figure_1.jpeg", fig_1_annotate, width=10, height=5)
 ```
+
+
+## FIGURE 2
+need to run `paper_prop_results.Rmd` to get panel B
+
+```{r}
+prop_sex_mean_cent.plot.abs <- readRDS(file="figs/mean_subj_cent_err.RDS")
+```
+
+```{r}
+fig_2 <- ggarrange(
+  p_sex, prop_sex_mean_cent.plot.abs,
+  ncol=2, nrow=1, 
+  widths = c(1, 1.2),
+  #labels=c("A", "B"),
+  #hjust=0.01,
+  # align = "hv",
+  common.legend = FALSE,
+  labels="auto"
+  )
+# fig_2
+
+fig_2_annotate <- annotate_figure(fig_2, top = text_grob("Figure 2. Sex-biases in centile score errors across combat configurations", color = "black", hjust = 0, x = 0))
+fig_2_annotate
+ggsave("figs/figure_2.jpeg", fig_2_annotate, width=14, height=6)
+```
+
