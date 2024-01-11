@@ -13,12 +13,12 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, ggh4x)
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, ggh4x, purrr)
 #Sys.setenv("MC_CORES"=10L)
 options("mc.cores")
 
 source("./cubic_scripts/R_scripts/stats_tests.R")
-aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
+#aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
 ```
 
 ```{r}
@@ -59,6 +59,7 @@ dk.parc <- dk$data %>%
 # Secondary: Vary M:F
 
 ```{r}
+dataset_names <- c('ukb-CN-simsites' = "Raw Data", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
 n_prop_list <- c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F")
 ```
 
@@ -122,10 +123,9 @@ max(ratio_subj.df$mean_z)
 min(ratio_subj.df$mean_z)
 ```
 
-Read in predicted centiles & z scores
+Read in predicted centiles & z scores FROM RAW DATA ONLY (to save memory)
 ```{r}
-pred.csvs <- list.files(path = paste0(data_path, "/ukb_ratio"), pattern = "_predictions.csv", full.names = TRUE)
-combined_preds <- data.frame()
+pred.csvs <- list.files(path = paste0(data_path, "/ukb_ratio"), pattern = "raw_predictions.csv", full.names = TRUE)
 
 df_list <- list() #new empty list
 for (file in pred.csvs) {
@@ -135,16 +135,18 @@ for (file in pred.csvs) {
   # Add a "Source_File" column with the file name
   data <- data %>%
     mutate(Source_File = as.factor(basename(file))) %>%
-    mutate(dataset = gsub("_data|_data_predictions.csv|prop-|[0-9]|-", "", Source_File))
+    mutate(dataset = gsub("_data|_predictions.csv|prop-|[0-9]|-", "", Source_File),
+           prop=gsub("-raw_predictions.csv", "", Source_File))
   
     # Bind the data to the combined dataframe
     df_list <- c(df_list, list(data))
-    assign("ratio_pred_list", df_list)
+    assign("ratio_raw_pred_list", df_list)
 }
-dim(ratio_pred_list)
+length(ratio_raw_pred_list)
 
 #merge into single df
-ratio_pred.df <- bind_rows(ratio_pred_list)
+ratio_raw_pred.df <- bind_rows(ratio_raw_pred_list)
+dim(ratio_raw_pred.df)
 ```
 
 Visualize sex-distribution across sites/proportions
@@ -253,8 +255,6 @@ ratio_subj.df %>%
 
 
 ```{r}
-dataset_names <- c('ukb-CN-simsites' = "Raw Data", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
-
 prop_sex_mean_cent.plot <- ratio_subj.df %>%
   dplyr::filter(dataset == "cf.gam" | dataset=="cf.gamlss") %>%
   ggplot(aes(x=sim.site, y=mean_cent_diff*100, fill=sex)) +
@@ -304,19 +304,57 @@ Are extreme centiles (<5% and >95%) driving observed results?
 
 Get raw centiles and merge with centile differences
 
-```{r, warning=FALSE}
-raw_centiles <- combined_preds %>%
-  dplyr::filter(dataset == "ukb_CN")
+```{r, message=FALSE}
+ratio.merge.df <- full_join(ratio_raw_pred.df, ratio.df)
+unique(ratio.merge.df$dataset)
+dim(ratio_raw_pred.df)
+dim(ratio.merge.df)
 
-merge.df <- full_join(raw_centiles, diffs.df)
-unique(merge.df$dataset)
-dim(raw_centiles)
-dim(merge.df)
-
-merge.df <- merge.df %>%
-  dplyr::select(!File_ID)
+ratio.merge.df <- ratio.merge.df %>%
+  dplyr::select(!File_ID) %>%
+  mutate(dataset=gsub("_predictions.csv","", dataset))
 ```
 
+split back into separate dataframes for each proportion
+
+```{r}
+# df_list <- c()
+# for (p in unique(ratio.merge.df$prop)) {
+#   df <- ratio.merge.df %>%
+#     dplyr::filter(prop == p)
+#   df_list[p] <- list(df)
+# }
+# length(df_list) == length(unique(ratio.merge.df$prop))
+```
+
+define function to remove extremes
+```{r}
+rm_ext_cents <- function(og.data, feat_list){
+  df_ext_list <- c()
+  count <- 1
+  for(pheno in feat_list) {
+    list <- c(pheno, paste0("diff_", pheno), paste0("abs.diff_", pheno))
+  
+    df <- og.data %>%
+      dplyr::select(participant, sex, age_days, sim.site, Source_File, dataset, prop, all_of(list)) %>% #get correct cols
+      group_by(participant) %>% 
+      dplyr::filter(!any((get(pheno) < 0.05 | get(pheno) > 0.95) & dataset == "raw")) %>% #drop ppts if raw centile is <0.05 or >0.95
+      ungroup() %>%
+      dplyr::filter(dataset != "raw") #now drop raw vals
+    df_ext_list[count] <- list(df)
+    count <- count + 1
+  }
+  stopifnot(length(df_ext_list) == length(pheno_list))
+  df.no_ext <- Reduce(full_join, df_ext_list)
+  return(df.no_ext)
+}
+```
+
+apply fun
+
+```{r}
+ratio_no_ext_list <- mclapply(df_list, rm_ext_cents, feat_list=pheno_list, mc.preschedule = FALSE)
+```
 
 ## Scale Effects of Sex
 
