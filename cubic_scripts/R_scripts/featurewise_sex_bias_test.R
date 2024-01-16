@@ -5,9 +5,9 @@ set.seed(12345)
 #LOAD PACKAGES
 library(dplyr)
 library(data.table)
-library(parallel)
+#library(parallel)
 
-devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/stats_tests.R?token=GHSAT0AAAAAACGAYP4HRNME2XTK3N4VLVAMZM5SDFA")
+devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/stats_tests.R")
 
 #pheno lists
 pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
@@ -36,13 +36,13 @@ for (file in raw_files) {
 print(paste("length=", length(diffs_perm.list)))
 
 #centile t-tests
-cent.sex_t_tests_in_feat.df <- mclapply(diffs_perm.list, sex.bias.feat.t.tests, mc.preschedule = FALSE, comp_multiplier=length(diffs_perm.list), feature_list=pheno_list)
+cent.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=pheno_list)
 
 #save rds
 saveRDS(cent.sex_t_tests_in_feat.df, file=paste0(data_path, "/featurewise_cent_sex_bias_tests.RDS"))
 
 #z-score t-tests
-z.sex_t_tests_in_feat.df <- mclapply(diffs_perm.list, sex.bias.feat.t.tests, mc.preschedule = FALSE, comp_multiplier=length(diffs_perm.list), feature_list=paste0(pheno_list,".z"))
+z.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=paste0(pheno_list,".z"))
 
 #save rds
 saveRDS(z.sex_t_tests_in_feat.df, file=paste0(data_path, "/featurewise_z_sex_bias_tests.RDS"))

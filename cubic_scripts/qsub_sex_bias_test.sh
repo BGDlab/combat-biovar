@@ -39,4 +39,4 @@ touch $bash_script
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path" > $bash_script
 
 #qsub bash script
-qsub -N ${1}_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G -pe threaded 31 $bash_script
+qsub -N ${1}_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
