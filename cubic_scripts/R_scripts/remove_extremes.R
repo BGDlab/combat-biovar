@@ -52,7 +52,7 @@ z.pheno_list <- paste0(pheno_list, ".z")
 
 # centile errors
 
-raw_files <- list.files(path = data_path, pattern = "_diffs.csv", full.names = TRUE)
+raw_files <- list.files(path = data_path, pattern = "_diffs.csv", full.names = TRUE) %>% unlist()
 
 df_list <- list() #new empty list
 for (file in raw_files) {
@@ -71,7 +71,7 @@ print(paste("centile error list length:", length(ratio_list)))
 ratio.df <- bind_rows(ratio_list)
 
 # raw centiles
-pred.csvs <- list.files(path = data_path, pattern = "raw_predictions.csv", full.names = TRUE)
+pred.csvs <- list.files(path = data_path, pattern = "raw_predictions.csv", full.names = TRUE) %>% unlist()
 
 df_list <- list() #new empty list
 for (file in pred.csvs) {

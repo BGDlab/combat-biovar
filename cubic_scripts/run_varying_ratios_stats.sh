@@ -1,0 +1,155 @@
+#!/bin/bash
+#######################################################################################
+# SET PATHS
+img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
+base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
+study_dir=$base/ukb_ratios
+csv_path=$study_dir/perm_centile_csvs
+r_base=$base/cubic_scripts/R_scripts # paths to R scripts
+bash_dir=$study_dir/stats_qsubs
+# make dir for subject outputs
+if ! [ -d $bash_dir ]
+	then
+	mkdir $bash_dir
+	fi
+#######################################################################################
+cd $base/cubic_scripts #to source functions correctly
+#######################################################################################
+# CALCULATE CENTILE & Z-SCORE ERRORS
+## also calculates subject-level summary stats
+## based on `qsub_summarize_subj_centiles.sh`
+r_script=$r_base/summarise_cent_subj-wise.R
+# make dir for subject outputs
+if ! [ -d $csv_path/subject-wise ]
+	then
+	mkdir $csv_path/subject-wise
+	fi
+# sub jobs
+for n_prop in $(seq -f "%02g" 1 11) #11 sims
+do
+	echo "Prepping prop-$n_prop"
+	#write bash script
+	bash_script=$bash_dir/prop-${n_prop}_cent_sum.sh
+	touch $bash_script
+	
+	echo "singularity run --cleanenv $img Rscript --save $r_script "prop" $n_prop $csv_path" > $bash_script
+
+	#qsub bash script
+	qsub -N prop-${n_prop}_sum -o $bash_dir/prop-${n_prop}_sum_out.txt -e $bash_dir/prop-${n_prop}_sum_err.txt -l h_vmem=64G,s_vmem=64G $bash_script
+done
+#######################################################
+## CHECK FOR OUTPUTS
+### summarise_cent_subj-wise.R saves 2 csv files per n_prop loop, second in 'subj-wise/*_subj_pred.csv' 
+SECONDS=0
+
+while :    # while TRUE
+do
+    count_file=$(find $csv_path/subject-wise -type f -name '*.csv' | wc -l)
+    # detect the expected output from 1st job
+    if [ $count_file -eq 11 ] 
+	then    # 1st job successfully finished
+        echo "${count_file} sims completed"
+        break
+    elif [ $SECONDS -gt 86400 ] #kill if taking more than 1 day
+	then
+	echo "taking too long, abort!"
+	exit 2
+    fi
+    echo "count ${count_file} files"
+    #echo $(find $save_data_path -type f -name '*.csv')
+    sleep 60    # wait for 1min before detecting again
+done
+
+echo "launching stats tests"
+#######################################################
+# STATS TESTS OF ERRORS
+# featurewise error tests
+r_script=$r_base/ratio_results.R
+bash_script=$bash_dir/centile_tests.sh
+touch $bash_script
+
+echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'full'" > $bash_script
+## qsub bash script
+qsub -N prop_cent_tests -o $bash_dir/cent_test_out.txt -e $bash_dir/cent_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+
+# sex-bias test of subj-means
+r_script=$r_base/ratio_subject-wise_results.R
+bash_script=$bash_dir/ratio_subj-wise_sex_bias_test.sh
+touch $bash_script
+
+echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path" > $bash_script
+## qsub bash script
+qsub -N prop_sub-wide_sex_tests -o $bash_dir/sub-wide_sex_test_out.txt -e $bash_dir/sub-wide_sex_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+
+# featurewise sex bias tests
+## based on `qsub_sex_bias_test.sh`
+r_script=$r_base/featurewise_sex_bias_test.R
+bash_script=$bash_dir/sex_bias_test.sh
+touch $bash_script
+	
+echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'full'" > $bash_script
+## qsub bash script
+qsub -N prop_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+
+#######################################################
+# RM EXTREMES
+## based on `qsub_rm_extremes.sh`
+r_script=$r_base/remove_extremes_single.R
+# sub jobs
+for n_prop in $(seq -f "%02g" 1 11) #11 sims
+do
+	echo "Prepping prop-$n_prop"
+	#write bash script
+	bash_script=$bash_dir/prop-${n_prop}_rm_ext.sh
+	touch $bash_script
+	
+	echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path "prop" $n_prop " > $bash_script
+
+	#qsub bash script
+	qsub -N prop-${n_prop}_rm_ext -o $bash_dir/prop-${n_prop}_rm_ext_out.txt -e $bash_dir/prop-${n_prop}_rm_ext_err.txt -l h_vmem=64G,s_vmem=64G $bash_script
+done
+#######################################################
+## CHECK FOR OUTPUTS
+### expect 'remove_extremes_single.R' to write out 1 csv per n_prop loop
+SECONDS=0
+
+while :    # while TRUE
+do
+    count_file=$(find $csv_path -type f -name '*_no_ext.csv' | wc -l)
+    # detect the expected output from 1st job
+    if [ $count_file -eq 11 ] 
+	then    # 1st job successfully finished
+        echo "${count_file} no-ext files found"
+        break
+    elif [ $SECONDS -gt 86400 ] #kill if taking more than 1 day
+	then
+	echo "taking too long, abort!"
+	exit 2
+    fi
+    echo "count ${count_file} files"
+    #echo $(find $save_data_path -type f -name '*.csv')
+    sleep 60    # wait for 1min before detecting again
+done
+
+echo "launching stats tests on data w extremes removed"
+#######################################################
+# STATS TESTS OF ERRORS W/O EXTREMES
+
+# featurewise error tests
+r_script=$r_base/ratio_results.R
+bash_script=$bash_dir/centile_tests.sh
+touch $bash_script
+
+echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext'" > $bash_script
+## qsub bash script
+qsub -N prop_cent_tests -o $bash_dir/cent_test_out.txt -e $bash_dir/cent_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+
+# featurewise sex bias tests
+## based on `qsub_sex_bias_test.sh`
+r_script=$r_base/featurewise_sex_bias_test.R
+bash_script=$bash_dir/sex_bias_test.sh
+touch $bash_script
+
+echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext'" > $bash_script
+## qsub bash script
+qsub -N prop_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script

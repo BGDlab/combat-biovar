@@ -15,11 +15,16 @@ pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
 #get args
 args <- commandArgs(trailingOnly = TRUE)
 data_path <- args[1] #path to csvs
-
+d.type <- args[2] #full or no_ext
 
 #Read in centile/z-score errors
-
-raw_files <- list.files(path = data_path, pattern = "_diffs.csv", full.names = TRUE) %>% unlist()
+if (d.type == "full"){
+  raw_files <- list.files(path = data_path, pattern = "_diffs.csv", full.names = TRUE) %>% unlist()
+} else if (d.type == "no.ext"){
+  raw_files <- list.files(path = data_path, pattern = "_no_ext.csv", full.names = TRUE) %>% unlist()
+} else {
+  stop("Error: not sure what files to load")
+}
 
 df_list <- list() #new empty list
 for (file in raw_files) {
@@ -39,12 +44,12 @@ print(paste("length=", length(diffs_perm.list)))
 cent.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=pheno_list)
 
 #save rds
-saveRDS(cent.sex_t_tests_in_feat.df, file=paste0(data_path, "/featurewise_cent_sex_bias_tests.RDS"))
+saveRDS(cent.sex_t_tests_in_feat.df, file=paste0(data_path, "/", d.type, "_featurewise_cent_sex_bias_tests.RDS"))
 
 #z-score t-tests
 z.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=paste0(pheno_list,".z"))
 
 #save rds
-saveRDS(z.sex_t_tests_in_feat.df, file=paste0(data_path, "/featurewise_z_sex_bias_tests.RDS"))
+saveRDS(z.sex_t_tests_in_feat.df, file=paste0(data_path, "/", d.type, "_featurewise_z_sex_bias_tests.RDS"))
 
 print("DONE!")
