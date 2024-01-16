@@ -157,7 +157,7 @@ for (l in list_of_feature_lists){
         } )
       }
       
-      cf.obj <- cf_try(cf.arg1)
+      cf.obj <- cf_try(cf.args)
     }
   }
   

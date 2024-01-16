@@ -7,8 +7,8 @@ library(broom)
 library(purrr)
 
 # devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/ranked_welch_tests.R?token=GHSAT0AAAAAACGAYP4GAPOTD3FZTMHHQOGCZM5SE5Q")
-devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/ranked_welch_tests.R?token=GHSAT0AAAAAACGAYP4GBRV6DV6ZXXAUMDXMZM5SWKQ")
-#source("/Users/megardn/Desktop/BGD_Repos/combat_biovar/cubic_scripts/R_scripts/ranked_welch_tests.R")
+#devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/ranked_welch_tests.R?token=GHSAT0AAAAAACGAYP4GBRV6DV6ZXXAUMDXMZM5SWKQ")
+source("/Users/megardn/Desktop/BGD_Repos/combat_biovar/cubic_scripts/R_scripts/ranked_welch_tests.R")
 
 pheno_list <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/combat_biovar/cubic_scripts/R_scripts/pheno_list.rds")
 

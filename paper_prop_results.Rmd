@@ -297,64 +297,215 @@ prop_sex_mean_cent.plot.abs
 saveRDS(prop_sex_mean_cent.plot.abs, file="figs/mean_subj_cent_err.RDS")
 ```
 
-*need to add w/in feature sex-bias testing, having issues with cubic*
+*need to add w/in feature sex-bias testing*
 
 ### W/o extremes
 Are extreme centiles (<5% and >95%) driving observed results?
 
 Get raw centiles and merge with centile differences
 
-```{r, message=FALSE}
-ratio.merge.df <- full_join(ratio_raw_pred.df, ratio.df)
-unique(ratio.merge.df$dataset)
-dim(ratio_raw_pred.df)
-dim(ratio.merge.df)
-
-ratio.merge.df <- ratio.merge.df %>%
-  dplyr::select(!File_ID) %>%
-  mutate(dataset=gsub("_predictions.csv","", dataset))
+```{r}
+ratio.no_ext_cent <- fread(file=paste0(data_path, "/ukb_ratio/no_ext_cent.csv"))
 ```
 
 split back into separate dataframes for each proportion
 
 ```{r}
-# df_list <- c()
-# for (p in unique(ratio.merge.df$prop)) {
-#   df <- ratio.merge.df %>%
-#     dplyr::filter(prop == p)
-#   df_list[p] <- list(df)
-# }
-# length(df_list) == length(unique(ratio.merge.df$prop))
+ratio.no_ext_cent_list <- c()
+for (p in unique(ratio.no_ext_cent$prop)){
+  df <- ratio.no_ext_cent %>%
+    dplyr::filter(prop == p)
+  ratio.no_ext_cent_list <- c(ratio.no_ext_cent_list, list(df))
+}
+rm(ratio.no_ext_cent)
+length(ratio.no_ext_cent_list)
+dim(ratio.no_ext_cent_list[[1]]) == dim(ratio.no_ext_cent_list[[9]]) #expect TRUE
+sum(unique(ratio.no_ext_cent_list[[1]]$participant) == unique(ratio.no_ext_cent_list[[9]]$participant)) #expect low # matches
 ```
 
-define function to remove extremes
+Test between-combat abs. centile diffs - probably faster if i just run this back on cubic
+
 ```{r}
-rm_ext_cents <- function(og.data, feat_list){
-  df_ext_list <- c()
-  count <- 1
-  for(pheno in feat_list) {
-    list <- c(pheno, paste0("diff_", pheno), paste0("abs.diff_", pheno))
-  
-    df <- og.data %>%
-      dplyr::select(participant, sex, age_days, sim.site, Source_File, dataset, prop, all_of(list)) %>% #get correct cols
-      group_by(participant) %>% 
-      dplyr::filter(!any((get(pheno) < 0.05 | get(pheno) > 0.95) & dataset == "raw")) %>% #drop ppts if raw centile is <0.05 or >0.95
-      ungroup() %>%
-      dplyr::filter(dataset != "raw") #now drop raw vals
-    df_ext_list[count] <- list(df)
-    count <- count + 1
-  }
-  stopifnot(length(df_ext_list) == length(pheno_list))
-  df.no_ext <- Reduce(full_join, df_ext_list)
-  return(df.no_ext)
+noext.prop_abs.cent_t.tests <- mclapply(ratio.no_ext_cent_list, centile.t.tests, feature_list=pheno_abs.diff.list, comp_multiplier=11, mc.preschedule = FALSE) #FDR correction across 11 M:F permutations
+names(noext.prop_abs.cent_t.tests) <- n_prop_list
+noext.prop_abs.cent_t.tests_df <- bind_rows(noext.prop_abs.cent_t.tests, .id = "column_label")
+noext.prop_abs.cent_t.tests_df
+```
+
+*need to add w/in feature sex-bias testing*
+
+## Z-SCORES
+
+Do z score errors change based on combat version?
+
+Plot boxplots to compare across prop.
+
+**Stats Tests**
+Within each M:F proportion simulated, is the magnitude of subjects' mean centile errors differ significantly by combat configuration?
+
+```{r}
+prop_abs.z_t.tests <- mclapply(ratio_list, centile.t.tests, feature_list=z.pheno_abs.diff.list, comp_multiplier=11, mc.preschedule = FALSE) #FDR correction across 11 M:F permutations
+names(prop_abs.z_t.tests) <- n_prop_list
+prop_abs.z_t.tests_df <- bind_rows(prop_abs.z_t.tests, .id = "column_label")
+```
+
+Visualize 
+```{r}
+ggplot(prop_abs.z_t.tests_df) +
+  geom_col(aes(x=column_label, y=n_sig_regions, fill=column_label)) +
+  geom_hline(yintercept = 208, linetype='longdash') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="none") +
+  facet_wrap(~comp)
+```
+
+Plot errors for global phenotypes
+```{r}
+percent_f <- setNames(paste0(seq(from=100, to=0, by=-10), "% F"), unique(ratio_subj.df$prop))
+
+prop.global_z.abs.diffs <- ratio.df %>%
+  dplyr::select(participant, sex, age_days, sim.site, prop, dataset, paste0("abs.diff_", vol_list_global, ".z")) %>%
+  pivot_longer(cols=starts_with("abs.diff_"), names_to="pheno", names_prefix="abs.diff_", values_to = "abs.diff")
+
+prop.global_z_errs_plot <- prop.global_z.abs.diffs %>%
+  dplyr::filter(dataset == "cf.lm" | dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
+  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
+         pheno = factor(pheno, levels = c("WMV", "GMV", "sGMV", "Ventricles"), ordered = TRUE),
+         abs.diff = abs.diff*100) %>% #for visuals
+  ggplot() +
+  geom_violin(aes(x=prop, y=abs.diff, fill=dataset, color=dataset), scale="count") +
+  theme_linedraw(base_size = 11) +
+  scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  labs(y="Magnitude Z Error", x = "% Females in Imbalanced Study Site") +
+  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  scale_x_discrete(labels=percent_f) +
+  facet_wrap(~ pheno) +
+  ggtitle("Magnitude errors in z scores of global features across ComBat pipelines")
+prop.global_z_errs_plot
+#ggsave("figs/global_centile_errors.jpeg", global_cent_errs_plot)
+```
+
+### Sex-Biases
+
+Test subj. mean averages
+```{r}
+prop.sex.bias.test <- mclapply(ratio_subj_list, sex.bias.t.tests, mc.preschedule = FALSE, to_test = "mean_cent_abs.diff", comp_multiplier=11)
+names(prop.sex.bias.test) <- n_prop_list
+sex_bias_ratio_tests_df <- bind_rows(prop.sex.bias.test, .id = "prop")
+```
+
+
+```{r}
+for (l in unique(ratio_subj.df$dataset)){
+plot <- ratio_subj.df %>%
+  dplyr::filter(dataset == l) %>%
+  ggplot(aes(x=mean_centile, y=mean_cent_diff, color=sex)) +
+  geom_point(alpha=0.3) +
+  geom_smooth(method="lm") +
+  facet_grid(sim.site ~ prop) +
+  ggtitle(l)
+print(plot)
 }
 ```
 
-apply fun
+```{r}
+ratio_subj.df %>%
+  dplyr::filter(dataset == "cf.lm" |dataset == "cf.gam" | dataset=="cf.gamlss") %>%
+  ggplot(aes(x=mean_centile*100, y=mean_cent_diff*100, color=sex)) +
+  geom_point(alpha=0.2) +
+  #geom_smooth(method="lm") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_nested(dataset + sim.site ~ prop) 
+
+ratio_subj.df %>%
+  dplyr::filter(dataset == "cf.gam" | dataset=="cf.gamlss") %>%
+  ggplot(aes(x=sim.site, y=mean_cent_diff*100)) +
+  geom_violin() +
+  #geom_smooth(method="lm") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_nested(dataset ~ prop)
+```
+
 
 ```{r}
-ratio_no_ext_list <- mclapply(df_list, rm_ext_cents, feat_list=pheno_list, mc.preschedule = FALSE)
+prop_sex_mean_cent.plot <- ratio_subj.df %>%
+  dplyr::filter(dataset == "cf.gam" | dataset=="cf.gamlss") %>%
+  ggplot(aes(x=sim.site, y=mean_cent_diff*100, fill=sex)) +
+  geom_violin() +
+  #geom_smooth(method="lm") +
+  theme_linedraw(base_size=12) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_grid(dataset ~ prop, labeller = labeller(dataset = as_labeller(dataset_names), prop=as_labeller(percent_f))) +
+  xlab("Site") + ylab("Mean Centile Error")
+prop_sex_mean_cent.plot
 ```
+
+```{r}
+dataset_names <- c('ukb-CN-simsites' = "Raw Data", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+percent_f <- setNames(paste0(seq(from=100, to=0, by=-10), "% F"), unique(ratio_subj.df$prop))
+
+prop_sex_mean_cent.plot2 <- ratio_subj.df %>%
+  dplyr::filter(dataset == "cf.gam" | dataset=="cf.gamlss") %>%
+  ggplot(aes(x=sex, y=mean_cent_diff*100, fill=sex)) +
+  geom_violin() +
+  #geom_smooth(method="lm") +
+  theme_linedraw(base_size=12) +
+  theme(axis.text.x = element_blank()) +
+  facet_grid(dataset ~ prop, labeller = labeller(dataset = as_labeller(dataset_names), prop=as_labeller(percent_f))) +
+  xlab("Site") + ylab("Mean Centile Error")
+prop_sex_mean_cent.plot2
+```
+
+```{r}
+prop_sex_mean_cent.plot.abs <- ratio_subj.df %>%
+  dplyr::filter(dataset == "cf.gam" | dataset=="cf.gamlss") %>%
+  ggplot(aes(x=sex, y=mean_cent_abs.diff*100, fill=sex)) +
+  geom_violin() +
+  #geom_smooth(method="lm") +
+  theme_linedraw(base_size=12) +
+  theme(axis.text.x = element_blank(), axis.title.x = element_blank(), legend.position="bottom") +
+  facet_grid(dataset ~ prop, labeller = labeller(dataset = as_labeller(dataset_names), prop=as_labeller(percent_f))) +
+  ylab("Mean Absolute Centile Error")
+prop_sex_mean_cent.plot.abs
+saveRDS(prop_sex_mean_cent.plot.abs, file="figs/mean_subj_cent_err.RDS")
+```
+
+*need to add w/in feature sex-bias testing*
+
+### W/o extremes
+Are extreme centiles (<5% and >95%) driving observed results?
+
+Get raw centiles and merge with centile differences
+
+```{r}
+ratio.no_ext_cent <- fread(file=paste0(data_path, "/ukb_ratio/no_ext_cent.csv"))
+```
+
+split back into separate dataframes for each proportion
+
+```{r}
+ratio.no_ext_cent_list <- c()
+for (p in unique(ratio.no_ext_cent$prop)){
+  df <- ratio.no_ext_cent %>%
+    dplyr::filter(prop == p)
+  ratio.no_ext_cent_list <- c(ratio.no_ext_cent_list, list(df))
+}
+rm(ratio.no_ext_cent)
+length(ratio.no_ext_cent_list)
+dim(ratio.no_ext_cent_list[[1]]) == dim(ratio.no_ext_cent_list[[9]]) #expect TRUE
+sum(unique(ratio.no_ext_cent_list[[1]]$participant) == unique(ratio.no_ext_cent_list[[9]]$participant)) #expect low # matches
+```
+
+Test between-combat abs. centile diffs - probably faster if i just run this back on cubic
+
+```{r}
+noext.prop_abs.cent_t.tests <- mclapply(ratio.no_ext_cent_list, centile.t.tests, feature_list=pheno_abs.diff.list, comp_multiplier=11, mc.preschedule = FALSE) #FDR correction across 11 M:F permutations
+names(noext.prop_abs.cent_t.tests) <- n_prop_list
+noext.prop_abs.cent_t.tests_df <- bind_rows(noext.prop_abs.cent_t.tests, .id = "column_label")
+noext.prop_abs.cent_t.tests_df
+```
+
+*need to add w/in feature sex-bias testing*
 
 ## Scale Effects of Sex
 
