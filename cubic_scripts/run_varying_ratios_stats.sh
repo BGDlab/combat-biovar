@@ -41,6 +41,7 @@ rm -rf $csv_path/*_featurewise_z_sex_bias_tests.csv
 rm -rf $csv_path/*_no_ext.csv
 
 echo "Old outputs deleted"
+sleep 120 #wait to make sure files are deleted
 #######################################################################################
 # CALCULATE CENTILE & Z-SCORE ERRORS
 ## also calculates subject-level summary stats
