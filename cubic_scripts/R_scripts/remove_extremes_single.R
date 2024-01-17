@@ -94,14 +94,14 @@ if (d.type == "perm"){
   print(str)
   
   #READ ERRORS INTO DATAFRAME
-  perm.diff.csv <- list.files(path = path_to_csvs, pattern = paste0(str, ".+_diffs.csv"), full.names = TRUE)
+  perm.diff.csv <- list.files(path = path_to_csvs, pattern = glob2rx(paste0(str, "*_diffs.csv")), full.names = TRUE)
   perm.diff.df <- fread(perm.diff.csv[[1]])
   perm.diff.df <- perm.diff.df %>%
     mutate(dataset = gsub("_data|_data_predictions.csv|perm-|[0-9]|-", "", Source_File))
   print(paste("diff dataframe dim:", dim(perm.diff.df)))
   
   #READ RAW CENTS INTO DATAFRAME
-  perm.raw.csv <- list.files(path = path_to_csvs, pattern = paste0(str, ".+raw_predictions.csv"), full.names = TRUE)
+  perm.raw.csv <- list.files(path = path_to_csvs, pattern = glob2rx(paste0(str, "*raw_predictions.csv")), full.names = TRUE)
   perm.raw.df <- fread(perm.raw.csv[[1]])
   perm.raw.df <- perm.raw.df %>%
     mutate(Source_File = as.factor(basename(perm.raw.csv[[1]]))) %>%
@@ -123,14 +123,14 @@ if (d.type == "prop"){
   print(str)
   
   #READ ERRORS INTO DATAFRAME
-  perm.diff.csv <- list.files(path = path_to_csvs, pattern = paste0(str, ".+_diffs.csv"), full.names = TRUE)
+  perm.diff.csv <- list.files(path = path_to_csvs, pattern = glob2rx(paste0(str, "*_diffs.csv")), full.names = TRUE)
   perm.diff.df <- fread(perm.diff.csv[[1]])
   perm.diff.df <- perm.diff.df %>%
     mutate(dataset = gsub("_data|_data_predictions.csv|prop-|[0-9]|-", "", Source_File))
   print(paste("diff dataframe dim:", dim(perm.diff.df)))
   
   #READ RAW CENTS INTO DATAFRAME
-  perm.raw.csv <- list.files(path = path_to_csvs, pattern = paste0(str, ".+raw_predictions.csv"), full.names = TRUE)
+  perm.raw.csv <- list.files(path = path_to_csvs, pattern = glob2rx(paste0(str, "*raw_predictions.csv")), full.names = TRUE)
   perm.raw.df <- fread(perm.raw.csv[[1]])
   perm.raw.df <- perm.raw.df %>%
     mutate(Source_File = as.factor(basename(perm.raw.csv[[1]]))) %>%

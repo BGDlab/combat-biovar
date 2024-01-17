@@ -4,7 +4,7 @@
 
 # expected outputs:
 # $csv_path/*_diffs.csv
-# $csv_path/subj-wise/*_subj_pred.csv
+# $csv_path/subject-wise/*_subj_pred.csv
 # $csv_path/*_featurewise_cent_t_tests.csv
 # $csv_path/*_featurewise_cent_z_tests.csv
 # $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv
@@ -31,7 +31,7 @@ cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
 # Remove outputs from prior runs
 rm -rf $csv_path/*_diffs.csv
-rm -rf $csv_path/subj-wise/*_subj_pred.csv
+rm -rf $csv_path/subject-wise/*_subj_pred.csv
 rm -rf $csv_path/*_featurewise_cent_t_tests.csv
 rm -rf $csv_path/*_featurewise_cent_z_tests.csv
 rm -rf $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv
