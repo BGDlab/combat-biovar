@@ -46,5 +46,5 @@ sex_bias_ratio_z_tests_df <- bind_rows(prop.sex.bias.z_test, .id = "prop")
 print(paste("z df dim:", dim(sex_bias_ratio_z_tests_df)))
 
 ### SAVE RESULTS
-fwrite(sex_bias_ratio_cent_tests_df, file=paste0(data_path, "/subj.abs.mean_sex_bias_cent_t_tests.RDS"))
-fwrite(sex_bias_ratio_z_tests_df, file=paste0(data_path, "/subj.abs.mean_sex_bias_z_t_tests.RDS"))
+fwrite(sex_bias_ratio_cent_tests_df, file=paste0(data_path, "/subj.abs.mean_sex_bias_cent_t_tests.csv"))
+fwrite(sex_bias_ratio_z_tests_df, file=paste0(data_path, "/subj.abs.mean_sex_bias_z_t_tests.csv"))

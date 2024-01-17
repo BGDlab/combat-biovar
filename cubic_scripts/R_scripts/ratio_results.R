@@ -61,7 +61,7 @@ prop_abs.cent_t.tests <- lapply(ratio_list, centile.t.tests, feature_list=pheno_
 names(prop_abs.cent_t.tests) <- n_prop_list
 prop_abs.cent_t.tests_df <- bind_rows(prop_abs.cent_t.tests, .id = "column_label")
 ### save results
-saveRDS(prop_abs.cent_t.tests_df, file=paste0(data_path, "/", d.type, "_featurewise_cent_t_tests.RDS"))
+fwrite(prop_abs.cent_t.tests_df, file=paste0(data_path, "/", d.type, "_featurewise_cent_t_tests.csv"))
 
 ############################################
 ## Z-SCORE ERROR TESTS ###
@@ -71,7 +71,7 @@ prop_abs.z_t.tests <- lapply(ratio_list, centile.t.tests, feature_list=z.pheno_a
 names(prop_abs.z_t.tests) <- n_prop_list
 prop_abs.z_t.tests <- bind_rows(prop_abs.z_t.tests, .id = "column_label")
 ### save results
-saveRDS(prop_abs.z_t.tests, file=paste0(data_path, "/", d.type, "_featurewise_z_t_tests.RDS"))
+fwrite(prop_abs.z_t.tests, file=paste0(data_path, "/", d.type, "_featurewise_z_t_tests.csv"))
 
 
 

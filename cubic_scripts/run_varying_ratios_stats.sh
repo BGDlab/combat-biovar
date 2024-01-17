@@ -1,4 +1,18 @@
 #!/bin/bash
+
+# Run stats test on the outputs of 'run_varying_ratios_pipeline.sh'. Trying to make a faster, cubic-based version of 'paper_prop_results.Rmd'
+
+# expected outputs:
+# $csv_path/*_diffs.csv
+# $csv_path/subj-wise/*_subj_pred.csv
+# $csv_path/*_featurewise_cent_t_tests.csv
+# $csv_path/*_featurewise_cent_z_tests.csv
+# $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv
+# $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv
+# $csv_path/*_featurewise_cent_sex_bias_tests.csv
+# $csv_path/*_featurewise_z_sex_bias_tests.csv
+# $csv_path/*_no_ext.csv
+
 #######################################################################################
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
@@ -14,6 +28,19 @@ if ! [ -d $bash_dir ]
 	fi
 #######################################################################################
 cd $base/cubic_scripts #to source functions correctly
+#######################################################################################
+# Remove outputs from prior runs
+rm -rf $csv_path/*_diffs.csv
+rm -rf $csv_path/subj-wise/*_subj_pred.csv
+rm -rf $csv_path/*_featurewise_cent_t_tests.csv
+rm -rf $csv_path/*_featurewise_cent_z_tests.csv
+rm -rf $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv
+rm -rf $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv
+rm -rf $csv_path/*_featurewise_cent_sex_bias_tests.csv
+rm -rf $csv_path/*_featurewise_z_sex_bias_tests.csv
+rm -rf $csv_path/*_no_ext.csv
+
+echo "Old outputs deleted"
 #######################################################################################
 # CALCULATE CENTILE & Z-SCORE ERRORS
 ## also calculates subject-level summary stats
