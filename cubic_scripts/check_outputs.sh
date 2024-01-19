@@ -35,82 +35,43 @@ cd $base/cubic_scripts #to source functions correctly
 # $csv_path/*_no_ext.csv x11 - already checked
 
 # $csv_path/*_diffs.csv x11
-SECONDS=0
 
-while :    # while TRUE
-do
-    count_file=$(find $csv_path -type f -name '*_diffs.csv' | wc -l)
-    if [ $count_file -eq 11 ] 
-	then    # 1st job successfully finished
-        echo "all ${count_file} diffs.csv files found! on to the next"
-        break
-    elif [ $SECONDS -gt 86400 ] #kill if taking more than 1 day
-	then
-	echo "taking too long, abort!"
-	exit 2
-    fi
-    echo "count ${count_file} *diffs.csv files"
-    sleep 60    # wait for 1min before detecting again
-done
+count_file=$(find $csv_path -type f -name '*_diffs.csv' | wc -l)
+if [ $count_file -eq 11 ] 
+then    # 1st job successfully finished
+    echo "all ${count_file} diffs.csv files found! on to the next"
+else
+	echo "missing diffs.csv files, only ${count_file} of 11 found"
+fi
 
 # $csv_path/*_featurewise_cent_sex_bias_tests.csv x1
 # $csv_path/*_featurewise_z_sex_bias_tests.csv x1
-SECONDS=0
-
-while :    # while TRUE
-do
-    count_file=$(find $csv_path -type f -name '*_featurewise_*_sex_bias_tests.csv' | wc -l)
-    if [ $count_file -eq 2 ] 
-	then    # 1st job successfully finished
-        echo "all ${count_file} *featurewise_*_sex_bias_tests.csv files found! on to the next"
-        break
-    elif [ $SECONDS -gt 86400 ] #kill if taking more than 1 day
-	then
-	echo "taking too long, abort!"
-	exit 2
-    fi
-    echo "count ${count_file} *featurewise_*_sex_bias_tests.csv files"
-    sleep 60    # wait for 1min before detecting again
-done
+count_file=$(find $csv_path -type f -name '*_featurewise_*_sex_bias_tests.csv' | wc -l)
+if [ $count_file -eq 2 ] 
+then    # 1st job successfully finished
+    echo "all ${count_file} *featurewise_*_sex_bias_tests.csv files found! on to the next"
+else
+	echo "missing *featurewise_*_sex_bias_tests.csv files, only ${count_file} or 2 found"
+fi
 
 # $csv_path/*_featurewise_cent_t_tests.csv x2
 # $csv_path/*_featurewise_cent_z_tests.csv x2
-SECONDS=0
+count_file=$(find $csv_path -type f -name '*_featurewise_cent_?_tests.csv' | wc -l)
+if [ $count_file -eq 4 ] 
+then    # 1st job successfully finished
+    echo "all ${count_file} featurewise_cent_?_tests.csv files found! on to the next"
+else
+	echo "missing featurewise_cent_?_tests.csv files, only ${count_file} of 4 found"
+fi
 
-while :    # while TRUE
-do
-    count_file=$(find $csv_path -type f -name '*_featurewise_cent_?_tests.csv' | wc -l)
-    if [ $count_file -eq 4 ] 
-	then    # 1st job successfully finished
-        echo "all ${count_file} featurewise_cent_?_tests.csv files found! on to the next"
-        break
-    elif [ $SECONDS -gt 86400 ] #kill if taking more than 1 day
-	then
-	echo "taking too long, abort!"
-	exit 2
-    fi
-    echo "count ${count_file} *featurewise_cent_?_tests.csv files"
-    sleep 60    # wait for 1min before detecting again
-done
-
-# $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv x2
-# $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv x2
-SECONDS=0
-
-while :    # while TRUE
-do
-    count_file=$(find $csv_path -type f -name 'subj.abs.mean_sex_bias_*_t_tests.csv' | wc -l)
-    if [ $count_file -eq 2 ] 
-	then    # 1st job successfully finished
-        echo "all ${count_file} subj.abs.mean_sex_bias_*_t_tests.csv files found!"
-        break
-    elif [ $SECONDS -gt 86400 ] #kill if taking more than 1 day
-	then
-	echo "taking too long, abort!"
-	exit 2
-    fi
-    echo "count ${count_file} subj.abs.mean_sex_bias_*_t_tests.csv files"
-    sleep 60    # wait for 1min before detecting again
-done
+# $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv x1
+# $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv x1
+count_file=$(find $csv_path -type f -name 'subj.abs.mean_sex_bias_*_t_tests.csv' | wc -l)
+if [ $count_file -eq 4 ] 
+then    # 1st job successfully finished
+    echo "all ${count_file} subj.abs.mean_sex_bias_*_t_tests.csv files found!"
+else
+	echo "missing subj.abs.mean_sex_bias_*_t_tests.csv files, only ${count_file} of 4 found"
+fi
 
 echo "DONE!"
