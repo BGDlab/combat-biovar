@@ -33,6 +33,7 @@ if ! [ -d $save_path ]
 	#remove old error messages if necessary
 	rm -rf $save_path/*.*
 	fi
+sleep 60
 #######################################################################################
 #LIST POSSIBLE CONFIGS TO SEARCH FOR
 config_list="imp-sites_log-cf_cf.gam_data imp-sites_log-cf_cf.gamlss_data"
