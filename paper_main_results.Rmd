@@ -18,11 +18,11 @@ pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggp
 options("mc.cores")
 
 source("./cubic_scripts/R_scripts/stats_tests.R")
-aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
 ```
 
 
 ```{r}
+aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
 data_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives"
 
 #pheno lists
@@ -165,6 +165,7 @@ combined_var <- inner_join(combined_var, plot.info)
 ## SCALE EFFECTS OF SEX
 
 ```{r}
+dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
 #var plot
 var.plot.df <- combined_var %>%
   dplyr::filter(sig.sum_bf.corr == TRUE & pheno_cat != "Global Volume") %>%
@@ -553,7 +554,7 @@ centile.t.tests(no_ext, feature_list=pheno_abs.diff.list)
 ```
 
 Little plot
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
 dataset_colors <- c(cf = "#3D5983FF", cf.lm = "#5A8A54FF", cf.gam ="#262626FF", cf.gamlss ="#CFB023FF")
 
@@ -573,7 +574,8 @@ no.ext_mean.diffs.long <- no_ext %>%
       pheno %in% ct_list ~ "Regional CT",
       TRUE ~ NA_character_)),
       label = sub("_[^_]*_", "_", pheno))
-
+```
+```{r, eval=FALSE}
 no.ext_mean.diffs.long %>%
   dplyr::filter(dataset != "ukb_CN") %>%
   mutate(centile_abs.diff = centile_abs.diff*100) %>% #for visuals

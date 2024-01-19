@@ -65,13 +65,3 @@ for (name in names(cent.list)){
 
 #write out
 fwrite(cent.df, paste0(save_path, "/", fname_str, "_predictions.csv"))
-
-#get variance for males and females at mean age
-var.list <- lapply(model.files, get.var.across.ages.lbcc, og_df = df)
-var_df <- do.call(rbind, var.list)
-var_df <- var_df %>%
-  mutate(sex_effect = (m.var - f.var))
-
-#write out
-fwrite(var_df, paste0(save_path, "/", fname_str, "_variance.csv"))
-
