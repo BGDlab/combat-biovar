@@ -20,6 +20,39 @@ options("mc.cores")
 source("./cubic_scripts/R_scripts/gamlss_helper_funs.R")
 source("./cubic_scripts/R_scripts/ranked_welch_tests.R")
 aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
+
+data_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/data/lifespan"
+```
+
+
+# QC ComBat Outputs
+
+csvs scp'd from cubic
+
+Log-Scaled
+
+```{r}
+imp.sites_log.cf_cf.gam <- fread(file=paste0(data_path, "/lifespan-CN-imp-sites_log-cf_cf.gam_data.csv"))
+sum(is.na(imp.sites_log.cf_cf.gam))
+sum(imp.sites_log.cf_cf.gam < 0)
+skimr::skim(imp.sites_log.cf_cf.gam$lh_Vol_posteriorcingulate)
+min(imp.sites_log.cf_cf.gam$lh_Vol_posteriorcingulate)
+```
+
+```{r}
+imp.sites_log.cf_cf.gamlss <- fread(file=paste0(data_path, "/lifespan-CN-imp-sites_log-cf_cf.gamlss_data.csv"))
+sum(is.na(imp.sites_log.cf_cf.gamlss))
+skimr::skim(imp.sites_log.cf_cf.gam$log_age)
+skimr::skim(imp.sites_log.cf_cf.gam$sex)
+skimr::skim(imp.sites_log.cf_cf.gam$sex.age)
+skimr::skim(imp.sites_log.cf_cf.gam$fs_version)
+skimr::skim(imp.sites_log.cf_cf.gam$Vol_total)
+```
+
+Min Val Shift
+
+```{r}
+
 ```
 
 single script to parse outputs & get results (condensed from `ukb_sim.site_analyses.Rmd`)

@@ -6,7 +6,7 @@
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic) - also path that output csvs will be saved to
-r_script=$base/cubic_scripts/R_scripts/fit_centiles.R #path to .R script
+r_script=$base/cubic_scripts/R_scripts/fit_lifespan_centiles.R #path to .R script
 csv_path=$base/data/lifespan #path to data csvs
 mod_path=$base/lifespan/gamlss_objs #path to gamlss .rds objs
 #######################################################################################
@@ -34,9 +34,8 @@ if ! [ -d $save_path ]
 	rm -rf $save_path/*.*
 	fi
 #######################################################################################
-#LIST POSSIBLE CONFIGS, INCLUDING NAME OF ORIGINAL RAW DATA
-#be sure to include "data" at the end of the string so refA options aren't confused
-config_list="site-level_cf.gam site-level_cf.gamlss imp-sites_cf.gamlss imp-sites_cf.gam" #cf_data cf.lm_data cf.gam_data cf.gamlss_data #cf.lm_refA_data cf.gam_refA_data cf.gamlss_refA_data ukb_CN_data
+#LIST POSSIBLE CONFIGS TO SEARCH FOR
+config_list="imp-sites_log-cf_cf.gam_data imp-sites_log-cf_cf.gamlss_data"
 #######################################################################################
 for config in $config_list
 do

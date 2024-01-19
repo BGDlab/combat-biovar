@@ -9,7 +9,7 @@ library(tidyverse)
 
 devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/ranked_welch_tests.R?token=GHSAT0AAAAAACGAYP4GBRV6DV6ZXXAUMDXMZM5SWKQ")
 
-pheno_list <- readRDS(file="R_scripts/pheno_list.rds") #assumes wd is set to cubic_scripts
+pheno_list <- readRDS(file="cubic_scripts/R_scripts/pheno_list.rds") #assumes wd is set to cubic_scripts
 
 ##########
 ## STATS
