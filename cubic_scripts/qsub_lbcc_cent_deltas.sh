@@ -7,7 +7,7 @@
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic) - also path that output csvs will be saved to
 r_script=$base/cubic_scripts/R_scripts/get_lifespan_deltas.R #path to .R script
-cent_path=$base/data/lifespan/centile_csvs #path to centile csvs
+cent_path=$base/lifespan/centile_csvs #path to centile csvs
 bash_dir=$base/lifespan/centile_qsubs
 
 #search string:
