@@ -32,8 +32,8 @@ stopifnot(id.gam.df == id.gamlss.df) #make sure same subj. in each
 print("ID cols match")
 
 #drop cols missing from one or other df (i.e. if brain chart model failed to converge in either dataset)
-rm_cols <- setdiff(names(gam.df), names(gamlss.df))
-print("col name diffs to remove:")
+rm_cols <- c(setdiff(names(gam.df), names(gamlss.df)), setdiff(names(gamlss.df), names(gam.df)))
+print(paste(length(rm_cols), "col name diffs to remove:")
 print(rm_cols)
 
 #drop ID cols & missing cols
@@ -58,6 +58,8 @@ cf_deltas <- base::merge(id.gam.df, diff.df, by = "id") %>%
   dplyr::select(!id)
 
 #SAVE
+print("saving")
 fwrite(cf_deltas, paste0(save_path, "/", fname_str, "_pred_deltas.csv"))
 
+print("DONE")
 
