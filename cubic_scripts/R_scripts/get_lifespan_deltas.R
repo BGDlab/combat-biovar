@@ -29,6 +29,7 @@ id.gamlss.df <- gamlss.df %>%
   mutate(id = row_number())
 
 stopifnot(id.gam.df == id.gamlss.df) #make sure same subj. in each
+print("ID cols match")
 
 #drop ID cols and subtract across 
 gam.df <- gam.df %>%
@@ -38,6 +39,7 @@ gamlss.df <- gamlss.df %>%
   dplyr::select(!all_of(id_cols))
 
 #checks
+print(paste("col name diffs:", setdiff(names(gam.df), names(gamlss.df))))
 stopifnot(names(gam.df) == names(gamlss.df))
 stopifnot(nrow(gam.df) == nrow(gamlss.df))
 
