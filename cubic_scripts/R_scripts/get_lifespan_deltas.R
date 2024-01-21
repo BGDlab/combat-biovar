@@ -31,12 +31,17 @@ id.gamlss.df <- gamlss.df %>%
 stopifnot(id.gam.df == id.gamlss.df) #make sure same subj. in each
 print("ID cols match")
 
-#drop ID cols and subtract across 
+#drop cols missing from one or other df (i.e. if brain chart model failed to converge in either dataset)
+rm_cols <- setdiff(names(gam.df), names(gamlss.df))
+print("col name diffs to remove:")
+print(rm_cols)
+
+#drop ID cols & missing cols
 gam.df <- gam.df %>%
-  dplyr::select(!all_of(id_cols))
+  dplyr::select(!any_of(c(id_cols, rm_cols)))
 
 gamlss.df <- gamlss.df %>%
-  dplyr::select(!all_of(id_cols))
+  dplyr::select(!any_of(c(id_cols, rm_cols)))
 
 #checks
 print(paste("col name diffs:", setdiff(names(gam.df), names(gamlss.df))))
