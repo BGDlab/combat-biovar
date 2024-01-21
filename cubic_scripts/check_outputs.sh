@@ -44,8 +44,8 @@ else
 	echo "missing diffs.csv files, only ${count_file} of 11 found"
 fi
 
-# $csv_path/*_featurewise_cent_sex_bias_tests.csv x1
-# $csv_path/*_featurewise_z_sex_bias_tests.csv x1
+# $csv_path/*_featurewise_cent_sex_bias_tests.csv x2
+# $csv_path/*_featurewise_z_sex_bias_tests.csv x2
 count_file=$(find $csv_path -type f -name '*_featurewise_*_sex_bias_tests.csv' | wc -l)
 if [ $count_file -eq 2 ] 
 then    # 1st job successfully finished
@@ -55,23 +55,23 @@ else
 fi
 
 # $csv_path/*_featurewise_cent_t_tests.csv x2
-# $csv_path/*_featurewise_cent_z_tests.csv x2
-count_file=$(find $csv_path -type f -name '*_featurewise_cent_?_tests.csv' | wc -l)
+# $csv_path/*_featurewise_z_t_tests.csv x2
+count_file=$(find $csv_path -type f -name '*_featurewise_*_t_tests.csv' | wc -l)
 if [ $count_file -eq 4 ] 
 then    # 1st job successfully finished
-    echo "all ${count_file} featurewise_cent_?_tests.csv files found! on to the next"
+    echo "all ${count_file} *_featurewise_*_t_tests.csv files found! on to the next"
 else
-	echo "missing featurewise_cent_?_tests.csv files, only ${count_file} of 4 found"
+	echo "missing *_featurewise_*_t_tests.csv files, only ${count_file} of 4 found"
 fi
 
 # $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv x1
 # $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv x1
 count_file=$(find $csv_path -type f -name 'subj.abs.mean_sex_bias_*_t_tests.csv' | wc -l)
-if [ $count_file -eq 4 ] 
+if [ $count_file -eq 2 ] 
 then    # 1st job successfully finished
     echo "all ${count_file} subj.abs.mean_sex_bias_*_t_tests.csv files found!"
 else
-	echo "missing subj.abs.mean_sex_bias_*_t_tests.csv files, only ${count_file} of 4 found"
+	echo "missing subj.abs.mean_sex_bias_*_t_tests.csv files, only ${count_file} of 2 found"
 fi
 
 echo "DONE!"
