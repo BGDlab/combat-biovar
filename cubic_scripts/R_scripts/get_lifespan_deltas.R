@@ -33,7 +33,7 @@ print("ID cols match")
 
 #drop cols missing from one or other df (i.e. if brain chart model failed to converge in either dataset)
 rm_cols <- c(setdiff(names(gam.df), names(gamlss.df)), setdiff(names(gamlss.df), names(gam.df)))
-print(paste(length(rm_cols), "col name diffs to remove:")
+print(paste(length(rm_cols), "col name diffs to remove:"))
 print(rm_cols)
 
 #drop ID cols & missing cols
