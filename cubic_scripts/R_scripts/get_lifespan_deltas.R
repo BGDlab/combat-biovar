@@ -44,7 +44,6 @@ gamlss.df <- gamlss.df %>%
   dplyr::select(!any_of(c(id_cols, rm_cols)))
 
 #checks
-print(paste("col name diffs:", setdiff(names(gam.df), names(gamlss.df))))
 stopifnot(names(gam.df) == names(gamlss.df))
 stopifnot(nrow(gam.df) == nrow(gamlss.df))
 
