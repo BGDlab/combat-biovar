@@ -9,8 +9,6 @@ library(tidyverse)
 
 devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/ranked_welch_tests.R?token=GHSAT0AAAAAACGAYP4GBRV6DV6ZXXAUMDXMZM5SWKQ")
 
-pheno_list <- readRDS(file="R_scripts/pheno_list.rds") #assumes wd is set to cubic_scripts
-
 ##########
 ## STATS
 ##########
@@ -86,9 +84,8 @@ sex.bias.feat.t.tests <- function(df, feature_list, comp_multiplier=1){
 #centile.t.tests()
 #Pairwise T tests: within each feature, run paired t tests (welch's test on ranks) pairwise on each possible pairing of combat configs and return as a single dataframe, with FDR correction for all feature + cf pair combos. Currently runs on magnitude (abs val) of centile diffs, but can be run on other metrics by redefining `feature_list` Recommended for use with mclapply across list of dataframes. Optional argument to correct for more comparisons (e.g. fdr-correct across an entire list of dataframes) using `comp_multiplier` arg.
 
-pheno_abs.diff.list <- paste0("abs.diff_", pheno_list)
 
-centile.t.tests <- function(df, feature_list=pheno_abs.diff.list, comp_multiplier=1){
+centile.t.tests <- function(df, feature_list, comp_multiplier=1){
   #initialize empty dfs to store outputs
   t.df <- data.frame("pheno" = character(),
                      "group1" = character(),
@@ -158,8 +155,7 @@ sex.bias.t.tests <- function(df, to_test = "mean_cent_abs.diff", comp_multiplier
 #sex.bias.feat.t.tests()
 #modifying to test for sex-biases w/in feature rather than mean centiles
 
-pheno_diff_list <- paste0("diff_", pheno_list)
-sex.bias.feat.t.tests <- function(df, feature_list=pheno_diff_list, comp_multiplier=1){
+sex.bias.feat.t.tests <- function(df, feature_list, comp_multiplier=1){
   
   #initialize empty df to store outputs
   t.df <- data.frame("dataset" = character(),
@@ -356,8 +352,7 @@ sex.bias.wilcox.tests <- function(df, to_test = "mean_cent_abs.diff", comp_multi
 #sex.bias.feat.t.tests()
 #modifying to test for sex-biases w/in feature rather than mean centiles
 
-pheno_diff_list <- paste0("diff_", pheno_list)
-sex.bias.feat.wilcox.tests <- function(df, feature_list=pheno_diff_list, comp_multiplier=1){
+sex.bias.feat.wilcox.tests <- function(df, feature_list, comp_multiplier=1){
   
   #initialize empty df to store outputs
   t.df <- data.frame("dataset" = character(),
