@@ -35,3 +35,9 @@ echo "pulling from ukb_ratios - subject-wise"
 scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_ratios/perm_centile_csvs/subject-wise/*.csv' $base/ukb_ratio
 
 # LBCC Lifespan #
+if ! [ -d $base/lifespan ]
+	then
+	mkdir $base/lifespan
+	fi
+echo "pulling from lifespan diffs (ComBat GAM - ComBatLS)"
+scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/lifespan/centile_csvs/*.csv' $base/lifespan

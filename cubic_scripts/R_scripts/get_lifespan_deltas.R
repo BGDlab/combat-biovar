@@ -1,4 +1,5 @@
 # change in centile scores for subjects when calculated on data harmonized with ComBat GAM vs ComBatLS
+# also run basic stats tests
 
 #LOAD PACKAGES
 library(data.table)
@@ -10,7 +11,7 @@ args <- commandArgs(trailingOnly = TRUE)
 gam_csv_path <- as.character(args[1]) #path to combat-GAM fit centiles
 gamlss_csv_path <- as.character(args[2]) #path to combatLS fit centiles
 save_path <- as.character(args[3]) #path to save output csv
-fname_str <- as.character(args[4]) #string for saving name
+fname_str <- as.character(args[4]) #string for saving nameå
 
 #LOAD DFS
 #read in data
@@ -50,6 +51,7 @@ stopifnot(nrow(gam.df) == nrow(gamlss.df))
 #subtract
 diff.df <- gam.df - gamlss.df
 diff.df <- diff.df %>%
+  rename_with(~ paste("delta", ., sep = ".")) %>%
   mutate(id = row_number())
 
 #merge back
@@ -58,8 +60,9 @@ cf_deltas <- base::merge(id.gam.df, diff.df, by = "id") %>%
   dplyr::select(!id)
 
 #SAVE
-print("saving")
+print("saving deltas")
 fwrite(cf_deltas, paste0(save_path, "/", fname_str, "_pred_deltas.csv"))
+
 
 print("DONE")
 

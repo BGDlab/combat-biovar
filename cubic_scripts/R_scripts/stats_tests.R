@@ -155,7 +155,7 @@ sex.bias.t.tests <- function(df, to_test = "mean_cent_abs.diff", comp_multiplier
 # tidy(rank.welch.t.test.formula(formula=mean_cent_abs.diff ~ sex, data= ratio_subj_list[[1]], paired = FALSE, p.adj = "none"))
 # rank.welch.t.test.formula(formula=mean_cent_abs.diff ~ sex, data= ratio_subj_list[[1]], paired = FALSE, p.adj = "none")
 
-#sex.bias.feat.t.tests() KEEP THIS ONE
+#sex.bias.feat.t.tests()
 #modifying to test for sex-biases w/in feature rather than mean centiles
 
 pheno_diff_list <- paste0("diff_", pheno_list)
@@ -218,6 +218,9 @@ sex.bias.feat.t.tests <- function(df, feature_list=pheno_diff_list, comp_multipl
                   sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
                                       p.val_fdr >= 0.05 ~ FALSE),
                   dataset=as.factor(dataset))
+  
+  #add back source_file
+  result_df$Source_File <- df$Source_File
   
   # #summarize
   # df.sex.t.sum <- df.sex.t %>%
