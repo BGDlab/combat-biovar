@@ -18,9 +18,10 @@ pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, gg
 # Sys.setenv(GITHUB_PAT = "") #if needed to access private BGDlab GAMLSS repo
 # source_url(plot.func.url) #sometimes doesn't work....?
 
+base_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar"
 vol_list_global <- readRDS(file=paste0(base_path, "/cubic_scripts/R_scripts/vol_list_global.rds"))
 
-base_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar"
+
 source("/Users/megardn/Desktop/BGD_Repos/GAMLSS/plotting_functions.R")
 source(paste0(base_path, "/cubic_scripts/R_scripts/gamlss_helper_funs.R"))
 ```
@@ -83,6 +84,7 @@ ggplot(cn.df.unique) +
 ```
 
 ## Site-Level Data
+
 look just at data w site info
 
 ```{r}
@@ -90,6 +92,7 @@ cn.df.site <- cn.df.unique %>%
   dplyr::filter(site != "NA") %>%
   mutate(study = droplevels(study),
          site = gsub(" ", "_", trimws(site))) %>%
+  unite(site, study, site, sep = "_", remove = FALSE) %>% #so sites with the same name don't get combined across studies!
   na.omit()
 n_unique(cn.df.site$participant)
 n_unique(cn.df.site$participant) == nrow(cn.df.site)
@@ -111,11 +114,11 @@ cn.df.site %>%
 
 ```{r}
 ggplot(cn.df.site) +
-  geom_violin(aes(x=study, y=age_days), scale="width")+
+  geom_boxplot(aes(x=reorder(study, age_days), y=age_days))+
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 ggplot(cn.df.site) +
-  geom_violin(aes(x=site, y=age_days, fill=study), scale="width") +
+  geom_violin(aes(x=reorder(site, age_days), y=age_days, fill=study), scale="width") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "none")
 ```
 
@@ -169,22 +172,23 @@ Keep studies w missing site info and just treat as single-site
 cn.df.imp <- cn.df.unique %>%
   mutate(site = trimws(as.character(site)),
          study = trimws(study)) %>%
-  mutate(site = gsub(" ", "_", ifelse(is.na(site), study, site))) %>%
+  mutate(site = gsub(" ", "_", ifelse(is.na(site), study, paste(study, site, sep="_")))) %>%
   na.omit()
 
 unique(cn.df.imp$site)
-length(is.na(cn.df.imp$site))
+table(cn.df.imp$site, cn.df.imp$study)
+sum(is.na(cn.df.imp$site))
 max(cn.df.imp$age_days)/365.25
 mean(cn.df.imp$age_days)/365.25
 ```
 
 ```{r}
 ggplot(cn.df.imp) +
-  geom_violin(aes(x=study, y=age_days), scale="width") +
+  geom_violin(aes(x=reorder(study, age_days), y=age_days), scale="width") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 ggplot(cn.df.imp) +
-  geom_violin(aes(x=site, y=age_days, fill=study), scale="width") +
+  geom_violin(aes(x=reorder(site, age_days), y=age_days, fill=study), scale="width") +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "none")
 ```
 
