@@ -165,6 +165,7 @@ for (l in list_of_feature_lists){
       } else {
         cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.args, ")")))
       }
+    }
   }
   
   #un-log-transform vals
