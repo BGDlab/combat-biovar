@@ -216,9 +216,8 @@ sex.bias.feat.t.tests <- function(df, feature_list, comp_multiplier=1){
                   dataset=as.factor(dataset))
   
   #add back source_file
-  print(unique(df$Source_File))
-  stopifnot(length(unique(df$Source_File)) == 1)
-  result_df$Source_File <- unique(df$Source_File)
+  stopifnot(length(unique(df$prop)) == 1)
+  result_df$prop <- unique(df$prop)
   
   # #summarize
   # df.sex.t.sum <- df.sex.t %>%

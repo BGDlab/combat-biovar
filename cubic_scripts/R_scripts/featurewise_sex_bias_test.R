@@ -40,9 +40,7 @@ for (file in raw_files) {
   df_list <- c(df_list, list(data))
   assign("diffs_perm.list", df_list)
 }
-print(paste("length=", length(diffs_perm.list)))
-print(unique(diffs_perm.list[1]$Source_File))
-print(unique(diffs_perm.list[2]$Source_File)
+
 #centile t-tests
 cent.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=diff_list)
 

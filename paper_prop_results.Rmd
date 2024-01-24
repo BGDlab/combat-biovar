@@ -118,6 +118,19 @@ min(ratio_subj.df$mean_centile)
 max(ratio_subj.df$mean_z)
 min(ratio_subj.df$mean_z)
 ```
+some quick eda
+
+```{r}
+ratio.df %>%
+  ggplot() +
+  geom_violin(aes(y=diff_GMV, x= sex, fill=sim.site)) +
+  facet_grid(dataset~prop, scales="free_y")
+
+ratio.df %>%
+  ggplot() +
+  geom_violin(aes(y=abs.diff_GMV, x= sex, fill=sim.site)) +
+  facet_grid(dataset~prop, scales="free_y")
+```
 
 Read in predicted centiles & z scores FROM RAW DATA ONLY (to save memory)
 ```{r, eval=FALSE}
@@ -227,84 +240,77 @@ cent.subj.mean.test.df %>%
 ```
 
 Test w/in feature sex-biases in errors (diff_list) using `featurewise_sex_bias_test.R`, saved as `full_featurewise_cent_sex_bias_tests.RDS`
+**RERUNNING TO KEEP PROP VALS AS EXPLICIT NAMES, COME BACK TO THIS**
 
 ```{r}
 cent.subj.sex.test.list <- readRDS(paste0(data_path, "/ukb_ratio/full_featurewise_cent_sex_bias_tests.RDS"))
-
 ```
 
 ### W/o extremes
 Are extreme centiles (<5% and >95%) driving observed results?
 
-Get raw centiles and merge with centile differences
+Test differences in abs. magnitude of centile errors w/in each feature
 
 ```{r}
-ratio.no_ext_cent <- fread(file=paste0(data_path, "/ukb_ratio/no_ext_cent.csv"))
+noext.cent.t.test.df <- fread(paste0(data_path, "/ukb_ratio/no.ext_featurewise_cent_t_tests.csv"))
+noext.cent.t.test.df <- noext.cent.t.test.df %>%
+  mutate(prop = factor(column_label, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
+         comp = as.factor(comp))
+noext.cent.t.test.df
 ```
 
-split back into separate dataframes for each proportion
-
+compare results
 ```{r}
-ratio.no_ext_cent_list <- c()
-for (p in unique(ratio.no_ext_cent$prop)){
-  df <- ratio.no_ext_cent %>%
-    dplyr::filter(prop == p)
-  ratio.no_ext_cent_list <- c(ratio.no_ext_cent_list, list(df))
-}
-rm(ratio.no_ext_cent)
-length(ratio.no_ext_cent_list)
-dim(ratio.no_ext_cent_list[[1]]) == dim(ratio.no_ext_cent_list[[9]]) #expect TRUE
-sum(unique(ratio.no_ext_cent_list[[1]]$participant) == unique(ratio.no_ext_cent_list[[9]]$participant)) #expect low # matches
+noext.cent.t.test.df_reduced <- noext.cent.t.test.df %>%
+  mutate(full_df = 0) %>%
+  dplyr::select(comp, prop, n_sig_regions, full_df)
+cent.t.test.df_reduced <- cent.t.test.df %>%
+  mutate(full_df = 1) %>%
+  dplyr::select(comp, prop, n_sig_regions, full_df)
+
+full_join(noext.cent.t.test.df_reduced, cent.t.test.df_reduced) %>%
+  ggplot() +
+  geom_col(aes(x=prop, y=n_sig_regions, fill=as.factor(full_df)), position="dodge") +
+  facet_wrap(~comp) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
-
-Test between-combat abs. centile diffs - probably faster if i just run this back on cubic
-
-```{r}
-noext.prop_abs.cent_t.tests <- mclapply(ratio.no_ext_cent_list, centile.t.tests, feature_list=pheno_abs.diff.list, comp_multiplier=11, mc.preschedule = FALSE) #FDR correction across 11 M:F permutations
-names(noext.prop_abs.cent_t.tests) <- n_prop_list
-noext.prop_abs.cent_t.tests_df <- bind_rows(noext.prop_abs.cent_t.tests, .id = "column_label")
-noext.prop_abs.cent_t.tests_df
-```
-
-*need to add w/in feature sex-bias testing*
+Test sex-biases in centile errors w/in each feature
+**COME BACK TO THIS**
 
 ## Z-SCORES
 
 Do z score errors change based on combat version?
 
-Plot boxplots to compare across prop.
-
-**Stats Tests**
-Within each M:F proportion simulated, is the magnitude of subjects' mean centile errors differ significantly by combat configuration?
+compare abs(z errors) w/in features - Tested by `ratio_results.R`, results written to `full_featurewise_z_t_tests.csv`
 
 ```{r}
-prop_abs.z_t.tests <- mclapply(ratio_list, centile.t.tests, feature_list=z.pheno_abs.diff.list, comp_multiplier=11, mc.preschedule = FALSE) #FDR correction across 11 M:F permutations
-names(prop_abs.z_t.tests) <- n_prop_list
-prop_abs.z_t.tests_df <- bind_rows(prop_abs.z_t.tests, .id = "column_label")
+z.t.test.df <- fread(paste0(data_path, "/ukb_ratio/full_featurewise_z_t_tests.csv"))
+z.t.test.df <- z.t.test.df %>%
+  mutate(prop = factor(column_label, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
+         comp = as.factor(comp))
 ```
 
-Visualize 
 ```{r}
-ggplot(prop_abs.z_t.tests_df) +
-  geom_col(aes(x=column_label, y=n_sig_regions, fill=column_label)) +
-  geom_hline(yintercept = 208, linetype='longdash') +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="none") +
-  facet_wrap(~comp)
+z.t.test.df %>%
+  # filter(comp=="cf.gamlss_cf.gam") %>%
+  ggplot() +
+  geom_col(aes(x=prop, y=n_sig_regions, fill=comp), position="dodge") +
+  facet_wrap(~comp) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="none")
 ```
 
 Plot errors for global phenotypes
 ```{r}
-percent_f <- setNames(paste0(seq(from=100, to=0, by=-10), "% F"), unique(ratio_subj.df$prop))
+percent_f <- setNames(paste0(seq(from=100, to=0, by=-10), "% F"), unique(ratio.df$prop))
 
-prop.global_z.abs.diffs <- ratio.df %>%
+z.prop.global_abs.diffs <- ratio.df %>%
   dplyr::select(participant, sex, age_days, sim.site, prop, dataset, paste0("abs.diff_", vol_list_global, ".z")) %>%
   pivot_longer(cols=starts_with("abs.diff_"), names_to="pheno", names_prefix="abs.diff_", values_to = "abs.diff")
 
-prop.global_z_errs_plot <- prop.global_z.abs.diffs %>%
+prop.global_z_errs_plot <- z.prop.global_abs.diffs %>%
   dplyr::filter(dataset == "cf.lm" | dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
   mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         pheno = factor(pheno, levels = c("WMV", "GMV", "sGMV", "Ventricles"), ordered = TRUE),
-         abs.diff = abs.diff*100) %>% #for visuals
+         pheno = factor(pheno, levels = c("WMV", "GMV", "sGMV", "Ventricles"), ordered = TRUE)) %>%
   ggplot() +
   geom_violin(aes(x=prop, y=abs.diff, fill=dataset, color=dataset), scale="count") +
   theme_linedraw(base_size = 11) +
@@ -316,8 +322,9 @@ prop.global_z_errs_plot <- prop.global_z.abs.diffs %>%
   facet_wrap(~ pheno) +
   ggtitle("Magnitude errors in z scores of global features across ComBat pipelines")
 prop.global_z_errs_plot
-#ggsave("figs/global_centile_errors.jpeg", global_cent_errs_plot)
+#ggsave("figs/global_z_errors.jpeg", prop.global_z_errs_plot)
 ```
+*need to add stat tests to plot*
 
 ### Sex-Biases
 
