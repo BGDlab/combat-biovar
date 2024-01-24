@@ -21,6 +21,7 @@ study_dir=$base/ukb_ratios
 csv_path=$study_dir/perm_centile_csvs
 r_base=$base/cubic_scripts/R_scripts # paths to R scripts
 bash_dir=$study_dir/stats_qsubs
+cd $base/cubic_scripts
 #######################################################################################
 # featurewise sex bias tests
 ## based on `qsub_sex_bias_test.sh`
