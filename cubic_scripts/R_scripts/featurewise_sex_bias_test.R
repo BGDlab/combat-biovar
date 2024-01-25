@@ -45,12 +45,12 @@ for (file in raw_files) {
 cent.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=diff_list)
 
 #save
-fwrite(cent.sex_t_tests_in_feat.df, file=paste0(data_path, "/", d.type, "_featurewise_cent_sex_bias_tests.csv"))
+saveRDS(cent.sex_t_tests_in_feat.df, file=paste0(data_path, "/", d.type, "_featurewise_cent_sex_bias_tests.RDS"))
 
 #z-score t-tests
 z.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=paste0(diff_list,".z"))
 
 #save
-fwrite(z.sex_t_tests_in_feat.df, file=paste0(data_path, "/", d.type, "_featurewise_z_sex_bias_tests.csv"))
+saveRDS(z.sex_t_tests_in_feat.df, file=paste0(data_path, "/", d.type, "_featurewise_z_sex_bias_tests.RDS"))
 
 print("DONE!")

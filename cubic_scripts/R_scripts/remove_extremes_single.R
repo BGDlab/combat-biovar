@@ -60,7 +60,7 @@ rm_ext_z <- function(og.data, feat_list, col_select){
       df <- og.data %>%
         dplyr::select(participant, sex, age_days, sim.site, Source_File, dataset, prop, all_of(list)) %>% #get correct cols
         group_by(participant) %>% 
-        dplyr::filter(!any((get(pheno) < -2 | get(pheno) > 1) & dataset == "raw")) %>%
+        dplyr::filter(!any((get(pheno) < -2 | get(pheno) > 2) & dataset == "raw")) %>%
         ungroup() %>%
         dplyr::filter(dataset != "raw") #now drop raw vals
     } else if (col_select == "perm"){

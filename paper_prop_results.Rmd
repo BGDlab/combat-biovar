@@ -310,7 +310,7 @@ z.prop.global_abs.diffs <- ratio.df %>%
 prop.global_z_errs_plot <- z.prop.global_abs.diffs %>%
   dplyr::filter(dataset == "cf.lm" | dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
   mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         pheno = factor(pheno, levels = c("WMV", "GMV", "sGMV", "Ventricles"), ordered = TRUE)) %>%
+         pheno = factor(pheno, levels = c("WMV.z", "GMV.z", "sGMV.z", "Ventricles.z"), ordered = TRUE)) %>%
   ggplot() +
   geom_violin(aes(x=prop, y=abs.diff, fill=dataset, color=dataset), scale="count") +
   theme_linedraw(base_size = 11) +
@@ -319,7 +319,7 @@ prop.global_z_errs_plot <- z.prop.global_abs.diffs %>%
   labs(y="Magnitude Z Error", x = "% Females in Imbalanced Study Site") +
   theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   scale_x_discrete(labels=percent_f) +
-  facet_wrap(~ pheno) +
+  facet_wrap(~pheno) +
   ggtitle("Magnitude errors in z scores of global features across ComBat pipelines")
 prop.global_z_errs_plot
 #ggsave("figs/global_z_errors.jpeg", prop.global_z_errs_plot)
@@ -327,192 +327,56 @@ prop.global_z_errs_plot
 *need to add stat tests to plot*
 
 ### Sex-Biases
-
-Test subj. mean averages
-```{r}
-prop.sex.bias.test <- mclapply(ratio_subj_list, sex.bias.t.tests, mc.preschedule = FALSE, to_test = "mean_cent_abs.diff", comp_multiplier=11)
-names(prop.sex.bias.test) <- n_prop_list
-sex_bias_ratio_tests_df <- bind_rows(prop.sex.bias.test, .id = "prop")
-```
-
+Test subj. mean abs errors (mean_cent_abs.diff) using `ratio_subject-wise_results.R`, saved as `subj.abs.mean_sex_bias_z_t_tests.csv`
 
 ```{r}
-for (l in unique(ratio_subj.df$dataset)){
-plot <- ratio_subj.df %>%
-  dplyr::filter(dataset == l) %>%
-  ggplot(aes(x=mean_centile, y=mean_cent_diff, color=sex)) +
-  geom_point(alpha=0.3) +
-  geom_smooth(method="lm") +
-  facet_grid(sim.site ~ prop) +
-  ggtitle(l)
-print(plot)
-}
+z.subj.mean.test.df <- fread(paste0(data_path, "/ukb_ratio/subj.abs.mean_sex_bias_z_t_tests.csv"))
+z.subj.mean.test.df <- z.subj.mean.test.df %>%
+  mutate(prop = factor(prop, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
+         dataset = as.factor(dataset))
+z.subj.mean.test.df
 ```
 
 ```{r}
-ratio_subj.df %>%
-  dplyr::filter(dataset == "cf.lm" |dataset == "cf.gam" | dataset=="cf.gamlss") %>%
-  ggplot(aes(x=mean_centile*100, y=mean_cent_diff*100, color=sex)) +
-  geom_point(alpha=0.2) +
-  #geom_smooth(method="lm") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  facet_nested(dataset + sim.site ~ prop) 
-
-ratio_subj.df %>%
-  dplyr::filter(dataset == "cf.gam" | dataset=="cf.gamlss") %>%
-  ggplot(aes(x=sim.site, y=mean_cent_diff*100)) +
-  geom_violin() +
-  #geom_smooth(method="lm") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  facet_nested(dataset ~ prop)
+z.subj.mean.test.df %>%
+  # filter(comp=="cf.gamlss_cf.gam") %>%
+  ggplot() +
+  geom_col(aes(x=prop, y=sig_fdr, fill=dataset), position="dodge") +
+  facet_wrap(~dataset) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="none")
 ```
 
-
-```{r}
-prop_sex_mean_cent.plot <- ratio_subj.df %>%
-  dplyr::filter(dataset == "cf.gam" | dataset=="cf.gamlss") %>%
-  ggplot(aes(x=sim.site, y=mean_cent_diff*100, fill=sex)) +
-  geom_violin() +
-  #geom_smooth(method="lm") +
-  theme_linedraw(base_size=12) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  facet_grid(dataset ~ prop, labeller = labeller(dataset = as_labeller(dataset_names), prop=as_labeller(percent_f))) +
-  xlab("Site") + ylab("Mean Centile Error")
-prop_sex_mean_cent.plot
-```
-
-```{r}
-dataset_names <- c('ukb-CN-simsites' = "Raw Data", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
-percent_f <- setNames(paste0(seq(from=100, to=0, by=-10), "% F"), unique(ratio_subj.df$prop))
-
-prop_sex_mean_cent.plot2 <- ratio_subj.df %>%
-  dplyr::filter(dataset == "cf.gam" | dataset=="cf.gamlss") %>%
-  ggplot(aes(x=sex, y=mean_cent_diff*100, fill=sex)) +
-  geom_violin() +
-  #geom_smooth(method="lm") +
-  theme_linedraw(base_size=12) +
-  theme(axis.text.x = element_blank()) +
-  facet_grid(dataset ~ prop, labeller = labeller(dataset = as_labeller(dataset_names), prop=as_labeller(percent_f))) +
-  xlab("Site") + ylab("Mean Centile Error")
-prop_sex_mean_cent.plot2
-```
-
-```{r}
-prop_sex_mean_cent.plot.abs <- ratio_subj.df %>%
-  dplyr::filter(dataset == "cf.gam" | dataset=="cf.gamlss") %>%
-  ggplot(aes(x=sex, y=mean_cent_abs.diff*100, fill=sex)) +
-  geom_violin() +
-  #geom_smooth(method="lm") +
-  theme_linedraw(base_size=12) +
-  theme(axis.text.x = element_blank(), axis.title.x = element_blank(), legend.position="bottom") +
-  facet_grid(dataset ~ prop, labeller = labeller(dataset = as_labeller(dataset_names), prop=as_labeller(percent_f))) +
-  ylab("Mean Absolute Centile Error")
-prop_sex_mean_cent.plot.abs
-saveRDS(prop_sex_mean_cent.plot.abs, file="figs/mean_subj_cent_err.RDS")
-```
-
-*need to add w/in feature sex-bias testing*
+Test w/in feature sex-biases in errors (diff_list) using `featurewise_sex_bias_test.R`, saved as `full_featurewise_cent_sex_bias_tests.RDS`
+**RERUNNING TO KEEP PROP VALS AS EXPLICIT NAMES, COME BACK TO THIS**
 
 ### W/o extremes
-Are extreme centiles (<5% and >95%) driving observed results?
 
-Get raw centiles and merge with centile differences
+Are extreme z-scores (<2 and >2) driving observed results?
 
-```{r}
-ratio.no_ext_cent <- fread(file=paste0(data_path, "/ukb_ratio/no_ext_cent.csv"))
-```
-
-split back into separate dataframes for each proportion
+Test differences in abs. magnitude of z errors w/in each feature
 
 ```{r}
-ratio.no_ext_cent_list <- c()
-for (p in unique(ratio.no_ext_cent$prop)){
-  df <- ratio.no_ext_cent %>%
-    dplyr::filter(prop == p)
-  ratio.no_ext_cent_list <- c(ratio.no_ext_cent_list, list(df))
-}
-rm(ratio.no_ext_cent)
-length(ratio.no_ext_cent_list)
-dim(ratio.no_ext_cent_list[[1]]) == dim(ratio.no_ext_cent_list[[9]]) #expect TRUE
-sum(unique(ratio.no_ext_cent_list[[1]]$participant) == unique(ratio.no_ext_cent_list[[9]]$participant)) #expect low # matches
+noext.z.t.test.df <- fread(paste0(data_path, "/ukb_ratio/no.ext_featurewise_z_t_tests.csv"))
+noext.z.t.test.df <- noext.z.t.test.df %>%
+  mutate(prop = factor(column_label, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
+         comp = as.factor(comp))
+noext.z.t.test.df
 ```
 
-Test between-combat abs. centile diffs - probably faster if i just run this back on cubic
-
+compare results
 ```{r}
-noext.prop_abs.cent_t.tests <- mclapply(ratio.no_ext_cent_list, centile.t.tests, feature_list=pheno_abs.diff.list, comp_multiplier=11, mc.preschedule = FALSE) #FDR correction across 11 M:F permutations
-names(noext.prop_abs.cent_t.tests) <- n_prop_list
-noext.prop_abs.cent_t.tests_df <- bind_rows(noext.prop_abs.cent_t.tests, .id = "column_label")
-noext.prop_abs.cent_t.tests_df
+noext.z.t.test.df_reduced <- noext.z.t.test.df %>%
+  mutate(full_df = 0) %>%
+  dplyr::select(comp, prop, n_sig_regions, full_df)
+z.t.test.df_reduced <- z.t.test.df %>%
+  mutate(full_df = 1) %>%
+  dplyr::select(comp, prop, n_sig_regions, full_df)
+
+full_join(noext.z.t.test.df_reduced, z.t.test.df_reduced) %>%
+  ggplot() +
+  geom_col(aes(x=prop, y=n_sig_regions, fill=as.factor(full_df)), position="dodge") +
+  facet_wrap(~comp) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
-
-*need to add w/in feature sex-bias testing*
-
-## Scale Effects of Sex
-
-sex-diff in variance as function of M:F!
-
-fix age, get diff between male and female pred. variance
-```{r}
-# combined_preds.p <- data.frame()
-get.var <- function(x){
-  df <- data.frame() #new empty dataframe
-  var.csvs.p <- list.files(path = permutation_path, pattern = paste0(x, ".+_variance.csv"), full.names = TRUE)
-  for (file in var.csvs.p) {
-    # Read each CSV file
-    data <- fread(file)
-
-    # Add a "Source_File" column with the file name
-    data <- data %>%
-      mutate(Source_File = as.factor(basename(file)),
-             perm = as.factor(x)) %>%
-      mutate(dataset = gsub("_data|_variance.csv|perm-|[0-9]|-", "", Source_File),
-             sex_standard = sex_effect/f.var,
-             pheno = as.character(pheno))
-
-    # Bind the data to the combined dataframe
-    df <- bind_rows(df, data, .id = "File_ID")
-  }
-  return(df)
-}
-
-perm_var <- mclapply(n_perm_list, get.var, mc.preschedule = FALSE)
-perm_var.all <- bind_rows(perm_var, .id = "column_label")
-```
-
-maybe better to get sex_summary.csv - just need signifigance
-
-```{r}
-#get summary df for p vals, plotting
-sigma.sex.df <- fread("ukb_perm_csvs/sex_summary.csv", stringsAsFactors = TRUE) %>%
-  dplyr::select(-V1) %>%
-  mutate(perm = gsub("ukb-CN-data-agefilt-|-raw|-cf|.lm|.gam|.gamlss|-data", "", dataset),
-         dataset = gsub("-data", "", dataset),
-         dataset = gsub("simsites|ukb-CN-agefilt-|perm-|[0-9]", "", dataset),
-         dataset = gsub("-", "", dataset),
-         #dataset = as.character(dataset),
-         pheno = as.character(pheno)) %>%
-  mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE),
-         perm = factor(perm, levels = unique(perm), ordered=FALSE)) %>%
-  #mutate(dataset = relevel(dataset, ref= "raw")) %>%
-  dplyr::filter(parameter == "sigma" & term == "sexMale") %>%
-  dplyr::select(mod_name, pheno, dataset, pheno_cat, label, sig.sum_bf.corr, perm, sig.drop_bf.corr)
-
-perm_var_info <- inner_join(perm_var.all, sigma.sex.df)
-```
-
-```{r}
-  sex_effect_plot <- perm_var_info %>%
-    mutate(sex_standard = case_when(sig.drop_bf.corr == TRUE ~ sex_standard,
-                                    sig.drop_bf.corr == FALSE ~ 0)) %>% #only significant effects
-    ggplot() +
-    geom_col(aes(x=pheno, y=sex_standard, fill=dataset)) +
-    facet_wrap(~perm, ncol=5) +
-    ggtitle(paste("Standardized effect of male sex on variance")) +
-    theme(axis.text.x = element_blank())
-  
-    ggsave(paste0("figs/male_variance_perms.jpeg"), sex_effect_plot)
-    print(sex_effect_plot)
-```
-
-
+Test sex-biases in z errors w/in each feature
+**COME BACK TO THIS**

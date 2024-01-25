@@ -161,7 +161,7 @@ for (l in list_of_feature_lists){
             message("done")
           } )
         }
-        cf.obj <- cf_gamlss_try(cf.arg1)
+        cf.obj <- cf_gamlss_try(cf.args)
       } else {
         cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.args, ")")))
       }
