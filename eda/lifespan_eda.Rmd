@@ -269,3 +269,8 @@ ven_gamlss.imp <- ggplot(lifespan_imp_gamlss.df) +
 neg_ventricle_plots <- ggarrange(ven_raw, ven_gam, ven_gamlss, ven_raw.imp, ven_gam.imp, ven_gamlss.imp, common.legend = TRUE)
 #ggsave(paste0(base_path, "figs/lifespan_ventricle_neg.jpg"), plot=neg_ventricle_plots)
 ```
+
+## Combat Troubleshooting
+having some issues with combat on cubic, trying locally.
+
+
