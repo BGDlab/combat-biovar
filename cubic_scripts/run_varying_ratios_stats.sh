@@ -7,10 +7,10 @@
 # $csv_path/subject-wise/*_subj_pred.csv x11
 # $csv_path/*_featurewise_cent_t_tests.csv x2
 # $csv_path/*_featurewise_cent_z_tests.csv x2
-# $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv x2
-# $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv x2
-# $csv_path/*_featurewise_cent_sex_bias_tests.csv x1
-# $csv_path/*_featurewise_z_sex_bias_tests.csv x1
+# $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv x1
+# $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv x1
+# $csv_path/*_featurewise_cent_sex_bias_tests.RDS x2
+# $csv_path/*_featurewise_z_sex_bias_tests.RDS x2
 # $csv_path/*_no_ext.csv x11
 
 #######################################################################################
@@ -36,8 +36,8 @@ rm -rf $csv_path/*_featurewise_cent_t_tests.csv
 rm -rf $csv_path/*_featurewise_cent_z_tests.csv
 rm -rf $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv
 rm -rf $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv
-rm -rf $csv_path/*_featurewise_cent_sex_bias_tests.csv
-rm -rf $csv_path/*_featurewise_z_sex_bias_tests.csv
+rm -rf $csv_path/*_featurewise_cent_sex_bias_tests.RDS
+rm -rf $csv_path/*_featurewise_z_sex_bias_tests.RDS
 rm -rf $csv_path/*_no_ext.csv
 
 echo "Old outputs deleted"
@@ -207,16 +207,16 @@ do
     sleep 60    # wait for 1min before detecting again
 done
 
-# $csv_path/*_featurewise_cent_sex_bias_tests.csv x1
-# $csv_path/*_featurewise_z_sex_bias_tests.csv x1
+# $csv_path/*_featurewise_cent_sex_bias_tests.RDS x2
+# $csv_path/*_featurewise_z_sex_bias_tests.RDS x2
 SECONDS=0
 
 while :    # while TRUE
 do
-    count_file=$(find $csv_path -type f -name '*_featurewise_*_sex_bias_tests.csv' | wc -l)
-    if [ $count_file -eq 2 ] 
+    count_file=$(find $csv_path -type f -name '*_featurewise_*_sex_bias_tests.RDS' | wc -l)
+    if [ $count_file -eq 4 ] 
 	then    # 1st job successfully finished
-        echo "all ${count_file} *featurewise_*_sex_bias_tests.csv files found! on to the next"
+        echo "all ${count_file} *featurewise_*_sex_bias_tests.RDS files found! on to the next"
         break
     elif [ $SECONDS -gt 86400 ] #kill if taking more than 1 day
 	then
@@ -228,15 +228,15 @@ do
 done
 
 # $csv_path/*_featurewise_cent_t_tests.csv x2
-# $csv_path/*_featurewise_cent_z_tests.csv x2
+# $csv_path/*_featurewise_z_t_tests.csv x2
 SECONDS=0
 
 while :    # while TRUE
 do
-    count_file=$(find $csv_path -type f -name '*_featurewise_cent_?_tests.csv' | wc -l)
+    count_file=$(find $csv_path -type f -name '*_featurewise_*_t_tests.csv' | wc -l)
     if [ $count_file -eq 4 ] 
 	then    # 1st job successfully finished
-        echo "all ${count_file} featurewise_cent_?_tests.csv files found! on to the next"
+        echo "all ${count_file} featurewise_cent_t_tests.csv files found! on to the next"
         break
     elif [ $SECONDS -gt 86400 ] #kill if taking more than 1 day
 	then
@@ -247,8 +247,8 @@ do
     sleep 60    # wait for 1min before detecting again
 done
 
-# $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv x2
-# $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv x2
+# $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv x1
+# $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv x1
 SECONDS=0
 
 while :    # while TRUE
