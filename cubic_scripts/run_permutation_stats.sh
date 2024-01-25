@@ -53,7 +53,7 @@ if ! [ -d $csv_path/subject-wise ]
 	mkdir $csv_path/subject-wise
 	fi
 # sub jobs
-for n_prop in $(seq -f "%02g" 1 11) #10 sims
+for n_prop in $(seq -f "%03g" 1 10) #10 sims
 do
 	echo "Prepping perm-$n_prop"
 	#write bash script
@@ -124,7 +124,7 @@ qsub -N perm_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_t
 ## based on `qsub_rm_extremes.sh`
 r_script=$r_base/remove_extremes_single.R
 # sub jobs
-for n_prop in $(seq -f "%02g" 1 11) #11 sims
+for n_prop in $(seq -f "%03g" 1 10) #10 sims
 do
 	echo "Prepping prop-$n_prop"
 	#write bash script

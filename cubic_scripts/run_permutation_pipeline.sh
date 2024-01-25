@@ -8,13 +8,16 @@ img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity ima
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
 og_data=$base/data/ukb_CN_data_agefilt.csv #path to original data for which site assignments should be permuted
 save_data_path=$base/data/ukb_permute
-pheno_path=$base/pheno_lists #path to .txt files listing phenotypes (global & regional)
+
 # paths to R scripts
-permute_script=$base/R_scripts/permute_sites.R
-cf_script=$base/R_scripts/combat_apply.R
-mod_script=$base/R_scripts/fit_perm_basic_mod.R
+r_base=$base/cubic_scripts/R_scripts
+permute_script=$r_base/permute_sites.R
+cf_script=$r_base/combat_apply.R
+mod_script=$r_base/fit_perm_basic_mod.R
+centile_script=$r_base/fit_centiles.R
+cent_subj_parse=$r_base/summarise_cent_subj-wise.R 
 #######################################################################################
-cd $base #to source functions correctly
+cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
 # GET ARGS
 if [ $# -lt 1 ]
@@ -72,6 +75,32 @@ if ! [ -d $gamlss_dir ]
 	mkdir $gamlss_dir
 	fi
 
+#centile qsubs
+cent_bash_dir=$study_dir/centile_qsubs
+if ! [ -d $cent_bash_dir ]
+	then
+	mkdir $cent_bash_dir
+	else
+    rm -f $cent_bash_dir/*.*
+	fi
+
+#centile output csvs
+cent_save_dir=$study_dir/perm_centile_csvs
+if ! [ -d $cent_save_dir ]
+	then
+	mkdir $cent_save_dir
+	else
+    rm -f $cent_save_dir/*.*
+	fi
+
+# ... with subdir for subject-level outputs
+cent_subj_dir=$cent_save_dir/subject-wise
+if ! [ -d $cent_subj_dir ]
+	then
+	mkdir $cent_subj_dir
+	else
+    rm -f $cent_subj_dir/*.*
+	fi
 #######################################################################################
 #######################################################################################
 # SUBMIT PERMUTAITON JOBS
@@ -252,4 +281,97 @@ do
     sleep 60    # wait for 1min before detecting again
 done
 
+######################################################################################
+# SUBMIT CENTILE MODELING JOBS
+
+config_list_plusraw="cf_data cf.lm_data cf.gam_data cf.gamlss_data raw"
+
+#LIST permutations
+for p in $(seq -f "%03g" 1 10) #10 sims
+do
+	#iterate through combat configs
+	for config in $config_list_plusraw
+	do
+		f_string=perm-${p}-${config}
+		echo "Prepping $f_string"
+		#write bash script
+		bash_script=$cent_bash_dir/${f_string}_cent.sh
+		touch $bash_script
+		
+		echo "singularity run --cleanenv $img Rscript --save $centile_script $save_data_path $gamlss_dir $cent_save_dir $f_string" > $bash_script
+
+		#qsub bash script
+		qsub -N $f_string -o $cent_bash_dir/${f_string}_out.txt -e $cent_bash_dir/${f_string}_err.txt $bash_script
+	done
+done
+#######################################################################################
+# CHECK FOR OUTPUTS
+#expect 3 csvs per centile script iteration
+num_configs=$(echo $config_list_plusraw | wc -w)
+cent_csv_count=$((${num_configs}*10*3))
+echo "looking for ${cent_csv_count} output csvs"
+
+SECONDS=0
+
+while :    # while TRUE
+do
+	count_cent=$(find $cent_save_dir -type f -name '*.csv' | wc -l)
+    # detect the expected output from 1st job
+    if [ $count_cent -eq $cent_csv_count ] 
+	then    # 1st job successfully finished
+        echo "all ${count_cent} csvs written"
+        break
+    elif [ $SECONDS -gt 172800 ] #kill if taking more than 2 days
+	then
+	echo "taking too long, abort!"
+	exit 2
+    fi
+	echo "${count_cent} csvs found"
+    sleep 60    # wait for 1min before detecting again
+done
+
+echo "getting subject-level summary stats"
+
+######################################################################################
+# SUBMIT SUBJ-LEVEL SUMMARY JOBS
+
+#LIST permutations
+for p in $(seq -f "%03g" 1 10) #10 sims
+do
+	echo "Prepping perm-$p"
+	#write bash script
+	bash_script=$bash_dir/perm-${p}_cent_sum.sh
+	touch $bash_script
+		
+	echo "singularity run --cleanenv $img Rscript --save $cent_subj_parse 'perm' $p $cent_save_dir" > $bash_script
+
+	#qsub bash script
+	qsub -N perm-${p}_sum -o $cent_bash_dir/perm-${p}_sum_out.txt -e $cent_bash_dir/perm-${p}_sum_err.txt -l h_vmem=64G,s_vmem=64G $bash_script
+
+done
+#######################################################################################
+# CHECK FOR OUTPUTS
+#expect 10 csvs
+echo "looking for 10 output csvs"
+
+SECONDS=0
+
+while :    # while TRUE
+do
+	count_cent_subj=$(find $cent_subj_dir -type f -name '*.csv' | wc -l)
+    # detect the expected output from 1st job
+    if [ $count_cent_subj -eq 10 ] 
+	then    # 1st job successfully finished
+        echo "all ${count_cent_subj} csvs written"
+        break
+    elif [ $SECONDS -gt 172800 ] #kill if taking more than 2 days
+	then
+	echo "taking too long, abort!"
+	exit 2
+    fi
+	echo "${count_cent_subj} csvs found"
+    sleep 60    # wait for 1min before detecting again
+done
 echo "SUCCESS! All done :)"
+
+
