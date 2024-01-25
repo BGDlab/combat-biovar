@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Run stats test on the outputs of 'run_varying_ratios_pipeline.sh'. Trying to make a faster, cubic-based version of 'paper_prop_results.Rmd'
+# Run stats test on the outputs of 'run_permutation_pipeline.sh'.
 
 # expected outputs:
 # $csv_path/*_diffs.csv x11
@@ -17,7 +17,7 @@
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
-study_dir=$base/ukb_ratios
+study_dir=$base/ukb_permute
 csv_path=$study_dir/perm_centile_csvs
 r_base=$base/cubic_scripts/R_scripts # paths to R scripts
 bash_dir=$study_dir/stats_qsubs
@@ -53,17 +53,17 @@ if ! [ -d $csv_path/subject-wise ]
 	mkdir $csv_path/subject-wise
 	fi
 # sub jobs
-for n_prop in $(seq -f "%02g" 1 11) #11 sims
+for n_prop in $(seq -f "%02g" 1 11) #10 sims
 do
-	echo "Prepping prop-$n_prop"
+	echo "Prepping perm-$n_prop"
 	#write bash script
-	bash_script=$bash_dir/prop-${n_prop}_cent_sum.sh
+	bash_script=$bash_dir/perm-${n_prop}_cent_sum.sh
 	touch $bash_script
 	
-	echo "singularity run --cleanenv $img Rscript --save $r_script "prop" $n_prop $csv_path" > $bash_script
+	echo "singularity run --cleanenv $img Rscript --save $r_script "perm" $n_prop $csv_path" > $bash_script
 
 	#qsub bash script
-	qsub -N prop-${n_prop}_sum -o $bash_dir/prop-${n_prop}_sum_out.txt -e $bash_dir/prop-${n_prop}_sum_err.txt -l h_vmem=64G,s_vmem=64G $bash_script
+	qsub -N perm-${n_prop}_sum -o $bash_dir/perm-${n_prop}_sum_out.txt -e $bash_dir/perm-${n_prop}_sum_err.txt -l h_vmem=64G,s_vmem=64G $bash_script
 done
 #######################################################
 ## CHECK FOR OUTPUTS
@@ -74,7 +74,7 @@ while :    # while TRUE
 do
     count_file=$(find $csv_path/subject-wise -type f -name '*.csv' | wc -l)
     # detect the expected output from 1st job
-    if [ $count_file -eq 11 ] 
+    if [ $count_file -eq 10 ] 
 	then    # 1st job successfully finished
         echo "${count_file} sims completed"
         break
@@ -92,22 +92,22 @@ echo "launching stats tests"
 #######################################################
 # STATS TESTS OF ERRORS
 # featurewise error tests
-r_script=$r_base/ratio_results.R
+r_script=$r_base/ratio_results.R #### NEED TO UPDATE
 bash_script=$bash_dir/centile_tests.sh
 touch $bash_script
 
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'full'" > $bash_script
 ## qsub bash script
-qsub -N prop_cent_tests -o $bash_dir/cent_test_out.txt -e $bash_dir/cent_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+qsub -N perm_cent_tests -o $bash_dir/cent_test_out.txt -e $bash_dir/cent_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
 
 # sex-bias test of subj-means
-r_script=$r_base/ratio_subject-wise_results.R
-bash_script=$bash_dir/ratio_subj-wise_sex_bias_test.sh
+r_script=$r_base/ratio_subject-wise_results.R #### NEED TO UPDATE
+bash_script=$bash_dir/perm_subj-wise_sex_bias_test.sh 
 touch $bash_script
 
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path" > $bash_script
 ## qsub bash script
-qsub -N prop_sub-wide_sex_tests -o $bash_dir/sub-wide_sex_test_out.txt -e $bash_dir/sub-wide_sex_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+qsub -N perm_sub-wide_sex_tests -o $bash_dir/sub-wide_sex_test_out.txt -e $bash_dir/sub-wide_sex_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
 
 # featurewise sex bias tests
 ## based on `qsub_sex_bias_test.sh`
@@ -115,9 +115,9 @@ r_script=$r_base/featurewise_sex_bias_test.R
 bash_script=$bash_dir/sex_bias_test.sh
 touch $bash_script
 	
-echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'full' 'prop'" > $bash_script
+echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'full' 'perm'" > $bash_script
 ## qsub bash script
-qsub -N prop_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+qsub -N perm_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
 
 #######################################################
 # RM EXTREMES
@@ -178,7 +178,7 @@ r_script=$r_base/featurewise_sex_bias_test.R
 bash_script=$bash_dir/sex_bias_test.sh
 touch $bash_script
 
-echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext' 'prop'" > $bash_script
+echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext' 'perm'" > $bash_script
 ## qsub bash script
 qsub -N prop_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
 

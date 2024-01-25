@@ -18,6 +18,7 @@ diff_list <- paste0("diff_", pheno_list)
 args <- commandArgs(trailingOnly = TRUE)
 data_path <- args[1] #path to csvs
 d.type <- args[2] #full or no_ext
+ID_col <- args[3] #'prop' or 'perm'
 
 #Read in centile/z-score errors
 if (d.type == "full"){
@@ -42,13 +43,13 @@ for (file in raw_files) {
 }
 
 #centile t-tests
-cent.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=diff_list)
+cent.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=diff_list, ID_col=ID_col)
 
 #save
 saveRDS(cent.sex_t_tests_in_feat.df, file=paste0(data_path, "/", d.type, "_featurewise_cent_sex_bias_tests.RDS"))
 
 #z-score t-tests
-z.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=paste0(diff_list,".z"))
+z.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=paste0(diff_list,".z"), ID_col=ID_col)
 
 #save
 saveRDS(z.sex_t_tests_in_feat.df, file=paste0(data_path, "/", d.type, "_featurewise_z_sex_bias_tests.RDS"))
