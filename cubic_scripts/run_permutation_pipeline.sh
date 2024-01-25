@@ -287,7 +287,7 @@ done
 config_list_plusraw="cf_data cf.lm_data cf.gam_data cf.gamlss_data raw"
 
 #LIST permutations
-for p in $(seq -f "%03g" 1 10) #10 sims
+for p in $(seq -f "%03g" 1 $1)
 do
 	#iterate through combat configs
 	for config in $config_list_plusraw
@@ -308,7 +308,7 @@ done
 # CHECK FOR OUTPUTS
 #expect 3 csvs per centile script iteration
 num_configs=$(echo $config_list_plusraw | wc -w)
-cent_csv_count=$((${num_configs}*10*3))
+cent_csv_count=$((${num_configs}*$1*3))
 echo "looking for ${cent_csv_count} output csvs"
 
 SECONDS=0
@@ -336,7 +336,7 @@ echo "getting subject-level summary stats"
 # SUBMIT SUBJ-LEVEL SUMMARY JOBS
 
 #LIST permutations
-for p in $(seq -f "%03g" 1 10) #10 sims
+for p in $(seq -f "%03g" 1 $1) #10 sims
 do
 	echo "Prepping perm-$p"
 	#write bash script
@@ -351,8 +351,8 @@ do
 done
 #######################################################################################
 # CHECK FOR OUTPUTS
-#expect 10 csvs
-echo "looking for 10 output csvs"
+#expect csvs
+echo "looking for $1 output csvs"
 
 SECONDS=0
 
@@ -360,7 +360,7 @@ while :    # while TRUE
 do
 	count_cent_subj=$(find $cent_subj_dir -type f -name '*.csv' | wc -l)
     # detect the expected output from 1st job
-    if [ $count_cent_subj -eq 10 ] 
+    if [ $count_cent_subj -eq $1 ] 
 	then    # 1st job successfully finished
         echo "all ${count_cent_subj} csvs written"
         break
