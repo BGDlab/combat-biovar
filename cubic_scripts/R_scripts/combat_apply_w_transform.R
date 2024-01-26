@@ -217,7 +217,7 @@ final.df <- cf.merged %>%
 #WRITE OUT
 
 #append config name
-datafile <- paste0(save_path, "/", csv_basename, "_log-cf_", config_name, "_data.csv")
+datafile <- paste0(save_path, "/", csv_basename, "_log-cf_", config_name, "_batch.", batch.col, "_data.csv")
 fwrite(final.df, file=datafile)
 
 print("DONE")
