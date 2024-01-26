@@ -340,7 +340,7 @@ for p in $(seq -f "%03g" 1 $1) #10 sims
 do
 	echo "Prepping perm-$p"
 	#write bash script
-	bash_script=$bash_dir/perm-${p}_cent_sum.sh
+	bash_script=$cent_bash_dir/perm-${p}_cent_sum.sh
 	touch $bash_script
 		
 	echo "singularity run --cleanenv $img Rscript --save $cent_subj_parse 'perm' $p $cent_save_dir" > $bash_script
