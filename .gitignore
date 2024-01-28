@@ -2,3 +2,7 @@ data/*
 .Rproj.user
 .RDataTmp*
 figs/*
+.RData
+.Rhistory
+*.sh.e*
+*.sh.o*
