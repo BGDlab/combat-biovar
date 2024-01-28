@@ -3,15 +3,15 @@
 # Run stats test on the outputs of 'run_permutation_pipeline.sh'.
 
 # expected outputs:
-# $csv_path/*_diffs.csv x11
-# $csv_path/subject-wise/*_subj_pred.csv x11
+# $csv_path/*_diffs.csv x # perms
+# $csv_path/subject-wise/*_subj_pred.csv x # perms
 # $csv_path/*_featurewise_cent_t_tests.csv x2
 # $csv_path/*_featurewise_cent_z_tests.csv x2
 # $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv x1
 # $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv x1
 # $csv_path/*_featurewise_cent_sex_bias_tests.RDS x2
 # $csv_path/*_featurewise_z_sex_bias_tests.RDS x2
-# $csv_path/*_no_ext.csv x11
+# $csv_path/*_no_ext.csv x # perms
 
 #######################################################################################
 # SET PATHS
@@ -26,6 +26,13 @@ if ! [ -d $bash_dir ]
 	then
 	mkdir $bash_dir
 	fi
+#######################################################################################
+# GET ARGS
+if [ $# -lt 1 ]
+then
+	echo 1>&2 "$0: provide # of permutations run"
+	exit 2
+fi
 #######################################################################################
 cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
@@ -53,28 +60,28 @@ if ! [ -d $csv_path/subject-wise ]
 	mkdir $csv_path/subject-wise
 	fi
 # sub jobs
-for n_prop in $(seq -f "%03g" 1 10) #10 sims
+for n_perm in $(seq -f "%03g" 1 $1) 
 do
-	echo "Prepping perm-$n_prop"
+	echo "Prepping perm-$n_perm"
 	#write bash script
-	bash_script=$bash_dir/perm-${n_prop}_cent_sum.sh
+	bash_script=$bash_dir/perm-${n_perm}_cent_sum.sh
 	touch $bash_script
 	
-	echo "singularity run --cleanenv $img Rscript --save $r_script "perm" $n_prop $csv_path" > $bash_script
+	echo "singularity run --cleanenv $img Rscript --save $r_script "perm" $n_perm $csv_path" > $bash_script
 
 	#qsub bash script
-	qsub -N perm-${n_prop}_sum -o $bash_dir/perm-${n_prop}_sum_out.txt -e $bash_dir/perm-${n_prop}_sum_err.txt -l h_vmem=64G,s_vmem=64G $bash_script
+	qsub -N perm-${n_perm}_sum -o $bash_dir/perm-${n_perm}_sum_out.txt -e $bash_dir/perm-${n_perm}_sum_err.txt -l h_vmem=64G,s_vmem=64G $bash_script
 done
 #######################################################
 ## CHECK FOR OUTPUTS
-### summarise_cent_subj-wise.R saves 2 csv files per n_prop loop, second in 'subject-wise/*_subj_pred.csv' 
+### summarise_cent_subj-wise.R saves 2 csv files per n_perm loop, second in 'subject-wise/*_subj_pred.csv' 
 SECONDS=0
 
 while :    # while TRUE
 do
     count_file=$(find $csv_path/subject-wise -type f -name '*.csv' | wc -l)
     # detect the expected output from 1st job
-    if [ $count_file -eq 10 ] 
+    if [ $count_file -eq $1 ] 
 	then    # 1st job successfully finished
         echo "${count_file} sims completed"
         break
@@ -92,20 +99,20 @@ echo "launching stats tests"
 #######################################################
 # STATS TESTS OF ERRORS
 # featurewise error tests
-r_script=$r_base/ratio_results.R #### NEED TO UPDATE
+r_script=$r_base/ratio_results.R
 bash_script=$bash_dir/centile_tests.sh
 touch $bash_script
 
-echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'full'" > $bash_script
+echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'full' 'perm' " > $bash_script
 ## qsub bash script
 qsub -N perm_cent_tests -o $bash_dir/cent_test_out.txt -e $bash_dir/cent_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
 
 # sex-bias test of subj-means
-r_script=$r_base/ratio_subject-wise_results.R #### NEED TO UPDATE
+r_script=$r_base/ratio_subject-wise_results.R
 bash_script=$bash_dir/perm_subj-wise_sex_bias_test.sh 
 touch $bash_script
 
-echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path" > $bash_script
+echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'perm'" > $bash_script
 ## qsub bash script
 qsub -N perm_sub-wide_sex_tests -o $bash_dir/sub-wide_sex_test_out.txt -e $bash_dir/sub-wide_sex_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
 
@@ -124,28 +131,28 @@ qsub -N perm_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_t
 ## based on `qsub_rm_extremes.sh`
 r_script=$r_base/remove_extremes_single.R
 # sub jobs
-for n_prop in $(seq -f "%03g" 1 10) #10 sims
+for n_perm in $(seq -f "%03g" 1 $1) #10 sims
 do
-	echo "Prepping prop-$n_prop"
+	echo "Prepping perm-$n_perm"
 	#write bash script
-	bash_script=$bash_dir/prop-${n_prop}_rm_ext.sh
+	bash_script=$bash_dir/perm-${n_perm}_rm_ext.sh
 	touch $bash_script
 	
-	echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path "prop" $n_prop " > $bash_script
+	echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path "perm" $n_perm" > $bash_script
 
 	#qsub bash script
-	qsub -N prop-${n_prop}_rm_ext -o $bash_dir/prop-${n_prop}_rm_ext_out.txt -e $bash_dir/prop-${n_prop}_rm_ext_err.txt -l h_vmem=64G,s_vmem=64G $bash_script
+	qsub -N perm-${n_perm}_rm_ext -o $bash_dir/perm-${n_perm}_rm_ext_out.txt -e $bash_dir/perm-${n_perm}_rm_ext_err.txt -l h_vmem=64G,s_vmem=64G $bash_script
 done
 #######################################################
 ## CHECK FOR OUTPUTS
-### expect 'remove_extremes_single.R' to write out 1 csv per n_prop loop
+### expect 'remove_extremes_single.R' to write out 1 csv per n_perm loop
 SECONDS=0
 
 while :    # while TRUE
 do
     count_file=$(find $csv_path -type f -name '*_no_ext.csv' | wc -l)
     # detect the expected output from 1st job
-    if [ $count_file -eq 11 ] 
+    if [ $count_file -eq $1 ] 
 	then    # 1st job successfully finished
         echo "${count_file} no-ext files found"
         break
@@ -160,6 +167,15 @@ do
 done
 
 echo "launching stats tests on data w extremes removed"
+
+#######################################################
+# RECALC SUBJ-LEVEL STATS
+## using subject-wise (list-wise) deletion, rm all subjects with ANY extreme centiles and recalc w/in subj. means
+## based on `qsub_rm_extremes.sh`
+
+#######################################################
+## CHECK FOR OUTPUTS
+
 #######################################################
 # STATS TESTS OF ERRORS W/O EXTREMES
 
@@ -168,9 +184,11 @@ r_script=$r_base/ratio_results.R
 bash_script=$bash_dir/centile_tests.sh
 touch $bash_script
 
-echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext'" > $bash_script
+echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext' 'perm'" > $bash_script
 ## qsub bash script
-qsub -N prop_cent_tests -o $bash_dir/cent_test_out.txt -e $bash_dir/cent_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+qsub -N perm_cent_tests -o $bash_dir/cent_test_out.txt -e $bash_dir/cent_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+
+# sex-bias test of subj-means NEED TO ADD THIS!!!!!!!!!!!
 
 # featurewise sex bias tests
 ## based on `qsub_sex_bias_test.sh`
@@ -180,21 +198,21 @@ touch $bash_script
 
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext' 'perm'" > $bash_script
 ## qsub bash script
-qsub -N prop_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+qsub -N perm_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
 
 #######################################################
 # CHECK FOR OUTPUTS
 
-# $csv_path/subject-wise/*_subj_pred.csv x11 - already checked
-# $csv_path/*_no_ext.csv x11 - already checked
+# $csv_path/subject-wise/*_subj_pred.csv x n permutations - already checked
+# $csv_path/*_no_ext.csv x n permutations - already checked
 
-# $csv_path/*_diffs.csv x11
+# $csv_path/*_diffs.csv x n permutations
 SECONDS=0
 
 while :    # while TRUE
 do
     count_file=$(find $csv_path -type f -name '*_diffs.csv' | wc -l)
-    if [ $count_file -eq 11 ] 
+    if [ $count_file -eq $1 ] 
 	then    # 1st job successfully finished
         echo "all ${count_file} diffs.csv files found! on to the next"
         break

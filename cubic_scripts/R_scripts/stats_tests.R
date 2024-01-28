@@ -85,9 +85,10 @@ sex.bias.t.tests <- function(df, to_test = "mean_cent_abs.diff", comp_multiplier
 # rank.welch.t.test.formula(formula=mean_cent_abs.diff ~ sex, data= ratio_subj_list[[1]], paired = FALSE, p.adj = "none")
 
 #sex.bias.feat.t.tests()
-#modifying to test for sex-biases w/in feature rather than mean centiles - adding ID_col so fun will retain prop or perm as necessary
+#modifying to test for sex-biases w/in feature rather than mean centiles. 
+# optional ID_col so fun will retain prop or perm as necessary when lapplying across a list of dfs
 
-sex.bias.feat.t.tests <- function(df, feature_list, comp_multiplier=1, ID_col){
+sex.bias.feat.t.tests <- function(df, feature_list, comp_multiplier=1, ID_col=NA){
   
   #initialize empty df to store outputs
   t.df <- data.frame("dataset" = character(),
@@ -147,10 +148,11 @@ sex.bias.feat.t.tests <- function(df, feature_list, comp_multiplier=1, ID_col){
                                       p.val_fdr >= 0.05 ~ FALSE),
                   dataset=as.factor(dataset))
   
-  #add back source file info in ID_col
-  stopifnot(length(unique(df[[ID_col]])) == 1)
-  result_df[[ID_col]] <- unique(df[[ID_col]])
-  
+  #add back source file info in ID_col if needed
+  if (!is.na(ID_col)) {
+    stopifnot(length(unique(df[[ID_col]])) == 1)
+    result_df[[ID_col]] <- unique(df[[ID_col]])
+  }
   # #summarize
   # df.sex.t.sum <- df.sex.t %>%
   #   group_by(dataset) %>%
