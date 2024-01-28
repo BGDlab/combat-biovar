@@ -24,8 +24,8 @@ z.pheno_abs.diff.list <- paste0(pheno_abs.diff.list, ".z")
 args <- commandArgs(trailingOnly = TRUE)
 data_path <- args[1] #path to csvs
 d.type <- args[2] #full or no_ext
+name_str <- args[3] #optional 3rd argument to work for permutations instead of prop
 
-n_prop_list <- c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F")
 
 ## READ IN CENTILE/Z-SCORE ERRORS
 if (d.type == "full"){
@@ -43,7 +43,7 @@ for (file in raw_files) {
   data <- fread(file)
   
   data <- data %>%
-    mutate(dataset = gsub("_data|_data_predictions.csv|prop-|[0-9]|-", "", Source_File))
+    mutate(dataset = gsub("_data|_data_predictions.csv|prop-|[0-9]|-|perm-", "", Source_File))
   
   # Bind the data to the combined dataframe
   df_list[[file]] <- as.data.frame(data)
@@ -52,13 +52,19 @@ for (file in raw_files) {
 print(paste("length", length(ratio_list)))
 ratio.df <- bind_rows(ratio_list)
 
+if (is.na(name_str)) {
+  names_list <- c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F")
+} else {
+  names_list <- c(paste(name_str, seq(1:length(ratio_list)), sep="-"))
+}
+
 ############################################
 ## CENTILE ERROR TESTS ###
 ############################################
 
 ##### Within each M:F proportion simulated, is the magnitude of subjects' mean centile errors within each feature differ significantly by combat configuration?
 prop_abs.cent_t.tests <- lapply(ratio_list, centile.t.tests, feature_list=pheno_abs.diff.list, comp_multiplier=length(ratio_list)) #FDR correction across 11 M:F permutations
-names(prop_abs.cent_t.tests) <- n_prop_list
+names(prop_abs.cent_t.tests) <- names_list
 prop_abs.cent_t.tests_df <- bind_rows(prop_abs.cent_t.tests, .id = "column_label")
 ### save results
 fwrite(prop_abs.cent_t.tests_df, file=paste0(data_path, "/", d.type, "_featurewise_cent_t_tests.csv"))
@@ -68,7 +74,7 @@ fwrite(prop_abs.cent_t.tests_df, file=paste0(data_path, "/", d.type, "_featurewi
 ############################################
 ##### Within each M:F proportion simulated, is the magnitude of subjects' mean centile errors within each feature differ significantly by combat configuration?
 prop_abs.z_t.tests <- lapply(ratio_list, centile.t.tests, feature_list=z.pheno_abs.diff.list, comp_multiplier=length(ratio_list)) #FDR correction across 11 M:F permutations
-names(prop_abs.z_t.tests) <- n_prop_list
+names(prop_abs.z_t.tests) <- names_list
 prop_abs.z_t.tests <- bind_rows(prop_abs.z_t.tests, .id = "column_label")
 ### save results
 fwrite(prop_abs.z_t.tests, file=paste0(data_path, "/", d.type, "_featurewise_z_t_tests.csv"))
