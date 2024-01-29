@@ -505,7 +505,7 @@ get.og.data.centiles.lbcc <- function(gamlss.rds.file, og.data, get.zscores = FA
   pheno <- gamlss.obj$mu.terms[[2]]
   
   newData <- data.frame(log_age=og.data$log_age,
-                        sex=og.data$sex,
+                        sexMale=og.data$sexMale,
                         sex.age=og.data$sex.age,
                         fs_version=og.data$fs_version,
                         TBV=og.data$TBV,
