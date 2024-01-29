@@ -52,11 +52,16 @@ ukb_cn_df <- ukb_cn_df %>%
   mutate(age_years = age_days/365.25)
 
 #plotting info from dk atlas
-dk.parc <- dk$data %>%
+dk.parc <- dk_nomed$data %>%
   as.data.frame() %>%
   na.omit() %>%
   dplyr::select(c(hemi, region, label)) %>%
   distinct()
+
+#write out new dk atlas w/o medial wall
+dk_nomed <- dk
+dk_nomed$data <- dk_nomed$data %>%
+  dplyr::filter(!is.na(region) & region !="corpus callosum")
 ```
 
 # Main Analyses
@@ -316,7 +321,7 @@ global_cent_errs_plot <- global_abs.diffs %>%
   scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   labs(y="Magnitude Centile Error", x = "Phenotype") +
   theme(plot.title = element_text(size=12)) +
-  ggtitle("Magnitude errors in centile scores of global features across ComBat pipelines")
+  ggtitle("Magnitude error in centile scores")
 ggsave("figs/global_centile_errors.jpeg", global_cent_errs_plot)
 ```
 
@@ -469,17 +474,33 @@ big_violin_plt <- plt.df %>%
 ggsave("figs/big_sex_violin_plt.jpeg", big_violin_plt, width=12, height=6, units="in")
 ```
 *need to add stats tests*
+```{r}
+regional_violin_plt <- plt.df %>%
+  dplyr::filter(!pheno %in% vol_list_global) %>%
+  ggplot() +
+  geom_violin(aes(x=pheno, y=diff, fill=sex, color=sex)) +
+  theme_linedraw(base_size = 11) +
+  labs(y="Centile Error", x = "Brain Feature") +
+  theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x = unit(.1, "lines"), legend.position="bottom") +
+  facet_grid2(dataset ~ pheno_cat, labeller=labeller(dataset=dataset_names), scales="free_x", space = "free_x") +
+  ggtitle("Errors in centile scores of global features in ComBat-GAM and ComBatLS")
+```
+
 
 ```{r}
- diffs.df %>%
+global_violin_sex_plt <- diffs.df %>%
   dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("diff_", vol_list_global)) %>%
-  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss" | dataset == "cf.lm") %>% #drop refA levels
+  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels | dataset == "cf.lm"
   pivot_longer(cols=starts_with("diff_"), names_to="pheno", names_prefix="diff_", values_to = "diff") %>%
   mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
          diff = diff*100) %>%
   ggplot(aes(x=pheno, y=diff, fill=sex)) +
-  geom_violin(trim = FALSE)+
+  geom_rain(likert= TRUE,
+            point.args=list(color=NA, fill=NA),
+ boxplot.args.pos = list(position = ggpp::position_dodgenudge(x = -.07), width = .3),
+ violin.args = list(color=NA, alpha = .7))+
   theme_linedraw(base_size = 11) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="bottom") +
   labs(y="Centile Error", x = "Brain Feature") +
   facet_wrap(~dataset)
 ```
@@ -535,25 +556,21 @@ sex.var.plot.df <- sex_t_tests_to_plot %>%
   dplyr::filter(!grepl('_refA', dataset)) %>% #drop refA levels
   mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
          median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
-                              TRUE ~ median_sex_diff*100)) %>%
-  group_by(dataset, pheno_cat)
-
-tp <- unique(sex.var.plot.df[,c('dataset','pheno_cat')]) %>%
-  dplyr::filter(dataset=="ukb_CN")
-tp$sex_diff <- 1
+                                     TRUE ~ median_sex_diff*100))
 
 sex.var.plot <- ggplot(sex.var.plot.df) +
-  geom_rect(data = tp, fill="gray", xmin = -Inf, xmax = Inf,
-            ymin = -Inf, ymax = Inf, alpha = 0.4) +
-  ggseg::geom_brain(atlas = dk, 
+  theme_linedraw(base_size=12) +
+  ggseg::geom_brain(atlas = dk_nomed, 
              position = position_brain(hemi ~ side),
              aes(fill = median_sex_diff)) +
   #scale_fill_gradient2() +
+  # ggseg::geom_brain(data=med_wall, atlas = dk, 
+  #            position = position_brain(hemi ~ side),
+  #            aes(fill=median_sex_diff)) +
   facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
-  theme_linedraw(base_size=12) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", limits = c(-6, 6), breaks = c(-5, -2, 0, 2, 5), name = "Sex Effect") #
-# sex.var.plot
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Sex Effect", limits = c(-6, 6)) #
+sex.var.plot
 ```
 
 ```{r}
@@ -586,7 +603,7 @@ sex.var.plot.global <- ggplot(sex.var.plot.global.df) +
   facet_grid(dataset~pheno_cat) + 
   theme_linedraw(base_size=12) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork",  limits = c(-6, 6), breaks = c(-5, -2, 0, 2, 5), name = "Sex Effect") #,
+  paletteer::scale_fill_paletteer_c("grDevices::Cork",  limits = c(-6, 6), name = "Sex Effect") #,
 # sex.var.plot.global
 ```
 
@@ -878,7 +895,7 @@ subj_sum.df %>%
 #look at sex distributions of ppts across sites
 subj_sum.df %>%
   ggplot() +
-  geom_bar(aes(x=sim.site, fill=sex))+
+  geom_bar(aes(x=sim.site, fill=sex), position="fill")+
   ggtitle("Distributions of male and female subjects across simulated sites")
 ```
 
@@ -1047,7 +1064,7 @@ global.df.long <- ukb_cn_df %>%
 ```
 
 
-```{r}
+```{r, eval=FALSE}
 global.cent.df <- centiles.df %>%
   dplyr::filter(pheno_cat == "Global Volume") %>%
   dplyr::filter(!grepl('-refA', dataset))
@@ -1126,39 +1143,47 @@ wmv.df <- centiles.df %>%
   mutate(sex = as.factor(case_when(sex == "M" ~ "Male",
                                    sex == "F" ~ "Female")),
          dataset = fct_relevel(dataset, "ukb-CN-simsites", after = Inf ),
-         age_years = age_days/365.25)
+         age_years = age_days/365.25,
+         label = ifelse(age_days == max(age_days), "Test", NA))
 ```
 
 adding jitter to age (x-axis) because otherwise frankly it's hard to look at
+centiles = c(0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99)
 
 ```{r}
 dataset_names <- c('ukb-CN-simsites' = "Raw Data", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+
+tmp_labels <- wmv.df %>%
+  dplyr::filter(age_days == max(age_days) & dataset=="ukb-CN-simsites") %>%
+  pivot_longer(cols=starts_with("centile"), values_to = "value", names_to="centile_num", names_prefix = "centile_") %>%
+  mutate(centile = case_when(centile_num == 1 ~ "1%", centile_num==2 ~ "5%", centile_num==3 ~ "10%", 
+                             centile_num == 4 ~ "25%", centile_num==5 ~ "50%", centile_num==6 ~ "75%",
+                             centile_num == 7 ~ "90%", centile_num==8 ~ "95%", centile_num==9 ~ "99%")) %>%
+  dplyr::filter(centile_num %in% c(1, 2, 5, 8, 9))
 
 wmv_centile_fan <- ggplot(wmv.df) +
   geom_jitter(data = ukb_cn_df, aes(x=ukb_cn_df$age_years, y=ukb_cn_df$WMV), alpha=0.4, width=.2, color="lightgray") +
   #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
   geom_line(aes(x=age_years, y=centile_1, color=dataset, linetype=dataset)) +
   geom_line(aes(x=age_years, y=centile_2, color=dataset, linetype=dataset)) +
-  geom_line(aes(x=age_years, y=centile_3, color=dataset, linetype=dataset)) +
-  geom_line(aes(x=age_years, y=centile_4, color=dataset, linetype=dataset)) +
+  #geom_line(aes(x=age_years, y=centile_3, color=dataset, linetype=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_4, color=dataset, linetype=dataset)) +
   geom_line(aes(x=age_years, y=centile_5, color=dataset, linetype=dataset), linewidth=1.5) +
-  geom_line(aes(x=age_years, y=centile_6, color=dataset, linetype=dataset)) +
-  geom_line(aes(x=age_years, y=centile_7, color=dataset, linetype=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_6, color=dataset, linetype=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_7, color=dataset, linetype=dataset)) +
   geom_line(aes(x=age_years, y=centile_8, color=dataset, linetype=dataset)) +
   geom_line(aes(x=age_years, y=centile_9, color=dataset, linetype=dataset)) +
   facet_wrap(~sex) + 
   scale_linetype_manual(values = c('ukb-CN-simsites'= "dotted", cf.gam = "solid", cf.gamlss = "solid", cf.lm = "solid"), name = "ComBat \nConfiguration", labels=dataset_names) +
   #scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#E84617", cf.gamlss = "#17E846", cf.lm = "purple")) +
   scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) + 
+  geom_label(data=tmp_labels, aes(x=age_years, y=value, label=as.character(centile)), nudge_x = 0.35, size=2) +
   xlab("Age (yrs)") + ylab("Volume (mm3)") +
   theme_linedraw(base_size = 11) +
   theme(plot.title = element_text(size=12)) +
-  labs(title="WMV brain charts")
+  labs(title="White matter volume brain charts")
 wmv_centile_fan
 ```
-
-*need to add labeling of % lines - ask Ayan how he did it*
-also not sure how much i should worry about the super big female outlier
 
 Look at other phenotypes
 
@@ -1177,28 +1202,39 @@ ven.df <- centiles.df %>%
  dplyr::filter(!if_all(c(sex,contains("centile")), is.na)) %>%
   mutate(sex = as.factor(case_when(sex == "M" ~ "Male",
                                    sex == "F" ~ "Female")),
-         dataset = fct_relevel(dataset, "ukb-CN-simsites", after = Inf ))
+         dataset = fct_relevel(dataset, "ukb-CN-simsites", after = Inf ),
+         age_years = age_days/365.25)
+tmp_labels <- ven.df %>%
+  dplyr::filter(age_years == max(age_years) & dataset=="ukb-CN-simsites") %>%
+  pivot_longer(cols=starts_with("centile"), values_to = "value", names_to="centile_num", names_prefix = "centile_") %>%
+  mutate(centile = case_when(centile_num == 1 ~ "1%", centile_num==2 ~ "5%", centile_num==3 ~ "10%", 
+                             centile_num == 4 ~ "25%", centile_num==5 ~ "50%", centile_num==6 ~ "75%",
+                             centile_num == 7 ~ "90%", centile_num==8 ~ "95%", centile_num==9 ~ "99%")) %>%
+  dplyr::filter(centile_num %in% c(1, 2, 5, 8, 9)) %>%
+  #repel for visuals
+  mutate(value = ifelse(centile_num == 1, value*.75,
+                           value))
 
-ggplot(ven.df) +
-  geom_jitter(data = ukb_cn_df, aes(x=ukb_cn_df$age_days, y=ukb_cn_df$Ventricles), alpha=0.7, width=150, color="lightgray") +
+ven_plot <- ggplot(ven.df) +
+  geom_jitter(data = ukb_cn_df, aes(x=ukb_cn_df$age_years, y=ukb_cn_df$Ventricles),  alpha=0.4, width=.2, color="lightgray") +
   #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
-  geom_line(aes(x=age_days, y=centile_1, color=dataset, linetype=dataset)) +
-  geom_line(aes(x=age_days, y=centile_2, color=dataset, linetype=dataset)) +
-  geom_line(aes(x=age_days, y=centile_3, color=dataset, linetype=dataset)) +
-  geom_line(aes(x=age_days, y=centile_4, color=dataset, linetype=dataset)) +
-  geom_line(aes(x=age_days, y=centile_5, color=dataset, linetype=dataset), linewidth=1.5) +
-  geom_line(aes(x=age_days, y=centile_6, color=dataset, linetype=dataset)) +
-  geom_line(aes(x=age_days, y=centile_7, color=dataset, linetype=dataset)) +
-  geom_line(aes(x=age_days, y=centile_8, color=dataset, linetype=dataset)) +
-  geom_line(aes(x=age_days, y=centile_9, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_years, y=centile_1, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_years, y=centile_2, color=dataset, linetype=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_3, color=dataset, linetype=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_4, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_years, y=centile_5, color=dataset, linetype=dataset), linewidth=1.5) +
+  # geom_line(aes(x=age_years, y=centile_6, color=dataset, linetype=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_7, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_years, y=centile_8, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_years, y=centile_9, color=dataset, linetype=dataset)) +
   facet_wrap(~sex) + 
   scale_linetype_manual(values = c('ukb-CN-simsites'= "dotted", cf.gam = "solid", cf.gamlss = "solid", cf.lm = "solid"), name = "ComBat \nConfiguration", labels=dataset_names) +
   #scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#E84617", cf.gamlss = "#17E846", cf.lm = "purple")) +
   scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) + 
-  theme_minimal() +
+  theme_linedraw(base_size = 11) +
+  geom_label(data=tmp_labels, aes(x=age_years, y=value, label=as.character(centile))) +
   xlab("Age (days)") + ylab("Volume (mm3)") +
-  theme_minimal() +
-  labs(title="Ventricle brain charts")
+  labs(title="Ventricular volume brain charts")
 ```
 Random cortical feature
 
@@ -1261,7 +1297,7 @@ Combine plots
 fig_1 <- ggarrange(
   wmv_centile_fan, global_cent_errs_plot,
   ncol=2, nrow=1, 
-  widths = c(1.3, 1),
+  widths = c(1.75, 1),
   #labels=c("A", "B"),
   #hjust=0.01,
   align = "hv",
@@ -1272,22 +1308,17 @@ fig_1 <- ggarrange(
 fig_1_annotate <- annotate_figure(fig_1, top = text_grob("Figure 1. Choice of ComBat configuration can induce errors in brain feature centile scores",
                color = "black", hjust = 0, x = 0))
 fig_1_annotate
-ggsave("figs/figure_1.jpeg", fig_1_annotate, width=10, height=5)
+ggsave("figs/figure_1.jpeg", fig_1_annotate, width=11, height=5)
 ```
 
 
 ## FIGURE 2
-need to run `paper_prop_results.Rmd` to get panel B
-
-```{r}
-prop_sex_mean_cent.plot.abs <- readRDS(file="figs/mean_subj_cent_err.RDS")
-```
 
 ```{r}
 fig_2 <- ggarrange(
-  p_sex, prop_sex_mean_cent.plot.abs,
+  p_sex, global_violin_sex_plt,
   ncol=2, nrow=1, 
-  widths = c(1, 1.2),
+  widths = c(2, 1),
   #labels=c("A", "B"),
   #hjust=0.01,
   # align = "hv",
@@ -1296,8 +1327,26 @@ fig_2 <- ggarrange(
   )
 # fig_2
 
-fig_2_annotate <- annotate_figure(fig_2, top = text_grob("Figure 2. Sex-biases in centile score errors across combat configurations", color = "black", hjust = 0, x = 0))
+fig_2_annotate <- annotate_figure(fig_2, top = text_grob("Figure 2. Sex-biases in centile score errors across ComBat configurations", color = "black", hjust = 0, x = 0))
 fig_2_annotate
-ggsave("figs/figure_2.jpeg", fig_2_annotate, width=14, height=6)
+ggsave("figs/figure_2.jpeg", fig_2_annotate)
 ```
 
+```{r}
+fig_2.opt2 <- ggarrange(
+  p_sex, regional_violin_plt,
+  ncol=2, nrow=1, 
+  widths = c(1, 1.5),
+  #labels=c("A", "B"),
+  #hjust=0.01,
+  # align = "hv",
+  common.legend = FALSE,
+  labels="auto"
+  )
+# fig_2
+
+fig_2.opt2_annotate <- annotate_figure(fig_2.opt2, top = text_grob("Figure 2. Sex-biases in centile score errors across ComBat configurations", color = "black", hjust = 0, x = 0))
+fig_2.opt2_annotate
+ggsave("figs/figure_2_option2.jpeg", fig_2.opt2_annotate, width=7, height=4, units="in")
+
+```
