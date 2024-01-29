@@ -36,7 +36,7 @@ if ! [ -d $save_path ]
 sleep 15
 #######################################################################################
 #LIST POSSIBLE CONFIGS TO SEARCH FOR
-config_list="imp-sites_log-cf_cf.gam_data imp-sites_log-cf_cf.gamlss_data"
+config_list="cf.gam-batch.study cf.gamlss-batch.study"
 #######################################################################################
 for config in $config_list
 do

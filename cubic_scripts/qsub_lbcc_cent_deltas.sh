@@ -11,7 +11,7 @@ cent_path=$base/lifespan/centile_csvs #path to centile csvs
 bash_dir=$base/lifespan/centile_qsubs
 
 #search string:
-config="imp-sites_log-cf"
+config="batch.study"
 #######################################################################################
 cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
