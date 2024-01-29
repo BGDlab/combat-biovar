@@ -169,14 +169,6 @@ done
 echo "launching stats tests on data w extremes removed"
 
 #######################################################
-# RECALC SUBJ-LEVEL STATS
-## using subject-wise (list-wise) deletion, rm all subjects with ANY extreme centiles and recalc w/in subj. means
-## based on `qsub_rm_extremes.sh`
-
-#######################################################
-## CHECK FOR OUTPUTS
-
-#######################################################
 # STATS TESTS OF ERRORS W/O EXTREMES
 
 # featurewise error tests

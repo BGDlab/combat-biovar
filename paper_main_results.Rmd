@@ -409,7 +409,7 @@ for (cf in c("cf.gam", "cf.gamlss")) {
 not normally distributed, use nonparametric t test of ranks with welch correction for different variances. Also calculating the median centile errors of males and females, since this seems like a more intuitive thing to plot than effect size (since the effect size is in units of rank, not actually centiles)
 
 ```{r, message=FALSE}
-sex_t_tests_in_feat.df <- sex.bias.feat.t.tests(diffs.df, feature_list=pheno_diff_list, ID_col="File_ID")
+sex_t_tests_in_feat.df <- sex.bias.feat.t.tests(diffs.df, feature_list=pheno_diff_list)
 
 #also get summary
 sex_t_tests_in_feat.df %>%
@@ -842,7 +842,7 @@ z.diffs.plot <- mean.z.diffs.long %>%
   ggtitle("Absolute errors in zscores of brain structure features across ComBat processing pipelines")
 z.diffs.plot
 
-ggsave("figs/win_feature_mean_z_abs.diffs.jpeg", cent.diffs.plot)
+ggsave("figs/win_feature_mean_z_abs.diffs.jpeg", z.diffs.plot)
 ```
 
 ### Sex-Biases
