@@ -327,6 +327,86 @@ ggsave("figs/global_centile_errors.jpeg", global_cent_errs_plot)
 
 *TO-DO: SIGNIFICANCE IN PLOT*
 
+plot median on brain
+```{r}
+#get median w/in feature 
+med.diffs.long <- diffs.df %>%
+  dplyr::select(sex, dataset, pheno, pheno_abs.diff.list) %>%
+  dplyr::filter(dataset %in% c("cf.lm", "cf.gam", "cf.gamlss")) %>% #drop refA levels
+  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+  group_by(dataset) %>%
+  summarize(across(starts_with("abs.diff_"), median)) %>%
+  ungroup() %>%
+  pivot_longer(cols=starts_with("abs.diff_"), values_to="median_centile_abs.diff", names_to = "pheno", names_prefix = "abs.diff_") %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)),
+      label = sub("_[^_]*_", "_", pheno))
+
+med.diffs.long2 <- left_join(med.diffs.long, dk.parc, by="label")
+max(med.diffs.long2$median_centile_abs.diff)*100
+
+dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+#var plot
+med.diffs.plot.df <- med.diffs.long2 %>%
+  dplyr::filter(pheno_cat != "Global Volume") %>%
+  dplyr::filter(!grepl('_refA', dataset)) %>% #drop refA levels
+  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
+         median_centile_abs.diff = median_centile_abs.diff*100)
+
+med.diffs.plot <- ggplot(med.diffs.plot.df) +
+  theme_linedraw(base_size=12) +
+  ggseg::geom_brain(atlas = dk_nomed, 
+             position = position_brain(hemi ~ side),
+             aes(fill = median_centile_abs.diff)) +
+  facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
+  paletteer::scale_fill_paletteer_c("grDevices::Oslo", name = "Median Absolute Centile Error", limits = c(0, 7.5)) #
+med.diffs.plot
+```
+
+```{r}
+#plot global
+med.diffs.plot.global.df <- med.diffs.long2 %>%
+  dplyr::filter(pheno_cat == "Global Volume") %>%
+  dplyr::filter(!grepl('_refA', dataset)) %>% #drop refA levels
+  dplyr::select(!c(label, region, hemi)) %>% #drop cols corresponding to dk regions
+  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
+         median_centile_abs.diff = median_centile_abs.diff*100)
+
+med.diffs.plot.global <- ggplot(med.diffs.plot.global.df) +
+  geom_rect(data = tp, fill="gray", xmin = -Inf,xmax = Inf,
+            ymin = -Inf, ymax = Inf, alpha = 0.4) +
+  ggseg::geom_brain(atlas = aseg_cerebrum, 
+             aes(fill = median_centile_abs.diff),
+             side = c("coronal")) +
+  #scale_fill_gradient2() +
+  facet_grid(dataset~pheno_cat) + 
+  theme_linedraw(base_size=12) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
+  paletteer::scale_fill_paletteer_c("grDevices::Oslo", name = "Median Absolute Centile Error", limits = c(0, 7.5))
+med.diffs.plot.global
+```
+
+Combine plots - need to keep playing around to make the spacing pretty when it saves out
+```{r}
+p_diff <- ggarrange(
+  med.diffs.plot.global, med.diffs.plot,
+  ncol=2, nrow=1, 
+  widths = c(1, 3.1),
+  #labels=c("A", "B"),
+  #hjust=0.01,
+  align = "hv",
+  common.legend = TRUE, legend = "bottom"
+  )
+
+p_diff_annotate <- annotate_figure(p_diff)
+p_diff_annotate
+```
+
 ### Sex-Biases
 
 Playing with different ways to visualize each subject's average centile error (i.e., raw data centile - combatted data centile) and magnitude centile error (absolute value)
@@ -1184,6 +1264,31 @@ wmv_centile_fan <- ggplot(wmv.df) +
   labs(title="White matter volume brain charts")
 wmv_centile_fan
 ```
+toy brain chart for figs
+
+```{r}
+ven.df %>%
+  dplyr::filter(sex=="Female") %>%
+  mutate(dataset = factor(dataset, levels = c("ukb-CN-simsites", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+ggplot() +
+  #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
+  # geom_line(aes(x=age_years, y=centile_1, color=dataset, linetype=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_2, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_years, y=centile_3, color=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_4, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_years, y=centile_5, color=dataset), linewidth=1.5) +
+  # geom_line(aes(x=age_years, y=centile_6, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_years, y=centile_7, color=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_8, color=dataset, linetype=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_9, color=dataset, linetype=dataset)) +
+  facet_wrap(~dataset, nrow=1, labeller=labeller(dataset=dataset_names)) + 
+  # scale_linetype_manual(values = c('ukb-CN-simsites'= "dotted", cf.gam = "solid", cf.gamlss = "solid", cf.lm = "solid"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  #scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#E84617", cf.gamlss = "#17E846", cf.lm = "purple")) +
+  scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
+  xlab("Age (yrs)") + ylab("Brain Feature") +
+  theme_classic(base_size = 11) +
+  theme(plot.title = element_text(size=12), legend.position="none", axis.text.y=element_blank())
+```
 
 Look at other phenotypes
 
@@ -1236,6 +1341,30 @@ ven_plot <- ggplot(ven.df) +
   xlab("Age (days)") + ylab("Volume (mm3)") +
   labs(title="Ventricular volume brain charts")
 ```
+
+```{r}
+ven.df %>%
+  dplyr::filter(sex=="Female") %>%
+ggplot() +
+  #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
+  # geom_line(aes(x=age_years, y=centile_1, color=dataset, linetype=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_2, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_years, y=centile_3, color=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_4, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_years, y=centile_5, color=dataset), linewidth=1.5) +
+  # geom_line(aes(x=age_years, y=centile_6, color=dataset, linetype=dataset)) +
+  geom_line(aes(x=age_years, y=centile_7, color=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_8, color=dataset, linetype=dataset)) +
+  # geom_line(aes(x=age_years, y=centile_9, color=dataset, linetype=dataset)) +
+  facet_wrap(~dataset, nrow=1, labeller=labeller(dataset_names)) + 
+  # scale_linetype_manual(values = c('ukb-CN-simsites'= "dotted", cf.gam = "solid", cf.gamlss = "solid", cf.lm = "solid"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  #scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#E84617", cf.gamlss = "#17E846", cf.lm = "purple")) +
+  scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
+  xlab("Age (yrs)") + ylab("Volume (mm3)") +
+  theme_classic(base_size = 11) +
+  theme(plot.title = element_text(size=12), legend.position="none")
+```
+
 Random cortical feature
 
 ```{r}
