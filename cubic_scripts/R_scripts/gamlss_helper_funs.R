@@ -525,6 +525,15 @@ get.og.data.centiles.lbcc <- function(gamlss.rds.file, og.data, get.zscores = FA
   for (i in 1:nrow(og.data)){
     centiles[i] <- eval(call(pfun, og.data[[pheno]][[i]], mu=predModel$mu[[i]], sigma=predModel$sigma[[i]], nu=predModel$nu[[i]]))
     
+    #don't let centile = 1!
+    if (centiles[i] == 1) {
+      centiles[i] <- 0.99999999999999994 #largest number i could get w/o rounding to 1 (trial & error)
+    }
+    #don't let centile = 0!
+    if (centiles[i] == 0) {
+      centiles[i] <- 0.0000000000000000000000001 #25 dec places, should be plenty based on min centile
+    }
+    
   }
   if (get.zscores == FALSE){
     return(centiles)

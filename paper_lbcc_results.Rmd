@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain)
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, skimr)
 #Sys.setenv("MC_CORES"=10L)
 options("mc.cores")
 
@@ -31,13 +31,28 @@ Combat-GAM Centiles
 
 ```{r}
 gam_centile_df <- fread(file=paste0(der_path, "/cf.gam-batch.study_predictions.csv"))
+dim(gam_centile_df)
 ```
 
 Combat-LS Centiles
-
+```{r}
+gamlss_centile_df <- fread(file=paste0(der_path, "/cf.gamlss-batch.study_predictions.csv"))
+dim(gamlss_centile_df)
+```
 
 Deltas
 
 ```{r}
+deltas_df <- fread(file=paste0(der_path, "/batch.study_pred_deltas.csv"))
+# skimr::skim(deltas_df)
+```
 
+Visualize
+
+```{r}
+ggplot(deltas_df, aes(x=age_days, y=delta.sGMV, color=sex)) +
+  geom_point() +
+  geom_smooth()
+
+tidy(lm(delta.sGMV ~ sexMale*age_days, data=deltas_df))
 ```
