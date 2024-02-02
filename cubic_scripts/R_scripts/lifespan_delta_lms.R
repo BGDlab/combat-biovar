@@ -32,28 +32,29 @@ tests.df <- data.frame("term" = character(),
 ##Loop each Pheno
 
 #only test phenos w models that converged
-phenos_to_test <- intersect(pheno_list, names(deltas_df))
+delta.pheno_list <- paste0("delta.", pheno_list)
+phenos_to_test <- intersect(delta.pheno_list, names(deltas_df))
 
 for (pheno in phenos_to_test) {
   # Test Sex
-  sex.df <- tidy(lm(formula=as.formula(paste0("delta.", pheno, " ~ sexMale")), data=deltas_df)) %>%
+  sex.df <- tidy(lm(formula=as.formula(paste(pheno, "~ sexMale")), data=deltas_df)) %>%
     dplyr::filter(term =="sexMale") %>%
     mutate(iv = "sexMale")
   
   # Test Age
-  age.df <- tidy(lm(formula=as.formula(paste0("delta.", pheno, " ~ age_days")), data=deltas_df)) %>%
+  age.df <- tidy(lm(formula=as.formula(paste(pheno, "~ age_days")), data=deltas_df)) %>%
     dplyr::filter(term =="age_days") %>%
     mutate(iv = "age_days")
   
   # Test Sex*Age
-  int.df <- tidy(lm(formula=as.formula(paste0("delta.", pheno, " ~ sexMale*age_days")), data=deltas_df)) %>%
+  int.df <- tidy(lm(formula=as.formula(paste(pheno, "~ sexMale*age_days")), data=deltas_df)) %>%
     dplyr::filter(term =="sexMale:age_days") %>%
     mutate(iv = "sexMale:age_days")
   
   # Compile w/in phenotype
   stopifnot(dim(sex.df) == dim(age.df) & dim(age.df) == dim(int.df))
   pheno.df <- rbind(sex.df, age.df, int.df)
-  pheno.df$pheno <- pheno
+  pheno.df$pheno <- gsub("delta.", "", pheno)
   
   # Add to other phenotypes
   tests.df <- rbind(tests.df, pheno.df)
@@ -71,9 +72,9 @@ fwrite(result_df, paste0(save_path, "/", new_name))
 #######################################
 # Z-SCORES
 #######################################
-pheno_list.z <- paste0(pheno_list, ".z")
+delta.pheno_list.z <- paste0("delta.", pheno_list, ".z")
 #only test phenos w models that converged
-phenos_to_test.z <- intersect(pheno_list.z, names(deltas_df))
+phenos_to_test.z <- intersect(delta.pheno_list.z, names(deltas_df))
 
 #initialize empty df to store outputs
 tests.df <- data.frame("term" = character(),
@@ -87,24 +88,24 @@ tests.df <- data.frame("term" = character(),
 ##Loop each Pheno
 for (pheno in phenos_to_test.z) {
   # Test Sex
-  sex.df <- tidy(lm(formula=as.formula(paste0("delta.", pheno, " ~ sexMale")), data=deltas_df)) %>%
+  sex.df <- tidy(lm(formula=as.formula(paste(pheno, "~ sexMale")), data=deltas_df)) %>%
     dplyr::filter(term =="sexMale") %>%
     mutate(iv = "sexMale")
   
   # Test Age
-  age.df <- tidy(lm(formula=as.formula(paste0("delta.", pheno, " ~ age_days")), data=deltas_df)) %>%
+  age.df <- tidy(lm(formula=as.formula(paste(pheno, "~ age_days")), data=deltas_df)) %>%
     dplyr::filter(term =="age_days") %>%
     mutate(iv = "age_days")
   
   # Test Sex*Age
-  int.df <- tidy(lm(formula=as.formula(paste0("delta.", pheno, " ~ sexMale*age_days")), data=deltas_df)) %>%
+  int.df <- tidy(lm(formula=as.formula(paste(pheno, "~ sexMale*age_days")), data=deltas_df)) %>%
     dplyr::filter(term =="sexMale:age_days") %>%
     mutate(iv = "sexMale:age_days")
   
   # Compile w/in phenotype
   stopifnot(dim(sex.df) == dim(age.df) & dim(age.df) == dim(int.df))
   pheno.df <- rbind(sex.df, age.df, int.df)
-  pheno.df$pheno <- pheno
+  pheno.df$pheno <- gsub("delta.", "", pheno)
   
   # Add to other phenotypes
   tests.df <- rbind(tests.df, pheno.df)
