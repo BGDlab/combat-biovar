@@ -30,7 +30,11 @@ tests.df <- data.frame("term" = character(),
                    "pheno" = character())
 
 ##Loop each Pheno
-for (pheno in pheno_list) {
+
+#only test phenos w models that converged
+phenos_to_test <- intersect(pheno_list, names(deltas_df))
+
+for (pheno in phenos_to_test) {
   # Test Sex
   sex.df <- tidy(lm(formula=as.formula(paste0("delta.", pheno, " ~ sexMale")), data=deltas_df)) %>%
     dplyr::filter(term =="sexMale") %>%
@@ -68,6 +72,8 @@ fwrite(result_df, paste0(save_path, "/", new_name))
 # Z-SCORES
 #######################################
 pheno_list.z <- paste0(pheno_list, ".z")
+#only test phenos w models that converged
+phenos_to_test.z <- intersect(pheno_list.z, names(deltas_df))
 
 #initialize empty df to store outputs
 tests.df <- data.frame("term" = character(),
@@ -79,7 +85,7 @@ tests.df <- data.frame("term" = character(),
                        "pheno" = character())
 
 ##Loop each Pheno
-for (pheno in pheno_list.z) {
+for (pheno in phenos_to_test.z) {
   # Test Sex
   sex.df <- tidy(lm(formula=as.formula(paste0("delta.", pheno, " ~ sexMale")), data=deltas_df)) %>%
     dplyr::filter(term =="sexMale") %>%
