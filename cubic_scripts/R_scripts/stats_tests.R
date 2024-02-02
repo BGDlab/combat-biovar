@@ -57,6 +57,37 @@ centile.t.tests <- function(df, feature_list, comp_multiplier=1){
 # names(perm_t.tests) <- n_perm_list
 # cent_t.tests.p <- bind_rows(perm_t.tests, .id = "column_label")
 
+#centile.t.tests.full_result()
+#same as centile t-test but returns results for each feature instead of summarizing w/in each comparison
+
+centile.t.tests.full_result <- function(df, feature_list, comp_multiplier=1){
+  #initialize empty dfs to store outputs
+  t.df <- data.frame("pheno" = character(),
+                     "group1" = character(),
+                     "group2" = character(),
+                     "p.value" = double())
+  #run tests
+  attach(df)
+  for (pheno in feature_list) {
+    df.pairwise.t <- tidy(pairwise.rank.welch.t.test(x=df[[pheno]], g=df[["dataset"]], paired = TRUE, p.adj = "none"))
+    df.pairwise.t$pheno <- pheno
+    t.df <- rbind(t.df, df.pairwise.t)
+  }
+  n_comp <- nrow(t.df)
+  
+  #apply fdr correction
+  t.df <- t.df %>%
+    dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = (n_comp*comp_multiplier)),
+                  sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
+                                      p.val_fdr >= 0.05 ~ FALSE),
+                  pheno = sub("abs.diff_", "", pheno)) %>%
+    unite(comp, c("group1", "group2")) %>%
+    dplyr::mutate(comp = as.factor(comp))
+  
+  return(t.df)
+  #detach()
+}
+
 #sex.bias.t.tests()
 # Within each combat config, test if there are significant differences in M and F subject's mean abs. centile error. Can test mean (not abs) centile errors, Z errors, etc, using `to_test` arg. FDR corrects for number of datasets tested
 

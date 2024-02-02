@@ -174,12 +174,14 @@ ggplot() +
 ```{r}
 percent_f <- setNames(paste0(seq(from=100, to=0, by=-10), "% F"), unique(ratio.df$prop))
 
-ratio.df %>%
+sampling.plt <- ratio.df %>%
   dplyr::filter(dataset=="cf") %>%
+  # mutate(sim.site = case_when(sim.site == "Balanced" ~ "A",
+  #                             sim.site == "Imbalanced" ~ "B")) %>%
 ggplot() +
   geom_bar(aes(x=sim.site, fill=sex)) +
-  #theme_linedraw() +
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
+  theme_linedraw() +
+  theme(axis.ticks.x = element_blank(), axis.text.x=element_blank(), panel.spacing.x = unit(.1, "lines")) +
   xlab("Simulated Site") +
   ylab("Subjects") +
   facet_wrap(~prop, nrow=1, labeller = as_labeller(percent_f))
@@ -228,7 +230,7 @@ prop.global_cent_errs_plot <- prop.global_abs.diffs %>%
   theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   scale_x_discrete(labels=percent_f) +
   facet_wrap(~ pheno) +
-  ggtitle("Magnitude errors in centile scores of global features across ComBat pipelines")
+  ggtitle("Magnitude errors in centile scores of global features across \nComBat pipelines")
 prop.global_cent_errs_plot
 #ggsave("figs/global_centile_errors.jpeg", global_cent_errs_plot)
 ```
@@ -250,7 +252,7 @@ prop.global_cent_errs_plot_bysex <- prop.global_abs.diffs %>%
   theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   scale_x_discrete(labels=percent_f) +
   facet_grid(sex ~ pheno) +
-  ggtitle("Magnitude errors in centile scores of global features across ComBat pipelines")
+  ggtitle("Magnitude errors in centile scores of global features across \nComBat pipelines")
 prop.global_cent_errs_plot_bysex
 ```
 
@@ -319,10 +321,10 @@ cent.subj.sex.test.df %>%
   summarize(min_diff = min(median_sex_diff)*100, max_diff=max(median_sex_diff)*100)
 ```
 
-visualize actual (not ABSOLUTE) errors for global pheonos by sex
+visualize actual (not ABSOLUTE) errors for global phenos by sex
 
 ```{r}
-ratio.df %>%
+sex_err_ratio.plt <- ratio.df %>%
   dplyr::select(participant, sex, age_days, sim.site, prop, dataset, paste0("diff_", vol_list_global)) %>%
   dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
   pivot_longer(cols=starts_with("diff_"), names_to="pheno", names_prefix="diff_", values_to = "diff") %>%
@@ -335,7 +337,7 @@ ratio.df %>%
   # scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   # scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   labs(y="Centile Error", x = "Imbalanced Study Site Composition") +
-  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom") +
   scale_x_discrete(labels=percent_f) +
   facet_grid(dataset ~ pheno, labeller=labeller(dataset=dataset_names)) +
   ggtitle("Errors in centile scores of global features in ComBat-GAM and ComBatLS")
@@ -571,3 +573,20 @@ full_join(noext.z.t.test.df_reduced, z.t.test.df_reduced) %>%
 ```
 Test sex-biases in z errors w/in each feature
 **COME BACK TO THIS**
+
+## FIGURE 3
+```{r}
+fig_3 <- ggarrange(ggarrange(sampling.plt, prop.global_cent_errs_plot, 
+                             nrow = 2, labels = c("A", "B"),
+                             heights=c(1,2)), #nest 1st col
+          sex_err_ratio.plt,
+          ncol = 2,
+          # widths=c(1, 1.2),
+          labels = c(NA, "C")                                    
+) 
+
+fig_3_annotate <- annotate_figure(fig_3, top = text_grob("Figure 3. Varying M:F ratios across site simulations", color = "black", hjust = 0, x = 0))
+fig_3_annotate
+ggsave("figs/figure_3.jpeg", fig_3_annotate, width=32, height=20, units="cm")
+```
+
