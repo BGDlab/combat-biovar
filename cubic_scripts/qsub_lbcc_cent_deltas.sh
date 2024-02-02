@@ -19,7 +19,7 @@ bash_script=$bash_dir/${config}_deltas.sh
 touch $bash_script
 
 #arg1=gam csv path, arg2=gamlss csv path, arg3=save path, arg4=search string
-echo "singularity run --cleanenv $img Rscript --save $r_script $cent_path/${config}_cf.gam_data_predictions.csv $cent_path/${config}_cf.gamlss_data_predictions.csv $cent_path $config" > $bash_script
+echo "singularity run --cleanenv $img Rscript --save $r_script $cent_path/cf.gam-${config}_predictions.csv $cent_path/cf.gamlss-${config}_predictions.csv $cent_path $config" > $bash_script
 
 #qsub bash script
 qsub -N $config -o $bash_dir/${config}_deltas_out.txt -e $bash_dir/${config}_deltas_err.txt $bash_script
