@@ -48,7 +48,7 @@ for (pheno in pheno_list) {
   
   # Compile w/in phenotype
   stopifnot(dim(sex.df) == dim(age.df) & dim(age.df) == dim(int.df))
-  pheno.df <- rbind(c(list(sex.df), list(age.df), list(int.df)))
+  pheno.df <- rbind(sex.df, age.df, int.df)
   pheno.df$pheno <- pheno
   
   # Add to other phenotypes
@@ -97,7 +97,7 @@ for (pheno in pheno_list.z) {
   
   # Compile w/in phenotype
   stopifnot(dim(sex.df) == dim(age.df) & dim(age.df) == dim(int.df))
-  pheno.df <- rbind(c(list(sex.df), list(age.df), list(int.df)))
+  pheno.df <- rbind(sex.df, age.df, int.df)
   pheno.df$pheno <- pheno
   
   # Add to other phenotypes
