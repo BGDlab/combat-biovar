@@ -574,15 +574,10 @@ stat.test <- plt.df %>%
 ```{r}
 stat.test2 <- stat.test %>%
   add_xy_position(x = "pheno", dodge = 0.8, fun="max") %>%
-  mutate(p.adj.signif = ifelse(p.adj.signif == "ns", "ns", "*"))
+  mutate(p.adj.signif = ifelse(p.adj.signif == "ns", "ns", "*")) #simplify significance labels
 ```
 
 ```{r}
-# custom_strip <- strip_themed(
-#      text_x = elem_list_text(angle = 90, color="black"),
-#      background_x=element_blank()
-# )
-
 dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
 addline_format <- function(x,...){
     gsub('\\s','\n',x)
@@ -604,65 +599,6 @@ big_violin_plt <- plt.df %>%
   ggtitle("Errors in centile scores of global features in ComBat-GAM and ComBatLS")
 big_violin_plt
 ggsave("figs/big_sex_violin_plt.jpeg", big_violin_plt, width=12, height=6, units="in")
-```
-
-*need to add stats tests*
-```{r}
-regional_violin_plt <- plt.df %>%
-  dplyr::filter(!pheno %in% vol_list_global) %>%
-  ggplot() +
-  geom_violin(aes(x=pheno, y=diff, fill=sex, color=sex)) +
-  theme_linedraw(base_size = 11) +
-  labs(y="Centile Error", x = "Brain Feature") +
-  theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x = unit(.1, "lines"), legend.position="bottom") +
-  facet_grid2(dataset ~ pheno_cat, labeller=labeller(dataset=dataset_names), scales="free_x", space = "free_x") +
-  ggtitle("Errors in centile scores of global features in ComBat-GAM and ComBatLS")
-```
-
-
-```{r}
-global_violin_sex_plt <- diffs.df %>%
-  dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("diff_", vol_list_global)) %>%
-  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels | dataset == "cf.lm"
-  pivot_longer(cols=starts_with("diff_"), names_to="pheno", names_prefix="diff_", values_to = "diff") %>%
-  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         diff = diff*100) %>%
-  ggplot(aes(x=pheno, y=diff, fill=sex)) +
-  geom_rain(likert= TRUE,
-            point.args=list(color=NA, fill=NA),
- boxplot.args.pos = list(position = ggpp::position_dodgenudge(x = -.07), width = .3),
- violin.args = list(color=NA, alpha = .7))+
-  theme_linedraw(base_size = 11) +
-  stat_compare_means(method = "wilcox.test", label="p.signif") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="bottom") +
-  labs(y="Centile Error", x = "Brain Feature") +
-  facet_wrap(~dataset)
-global_violin_sex_plt
-```
-
-```{r}
-diffs.df %>%
-  dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("diff_", pheno_list)) %>%
-  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
-  pivot_longer(cols=starts_with("diff_"), names_to="pheno", names_prefix="diff_", values_to = "diff") %>%
-  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         diff = diff*100,
-         pheno_cat = as.factor(case_when(
-    pheno %in% vol_list_global ~ "Global Volume",
-    pheno %in% vol_list_regions ~ "Regional Volume",
-    pheno %in% sa_list ~ "Regional SA",
-    pheno %in% ct_list ~ "Regional CT",
-    TRUE ~ NA_character_))) %>% #for visuals
-  ggplot(aes(y=diff)) +
-  geom_violin(aes(x=interaction(pheno,pheno_cat, sep = "&"), y=diff, fill=sex, color=sex)) +
-  theme_linedraw(base_size = 11) +
-  # scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
-  # scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
-  labs(y="Centile Error", x = "Brain Feature") +
-  facet_wrap(~dataset, labeller=labeller(dataset=dataset_names), nrow=2) +
-  guides(x = ggh4x::guide_axis_nested(delim = "&")) +
-  theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), ggh4x.axis.nesttext.x = element_text(angle = 45)) +
-  ggtitle("Errors in centile scores of global features in ComBat-GAM and ComBatLS")
 ```
 
 ```{r}
