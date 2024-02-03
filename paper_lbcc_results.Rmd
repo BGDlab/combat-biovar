@@ -56,3 +56,9 @@ ggplot(deltas_df, aes(x=age_days, y=delta.sGMV, color=sex)) +
 
 tidy(lm(delta.sGMV ~ sexMale*age_days, data=deltas_df))
 ```
+
+Linear models
+```{r}
+cent_delta_lms.df <- fread(file=paste0(der_path, "/batch.study_pred_cent_delta_lms.csv"))
+```
+
