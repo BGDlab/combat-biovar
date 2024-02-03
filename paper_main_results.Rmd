@@ -575,8 +575,6 @@ stat.test <- plt.df %>%
 stat.test2 <- stat.test %>%
   add_xy_position(x = "pheno", dodge = 0.8, fun="max") %>%
   mutate(p.adj.signif = ifelse(p.adj.signif == "ns", "ns", "*"))
-stat.test2 %>%
-  dplyr::filter(phen_cat=="")
 ```
 
 ```{r}
@@ -586,6 +584,9 @@ stat.test2 %>%
 # )
 
 dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+addline_format <- function(x,...){
+    gsub('\\s','\n',x)
+}
 
 big_violin_plt <- plt.df %>%
   ggplot(aes(x=pheno, y=diff)) +
@@ -594,11 +595,12 @@ big_violin_plt <- plt.df %>%
   theme_linedraw(base_size = 11) +
   labs(y="Centile Error", x = "Brain Feature") +
   theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x = unit(.1, "lines"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  stat_pvalue_manual(stat.test2, label = "p.adj.signif", label.size = 1, tip.length = 0, hide.ns = FALSE, remove.bracket = TRUE) +
+  stat_pvalue_manual(stat.test2, label = "p.adj.signif", label.size = 3, tip.length = 0, hide.ns = TRUE, remove.bracket = TRUE) +
   # facet_grid2(dataset ~ pheno_cat, labeller=labeller(dataset=dataset_names), scales="free_x", space = "free_x", switch="x", strip = custom_strip) +
   facet_wrap(~dataset, labeller=labeller(dataset=dataset_names), nrow=2) +
   guides(x = ggh4x::guide_axis_nested(delim = "&")) +
-  theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), ggh4x.axis.nesttext.x = element_text(angle = 45)) +
+  theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), ggh4x.axis.nesttext.x = element_text(angle = 90, vjust=0.4), legend.position="top") +
+  labs(fill = "Sex", color="Sex") +
   ggtitle("Errors in centile scores of global features in ComBat-GAM and ComBatLS")
 big_violin_plt
 ggsave("figs/big_sex_violin_plt.jpeg", big_violin_plt, width=12, height=6, units="in")
