@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain)
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, ggh4x)
 #Sys.setenv("MC_CORES"=10L)
 options("mc.cores")
 ```
@@ -51,17 +51,16 @@ ukb_cn_df <- fread("/Users/megardn/Desktop/BGD_Repos/combat_biovar/data/ukb_to_m
 ukb_cn_df <- ukb_cn_df %>%
   mutate(age_years = age_days/365.25)
 
+#write out new dk atlas w/o medial wall
+dk_nomed <- dk
+dk_nomed$data <- dk_nomed$data %>%
+  dplyr::filter(!is.na(region) & region !="corpus callosum")
 #plotting info from dk atlas
 dk.parc <- dk_nomed$data %>%
   as.data.frame() %>%
   na.omit() %>%
   dplyr::select(c(hemi, region, label)) %>%
   distinct()
-
-#write out new dk atlas w/o medial wall
-dk_nomed <- dk
-dk_nomed$data <- dk_nomed$data %>%
-  dplyr::filter(!is.na(region) & region !="corpus callosum")
 ```
 
 # Main Analyses
@@ -267,7 +266,7 @@ Little plot
 ```{r}
 #get means w/in feature 
 mean.diffs.long <- diffs.df %>%
-  dplyr::select(sex, dataset, pheno, pheno_abs.diff.list) %>%
+  dplyr::select(sex, dataset, pheno_abs.diff.list) %>%
   dplyr::filter(!grepl('_refA', dataset)) %>% #drop refA levels
   mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
   group_by(dataset) %>%
@@ -304,6 +303,17 @@ ggsave("figs/win_feature_mean_cent_abs.diffs.jpeg", cent.diffs.plot)
 ```
 
 Plot errors for global phenotypes
+
+get stat results for global phenos:
+```{r, message=FALSE}
+full_cent_res <- centile.t.tests.full_result(diffs.df, feature_list=pheno_abs.diff.list)
+full_cent_res %>%
+  dplyr::filter(pheno %in% vol_list_global) %>%
+  dplyr::filter(!grepl('_refA', comp))
+```
+
+all significant
+
 ```{r}
 global_abs.diffs <- diffs.df %>%
   dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("abs.diff_", vol_list_global)) %>%
@@ -314,15 +324,32 @@ global_cent_errs_plot <- global_abs.diffs %>%
   mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
          pheno = factor(pheno, levels = c("WMV", "GMV", "sGMV", "Ventricles"), ordered = TRUE),
          abs.diff = abs.diff*100) %>% #for visuals
-  ggplot() +
+  ggplot(aes(pheno, abs.diff)) +
   geom_violin(aes(x=pheno, y=abs.diff, fill=dataset, color=dataset), scale="count") +
   theme_linedraw(base_size = 11) +
   scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  #WMV
+geom_signif(y_position = c(29, 30.5, 4), xmin = c(0.7, 0.7, 1), 
+              xmax = c(1, 1.3, 1.3), annotation = c("***","***", "***"),
+              tip_length = 0, vjust = 0.6) +
+  #GMV
+  geom_signif(y_position = c(30, 31.5, 3), xmin = c(1.7, 1.7, 2), 
+              xmax = c(2, 2.3, 2.3), annotation = c("***","***", "***"),
+              tip_length = 0, vjust = 0.6) +
+  #sGMV
+  geom_signif(y_position = c(28, 29.5, 2.8), xmin = c(2.7, 2.7, 3), 
+              xmax = c(3, 3.3, 3.3), annotation = c("***","***", "***"),
+              tip_length = 0, vjust = 0.6) +
+  #Ventricles
+  geom_signif(y_position = c(24, 25.5, 7.5), xmin = c(3.7, 3.7, 4), 
+              xmax = c(4, 4.3, 4.3), annotation = c("***","***", "***"),
+              tip_length = 0, vjust = 0.6) +
   labs(y="Magnitude Centile Error", x = "Phenotype") +
   theme(plot.title = element_text(size=12)) +
   ggtitle("Magnitude error in centile scores")
-ggsave("figs/global_centile_errors.jpeg", global_cent_errs_plot)
+global_cent_errs_plot
+# ggsave("figs/global_centile_errors.jpeg", global_cent_errs_plot)
 ```
 
 *TO-DO: SIGNIFICANCE IN PLOT*
@@ -365,7 +392,7 @@ med.diffs.plot <- ggplot(med.diffs.plot.df) +
   facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
   paletteer::scale_fill_paletteer_c("grDevices::Oslo", name = "Median Absolute Centile Error", limits = c(0, 7.5)) #
-med.diffs.plot
+# med.diffs.plot
 ```
 
 ```{r}
@@ -378,8 +405,6 @@ med.diffs.plot.global.df <- med.diffs.long2 %>%
          median_centile_abs.diff = median_centile_abs.diff*100)
 
 med.diffs.plot.global <- ggplot(med.diffs.plot.global.df) +
-  geom_rect(data = tp, fill="gray", xmin = -Inf,xmax = Inf,
-            ymin = -Inf, ymax = Inf, alpha = 0.4) +
   ggseg::geom_brain(atlas = aseg_cerebrum, 
              aes(fill = median_centile_abs.diff),
              side = c("coronal")) +
@@ -388,7 +413,7 @@ med.diffs.plot.global <- ggplot(med.diffs.plot.global.df) +
   theme_linedraw(base_size=12) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
   paletteer::scale_fill_paletteer_c("grDevices::Oslo", name = "Median Absolute Centile Error", limits = c(0, 7.5))
-med.diffs.plot.global
+# med.diffs.plot.global
 ```
 
 Combine plots - need to keep playing around to make the spacing pretty when it saves out
@@ -396,14 +421,14 @@ Combine plots - need to keep playing around to make the spacing pretty when it s
 p_diff <- ggarrange(
   med.diffs.plot.global, med.diffs.plot,
   ncol=2, nrow=1, 
-  widths = c(1, 3.1),
+  widths = c(.95, 3.1),
   #labels=c("A", "B"),
   #hjust=0.01,
   align = "hv",
   common.legend = TRUE, legend = "bottom"
   )
 
-p_diff_annotate <- annotate_figure(p_diff)
+p_diff_annotate <- annotate_figure(p_diff, top = text_grob("Magnitude Centile Errors", color = "black", hjust = 0, x = 0.06))
 p_diff_annotate
 ```
 
@@ -524,90 +549,56 @@ sex_t_tests_in_feat.df %>%
 
 ```{r}
 plt.df <- diffs.df %>%
-  dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("diff_", pheno_list)) %>%
+  dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("diff_", pheno_list)) %>% #select centile errors only
   dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
   pivot_longer(cols=starts_with("diff_"), names_to="pheno", names_prefix="diff_", values_to = "diff") %>%
   mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
          diff = diff*100,
-         pheno_cat = as.factor(case_when(
+         pheno_cat = factor(case_when(
     pheno %in% vol_list_global ~ "Global Volume",
     pheno %in% vol_list_regions ~ "Regional Volume",
     pheno %in% sa_list ~ "Regional SA",
     pheno %in% ct_list ~ "Regional CT",
-    TRUE ~ NA_character_)))
-```
-```{r}
-custom_strip <- strip_themed(
-     text_x = elem_list_text(angle = 90, color="black"),
-     background_x=element_blank()
-)
-
-big_violin_plt <- plt.df %>% 
-  ggplot() +
-  geom_violin(aes(x=pheno, y=diff, fill=sex, color=sex)) +
-  theme_linedraw(base_size = 11) +
-  labs(y="Centile Error", x = "Brain Feature") +
-  theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x = unit(.1, "lines")) +
-  facet_grid2(dataset ~ pheno_cat, labeller=labeller(dataset=dataset_names), scales="free_x", space = "free_x", switch="x", strip = custom_strip) +
-  ggtitle("Errors in centile scores of global features in ComBat-GAM and ComBatLS")
-
-ggsave("figs/big_sex_violin_plt.jpeg", big_violin_plt, width=12, height=6, units="in")
-```
-*need to add stats tests*
-```{r}
-regional_violin_plt <- plt.df %>%
-  dplyr::filter(!pheno %in% vol_list_global) %>%
-  ggplot() +
-  geom_violin(aes(x=pheno, y=diff, fill=sex, color=sex)) +
-  theme_linedraw(base_size = 11) +
-  labs(y="Centile Error", x = "Brain Feature") +
-  theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x = unit(.1, "lines"), legend.position="bottom") +
-  facet_grid2(dataset ~ pheno_cat, labeller=labeller(dataset=dataset_names), scales="free_x", space = "free_x") +
-  ggtitle("Errors in centile scores of global features in ComBat-GAM and ComBatLS")
+    TRUE ~ NA_character_), ordered=TRUE, levels=c("Global Volume", "Regional Volume", "Regional SA", "Regional CT"))) %>%
+    mutate(pheno = factor(pheno, ordered=TRUE, levels=c(vol_list_global, vol_list_regions, sa_list, ct_list)))#sort w/in pheno_cat
 ```
 
-
+stat test re-do w wilcox 
 ```{r}
-global_violin_sex_plt <- diffs.df %>%
-  dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("diff_", vol_list_global)) %>%
-  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels | dataset == "cf.lm"
-  pivot_longer(cols=starts_with("diff_"), names_to="pheno", names_prefix="diff_", values_to = "diff") %>%
-  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         diff = diff*100) %>%
-  ggplot(aes(x=pheno, y=diff, fill=sex)) +
-  geom_rain(likert= TRUE,
-            point.args=list(color=NA, fill=NA),
- boxplot.args.pos = list(position = ggpp::position_dodgenudge(x = -.07), width = .3),
- violin.args = list(color=NA, alpha = .7))+
-  theme_linedraw(base_size = 11) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="bottom") +
-  labs(y="Centile Error", x = "Brain Feature") +
-  facet_wrap(~dataset)
+stat.test <- plt.df %>%
+  group_by(dataset, pheno) %>%
+  wilcox_test(diff ~ sex) %>%
+  adjust_pvalue(method = "fdr") %>%
+  add_significance("p.adj")
+```
+```{r}
+stat.test2 <- stat.test %>%
+  add_xy_position(x = "pheno", dodge = 0.8, fun="max") %>%
+  mutate(p.adj.signif = ifelse(p.adj.signif == "ns", "ns", "*")) #simplify significance labels
 ```
 
 ```{r}
-diffs.df %>%
-  dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("diff_", pheno_list)) %>%
-  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
-  pivot_longer(cols=starts_with("diff_"), names_to="pheno", names_prefix="diff_", values_to = "diff") %>%
-  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         diff = diff*100,
-         pheno_cat = as.factor(case_when(
-    pheno %in% vol_list_global ~ "Global Volume",
-    pheno %in% vol_list_regions ~ "Regional Volume",
-    pheno %in% sa_list ~ "Regional SA",
-    pheno %in% ct_list ~ "Regional CT",
-    TRUE ~ NA_character_))) %>% #for visuals
-  ggplot() +
+dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+addline_format <- function(x,...){
+    gsub('\\s','\n',x)
+}
+
+big_violin_plt <- plt.df %>%
+  ggplot(aes(x=pheno, y=diff)) +
   geom_violin(aes(x=interaction(pheno,pheno_cat, sep = "&"), y=diff, fill=sex, color=sex)) +
+  # geom_violin(aes(fill=sex, color=sex)) +
   theme_linedraw(base_size = 11) +
-  # scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
-  # scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   labs(y="Centile Error", x = "Brain Feature") +
+  theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x = unit(.1, "lines"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  stat_pvalue_manual(stat.test2, label = "p.adj.signif", label.size = 3, tip.length = 0, hide.ns = TRUE, remove.bracket = TRUE) +
+  # facet_grid2(dataset ~ pheno_cat, labeller=labeller(dataset=dataset_names), scales="free_x", space = "free_x", switch="x", strip = custom_strip) +
   facet_wrap(~dataset, labeller=labeller(dataset=dataset_names), nrow=2) +
   guides(x = ggh4x::guide_axis_nested(delim = "&")) +
-  theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), ggh4x.axis.nesttext.x = element_text(angle = 45)) +
+  theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), ggh4x.axis.nesttext.x = element_text(angle = 90, vjust=0.4), legend.position="top") +
+  labs(fill = "Sex", color="Sex") +
   ggtitle("Errors in centile scores of global features in ComBat-GAM and ComBatLS")
+big_violin_plt
+ggsave("figs/big_sex_violin_plt.jpeg", big_violin_plt, width=12, height=6, units="in")
 ```
 
 ```{r}
@@ -1255,12 +1246,11 @@ wmv_centile_fan <- ggplot(wmv.df) +
   geom_line(aes(x=age_years, y=centile_9, color=dataset, linetype=dataset)) +
   facet_wrap(~sex) + 
   scale_linetype_manual(values = c('ukb-CN-simsites'= "dotted", cf.gam = "solid", cf.gamlss = "solid", cf.lm = "solid"), name = "ComBat \nConfiguration", labels=dataset_names) +
-  #scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#E84617", cf.gamlss = "#17E846", cf.lm = "purple")) +
   scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) + 
   geom_label(data=tmp_labels, aes(x=age_years, y=value, label=as.character(centile)), nudge_x = 0.35, size=2) +
   xlab("Age (yrs)") + ylab("Volume (mm3)") +
   theme_linedraw(base_size = 11) +
-  theme(plot.title = element_text(size=12)) +
+  theme(plot.title = element_text(size=12), legend.position="bottom") +
   labs(title="White matter volume brain charts")
 wmv_centile_fan
 ```
@@ -1424,20 +1414,19 @@ Combine plots
 
 ```{r}
 fig_1 <- ggarrange(
-  wmv_centile_fan, global_cent_errs_plot,
+  wmv_centile_fan,
+  ggarrange(global_cent_errs_plot, p_diff_annotate, ncol=1, nrow=2, heights = c(1.2, 2), common.legend = FALSE, labels=c("B", "C")),
   ncol=2, nrow=1, 
-  widths = c(1.75, 1),
-  #labels=c("A", "B"),
+  labels=c("A", NA),
+  widths=c(1.1, 1)
   #hjust=0.01,
-  align = "hv",
-  common.legend = TRUE, legend = "bottom",
-  labels="auto"
+  # align = "hv"
   )
 
 fig_1_annotate <- annotate_figure(fig_1, top = text_grob("Figure 1. Choice of ComBat configuration can induce errors in brain feature centile scores",
                color = "black", hjust = 0, x = 0))
 fig_1_annotate
-ggsave("figs/figure_1.jpeg", fig_1_annotate, width=11, height=5)
+ggsave("figs/figure_1.jpeg", fig_1_annotate, width=11, height=7, units="in")
 ```
 
 

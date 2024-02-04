@@ -19,10 +19,29 @@ options("mc.cores")
 
 source("./cubic_scripts/R_scripts/gamlss_helper_funs.R")
 source("./cubic_scripts/R_scripts/ranked_welch_tests.R")
+
+#ATLAS
 aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
+#write out new dk atlas w/o medial wall
+dk_nomed <- dk
+dk_nomed$data <- dk_nomed$data %>%
+  dplyr::filter(!is.na(region) & region !="corpus callosum")
+#plotting info from dk atlas
+dk.parc <- dk_nomed$data %>%
+  as.data.frame() %>%
+  na.omit() %>%
+  dplyr::select(c(hemi, region, label)) %>%
+  distinct()
 
+#PHENO LISTS
+pheno_list <- readRDS(file="cubic_scripts/R_scripts/pheno_list.rds")
+vol_list_global <- readRDS(file="cubic_scripts/R_scripts/vol_list_global.rds")
+vol_list_regions <- readRDS(file="cubic_scripts/R_scripts/Vol_list_regions.rds")
+sa_list <- readRDS(file="cubic_scripts/R_scripts/SA_list.rds")
+ct_list <- readRDS(file="cubic_scripts/R_scripts/CT_list.rds")
+
+#PATH
 der_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives/lifespan"
-
 ```
 
 #Load
@@ -45,14 +64,312 @@ Deltas
 ```{r}
 deltas_df <- fread(file=paste0(der_path, "/batch.study_pred_deltas.csv"))
 # skimr::skim(deltas_df)
+cent_deltas_df <- deltas_df %>%
+  mutate(study=sub("\\_.*", "", site),
+         age_years=age_days/365.25) %>%
+  dplyr::select(!contains(".z") & !ends_with("_total") & !contains("TBV")) #drop z-scores and non-centiles
 ```
 
-Visualize
+#Clean & EDA
+
+Sample
+```{r}
+sample_boxplot <- ggplot(cent_deltas_df, aes(y=reorder(study, -age_years), x=age_years, color=sex)) +
+  geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
+  theme_linedraw(base_size = 11) +
+  labs(color="Sex", x = "Age (Years)", y = "Study")
+
+sample_barplot <- ggplot(cent_deltas_df) +
+  geom_bar(aes( x=..count../tapply(..count.., ..y.. ,sum)[..y..], y=reorder(study, -age_years), fill=sex)) + 
+  scale_x_continuous(labels = scales::percent) +
+  geom_vline(xintercept = .5, color="lightgray", linetype="longdash") +
+  theme_linedraw(base_size = 11) +
+  theme(axis.ticks.y = element_blank(), axis.text.y=element_blank(), axis.title.y=element_blank()) +
+  labs(color="Sex", x = "% Study")
+
+ggarrange(sample_boxplot, sample_barplot, 
+          nrow=1, ncol=2, 
+          align = "h", 
+          common.legend = TRUE,
+          widths=c(2, 1))
+```
 
 ```{r}
 ggplot(deltas_df, aes(x=age_days, y=delta.sGMV, color=sex)) +
   geom_point() +
   geom_smooth()
+```
 
-tidy(lm(delta.sGMV ~ sexMale*age_days, data=deltas_df))
+```{r}
+cent_deltas_df_long <- cent_deltas_df %>%
+  pivot_longer(cols=starts_with("delta."), names_to="pheno", names_prefix = "delta.", values_to = "delta")
+
+cent_deltas_df_long %>%
+  ggplot() +
+  geom_histogram(aes(x=delta, color=study, fill=study))
+```
+
+
+```{r}
+delta_summary.df <- cent_deltas_df_long %>%
+  group_by(sex, study) %>%
+  summarise(mean_delta = mean(delta),
+            mean_abs.delta = mean(abs(delta)),
+            max_abs.delta=max(abs(delta)),
+            sex_n = n())
+
+abs_delta_summary.df <- cent_deltas_df %>%
+  pivot_longer(cols=starts_with("delta."), names_to="pheno", names_prefix = "delta.", values_to = "delta") %>%
+  mutate(abs.delta = abs(delta)) %>%
+  group_by(study) %>%
+  summarise(study_mean_abs.delta=mean(abs.delta),
+            study_mean_delta=mean(delta),
+            mean_age=mean(age_days),
+            study_max_abs.delta=max(abs.delta),
+            study_n=n())
+```
+
+```{r}
+delta_sum.df <- full_join(delta_summary.df, abs_delta_summary.df) %>%
+  mutate(sex_prop=sex_n/study_n,
+         majority = ifelse(sex_prop > .5, 1, 0))
+
+delta_sum.df_piv <- delta_sum.df %>%
+  pivot_wider(id_cols=c(study, study_n, mean_age, study_mean_delta, study_mean_abs.delta), names_from=sex, values_from=c(sex_n, sex_prop, mean_delta, mean_abs.delta, max_abs.delta))
+
+#Merge back female prop
+to_merge <- delta_sum.df_piv %>%
+  dplyr::select(study, sex_prop_Female)
+
+delta_sum.df2 <- full_join(delta_sum.df, to_merge)
+```
+
+plots!
+
+delta ~ sex-imbalance
+
+```{r}
+delta_sum.df2 %>%
+  ggplot(aes(x=sex_prop_Female, y=mean_delta, color=sex)) +
+  geom_count(aes(size=study_n)) +
+  geom_smooth(method="lm")
+
+delta_sum.df2 %>%
+  ggplot(aes(x=sex_prop_Female, y=mean_delta, color=study, shape=sex)) +
+  geom_point() +
+  geom_smooth(aes(color=sex, linetype=sex), method="lm")
+
+delta_sum.df2 %>%
+  ggplot(aes(x=sex_prop_Female, y=mean_delta, color=sex)) +
+  geom_point() +
+  geom_smooth(aes(color=sex, linetype=sex), method="lm")
+
+delta_sum.df %>%
+  ggplot(aes(x=sex, y=mean_delta, color=study, fill=study)) +
+  geom_count(aes(size=sex_prop), alpha=0.5) +
+  geom_line(aes(group=study))
+
+delta_sum.df %>%
+  ggplot(aes(x=sex, y=mean_delta, color=study, fill=study)) +
+  geom_count(aes(shape=as.factor(majority), size=sex_prop), alpha=0.5) +
+  geom_line(aes(group=study))
+
+delta_sum.df %>%
+  ggplot(aes(x=sex_prop, y=mean_abs.delta, color=mean_age)) +
+  geom_count(aes(size=sex_n)) +
+  geom_smooth(method="lm") +
+  facet_wrap(~sex)
+
+delta_sum.df_piv %>%
+  ggplot(aes(x=sex_prop_Female, y=study_mean_abs.delta, color=mean_age)) +
+  geom_count(aes(size=study_n)) +
+  geom_smooth(method="lm")
+```
+
+delta ~ age
+
+```{r}
+delta_sum.df %>%
+  ggplot(aes(x=mean_age, y=mean_abs.delta, color=sex)) +
+  geom_count(aes(size=study_n)) +
+  geom_smooth(method="lm")
+
+delta_sum.df_piv %>%
+  ggplot(aes(x=mean_age, y=(study_mean_abs.delta*100))) +
+  geom_count(aes(size=study_n, color=sex_prop_Female)) +
+  paletteer::scale_color_paletteer_c("grDevices::Oslo", name = "Proportion \nFemale") +
+  geom_smooth(method="lm")
+```
+
+#Across-Feature Mean Results
+
+```{r}
+# age
+summary(lm(study_mean_abs.delta ~ mean_age, data=delta_sum.df_piv))
+summary(lm(study_mean_delta ~ mean_age, data=delta_sum.df_piv))
+```
+
+are studies w younger subjects changing more because there are fewer of them?
+check for association between study size and age
+```{r}
+summary(lm(mean_age ~ study_n, data=delta_sum.df_piv))
+fit <- lm((study_mean_abs.delta*100) ~ mean_age + study_n, data=delta_sum.df_piv)
+summary(fit)
+sjPlot::plot_model(fit, type = "pred", terms = "mean_age")
+
+summary(lm((study_mean_abs.delta*100) ~ mean_age + study_n + sex_prop_Female, data=delta_sum.df_piv))
+```
+
+```{r}
+cent_deltas_df %>%
+  ggplot() +
+  geom_histogram(aes(x=age_days))
+```
+
+
+```{r}
+# %female
+summary(lm(study_mean_abs.delta ~ sex_prop_Female, data=delta_sum.df_piv))
+summary(lm(study_mean_delta ~ sex_prop_Female, data=delta_sum.df_piv))
+```
+
+
+```{r}
+# age*%female
+summary(lm(study_mean_abs.delta ~ mean_age*sex_prop_Female, data=delta_sum.df_piv))
+summary(lm(study_mean_delta ~ mean_age*sex_prop_Female, data=delta_sum.df_piv))
+```
+
+
+#Featurewise Results
+
+Linear models
+```{r}
+cent_delta_lms.df <- fread(file=paste0(der_path, "/batch.study_pred_cent_delta_lms.csv"))
+n_unique(cent_delta_lms.df$pheno)
+```
+
+summarise findings
+
+```{r}
+cent_delta_lms.df %>%
+  dplyr::filter(term=="sexMale") %>%
+  dplyr::summarize(n_sig_regions = sum(sig_fdr),
+                   n_regions=nrow(.),
+              mean_est = mean(estimate)) %>%
+    ungroup() %>%
+    as.data.frame()
+```
+
+```{r}
+cent_delta_lms.df %>%
+  dplyr::filter(term=="age_days") %>%
+  dplyr::summarize(n_sig_regions = sum(sig_fdr),
+                   n_regions=nrow(.),
+              mean_est = mean(estimate)) %>%
+    ungroup() %>%
+    as.data.frame()
+```
+```{r}
+cent_delta_lms.df %>%
+  dplyr::filter(term=="sexMale:age_days") %>%
+  dplyr::summarize(n_sig_regions = sum(sig_fdr),
+                   n_regions=nrow(.),
+              mean_est = mean(estimate)) %>%
+    ungroup() %>%
+    as.data.frame()
+```
+
+```{r}
+sig.cent_delta_lms.df <- cent_delta_lms.df %>%
+  dplyr::filter(sig_fdr==TRUE)
+n_unique(sig.cent_delta_lms.df$pheno)
+
+table(sig.cent_delta_lms.df$term, sig.cent_delta_lms.df$pheno)
+
+max(sig.cent_delta_lms.df$estimate)*100
+min(sig.cent_delta_lms.df$estimate)*100
+```
+
+## Plots
+
+```{r}
+deltas_df %>%
+  ggplot(aes(x=age_days, y=(delta.GMV*100))) +
+  geom_point(alpha=0.4) +
+  geom_smooth(method="lm")
+
+deltas_df %>%
+  ggplot(aes(x=delta.lh_SA_fusiform*100, color=sex, fill=sex)) +
+  geom_histogram(aes(y=after_stat(c(
+      count[group==1]/sum(count[group==1]),
+      count[group==2]/sum(count[group==2])
+    )*100)), alpha=0.4, position="identity", bins=60) +
+  ylab("Percentage")
+
+deltas_df %>%
+  ggplot(aes(x=age_days, y=delta.rh_Vol_supramarginal*100, color=sex, fill=sex)) +
+  geom_point(alpha=0.3) +
+  geom_smooth(method="lm")
+
+deltas_df %>%
+  ggplot(aes(x=age_days, y=delta.rh_Vol_temporalpole*100, color=sex, fill=sex)) +
+  geom_point(alpha=0.4) +
+  geom_smooth(method="lm")
+```
+
+
+Plot betas (*100 for centile space) on brain!
+
+```{r}
+cent_delta_lms.df_toplt <- cent_delta_lms.df %>%
+   mutate(pheno_cat = as.factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_)),
+    label = sub("_[^_]*_", "_", pheno)) #for plotting
+```
+
+**Figure out what features didn't converge & remove them from brain atlas** - seems to be happening automatically...?
+
+RERUN MODELS WITH AGE IN YEARS!!!
+
+```{r}
+term_names <- c(sexMale = "Sex", age_days = "Age (Days)", 'sexMale:age_days' = "Sex*Age (Days)")
+  
+#Regional
+regional.delta_plt <- cent_delta_lms.df_toplt %>%
+  dplyr::filter(pheno_cat != "Global Volume") %>%
+  mutate(estimate = case_when(sig_fdr == FALSE ~ NA,
+                                     TRUE ~ estimate*100)) %>%
+  ggplot() +
+  theme_linedraw(base_size=12) +
+  ggseg::geom_brain(atlas = dk_nomed, 
+             position = position_brain(hemi ~ side),
+             aes(fill = estimate)) +
+  facet_grid(term ~ pheno_cat, labeller = labeller(term = as_labeller(term_names))) + 
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Beta", limits = c(-0.1, 0.1))
+
+#Global
+global.delta_plt <- cent_delta_lms.df_toplt %>%
+  dplyr::filter(pheno_cat == "Global Volume") %>%
+  mutate(estimate = case_when(sig_fdr == FALSE ~ NA,
+                                     TRUE ~ estimate*100),
+         tissue_class = as.factor(case_when(pheno == "GMV" ~ "cGM",
+                                            pheno == "Ventricles" ~ "CSF",
+                                            pheno == "WMV" ~ "WM",
+                                            pheno == "sGMV" ~ "sGM",
+                                            TRUE ~ NA))) %>%
+  dplyr::select(!any_of(c("label", "region", "hemi"))) %>% #drop cols corresponding to dk regions
+  ggplot() +
+  theme_linedraw(base_size=12) +
+  ggseg::geom_brain(atlas = aseg_cerebrum, 
+             side = c("coronal"),
+             aes(fill = estimate)) +
+  facet_grid(term ~ pheno_cat) + 
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Beta", limits = c(-0.1, 0.1))
 ```
