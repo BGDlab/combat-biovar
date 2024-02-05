@@ -135,6 +135,11 @@ ggplot(cn.df.site) +
   geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=site, fill=sex)) + 
   scale_y_continuous(labels = scales::percent) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+ggplot(cn.df.site) +
+  geom_bar(aes(x=site, fill=sex), position="dodge") + 
+  theme(axis.text.x = element_blank()) +
+  facet_wrap(~study, scales="free")
 ```
 
 Write out

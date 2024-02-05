@@ -209,6 +209,17 @@ cent.t.test.df %>%
 ```
 
 Plot errors for global phenotypes
+
+trying to add significance testing
+```{r}
+cent.t.test.df %>%
+
+stat.test <- ratio.df(
+  len ~ dose, data = ToothGrowth, group.by = "supp",
+  method = "t.test", ref.group = "0.5"
+)
+```
+
 ```{r}
 percent_f <- setNames(paste0(seq(from=100, to=0, by=-10), "% F"), unique(ratio.df$prop))
 
@@ -253,7 +264,7 @@ prop.global_cent_errs_plot_bysex <- prop.global_abs.diffs %>%
   scale_x_discrete(labels=percent_f) +
   facet_grid(sex ~ pheno) +
   ggtitle("Magnitude errors in centile scores of global features across \nComBat pipelines")
-prop.global_cent_errs_plot_bysex
+# prop.global_cent_errs_plot_bysex
 ```
 
 ### Sex-Biases
