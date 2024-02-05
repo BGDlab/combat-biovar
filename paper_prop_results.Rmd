@@ -335,23 +335,55 @@ cent.subj.sex.test.df %>%
 visualize actual (not ABSOLUTE) errors for global phenos by sex
 
 ```{r}
+#trying to add stats test
+global_sex_diffs <- cent.subj.sex.test.df %>%
+  dplyr::filter(pheno %in% vol_list_global & dataset %in% c("cf.gam", "cf.gamlss")) %>%
+  mutate(pheno_prop = paste(pheno, prop, sep="&"))
+
+global_sex_errs.df <- ratio.df %>%
+  dplyr::select(participant, sex, age_days, sim.site, prop, dataset, paste0("diff_", vol_list_global)) %>%
+  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  pivot_longer(cols=starts_with("diff_"), names_to="pheno", names_prefix="diff_", values_to = "diff") 
+
+wilcox_tbl <- global_sex_errs.df %>%
+  mutate(pheno_prop = paste(pheno, prop, sep="&"),
+         pheno = factor(pheno, levels = c("GMV", "sGMV", "Ventricles", "WMV"), ordered = TRUE),
+         diff=diff*100) %>%
+  arrange(pheno, prop) %>%
+  group_by(dataset, pheno, prop) %>%
+  wilcox_test(diff ~ sex) %>%
+  add_xy_position(x="prop", fun="max")
+
+stat_merge <- full_join(wilcox_tbl, global_sex_diffs)
+stat_merge2 <- stat_merge %>%
+  add_significance("p.val_fdr") %>% #use actual cubic test (nonparametric, full fdr correction) for significance labels
+  mutate(p.val_fdr.signif = ifelse(p.val_fdr.signif == "ns", "", "*")) 
+table(stat_merge2$p.val_fdr.signif, stat_merge2$sig_fdr)
+```
+
+```{r}
 sex_err_ratio.plt <- ratio.df %>%
   dplyr::select(participant, sex, age_days, sim.site, prop, dataset, paste0("diff_", vol_list_global)) %>%
-  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
+  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
   pivot_longer(cols=starts_with("diff_"), names_to="pheno", names_prefix="diff_", values_to = "diff") %>%
   mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         pheno = factor(pheno, levels = c("WMV", "GMV", "sGMV", "Ventricles"), ordered = TRUE),
-         diff = diff*100) %>% #for visuals
+         pheno = factor(pheno, levels = c("GMV", "sGMV", "Ventricles", "WMV"), ordered = TRUE),
+         diff = diff*100,
+         pheno_prop = paste(pheno, prop, sep="&")) %>% #for visuals
   ggplot() +
   geom_violin(aes(x=prop, y=diff, fill=sex, color=sex)) +
   theme_linedraw(base_size = 11) +
   # scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   # scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   labs(y="Centile Error", x = "Imbalanced Study Site Composition") +
-  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom") +
+  stat_pvalue_manual(stat_merge2, label = "p.val_fdr.signif", label.size = 3, tip.length = 0, hide.ns = TRUE, remove.bracket = TRUE) +
   scale_x_discrete(labels=percent_f) +
-  facet_grid(dataset ~ pheno, labeller=labeller(dataset=dataset_names)) +
+  # facet_wrap(~dataset, labeller=labeller(dataset=dataset_names), nrow=2, strip.position = "right") +
+  # guides(x = ggh4x::guide_axis_nested(delim = "&", inv=TRUE)) +
+  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom") +
+  facet_grid(dataset ~ pheno, labeller=labeller(dataset=dataset_names), scales="free_x") +
   ggtitle("Errors in centile scores of global features in ComBat-GAM and ComBatLS")
+sex_err_ratio.plt
 ```
 
 Plot on brains for 60% F imbalance:
