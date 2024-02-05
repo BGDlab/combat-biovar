@@ -69,6 +69,14 @@ prop_abs.cent_t.tests_df <- bind_rows(prop_abs.cent_t.tests, .id = "column_label
 ### save results
 fwrite(prop_abs.cent_t.tests_df, file=paste0(data_path, "/", d.type, "_featurewise_cent_t_tests.csv"))
 
+#write out full global results for plotting
+prop_abs.cent_t.tests_global <- lapply(ratio_list, centile.t.tests.full_result, feature_list=pheno_abs.diff.list, comp_multiplier=length(ratio_list)) #FDR correction across 11 M:F permutations
+names(prop_abs.cent_t.tests_global) <- names_list
+prop_abs.cent_t.tests_df_global <- bind_rows(prop_abs.cent_t.tests_global, .id = "column_label") %>%
+  dplyr::filter(pheno %in% c("GMV", "sGMV", "WMV", "Ventricles"))
+### save results
+fwrite(prop_abs.cent_t.tests_df_global, file=paste0(data_path, "/", d.type, "_featurewise_cent_t_tests_global.csv"))
+
 ############################################
 ## Z-SCORE ERROR TESTS ###
 ############################################
