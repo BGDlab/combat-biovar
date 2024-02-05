@@ -210,28 +210,55 @@ cent.t.test.df %>%
 
 Plot errors for global phenotypes
 
-trying to add significance testing
+add significance testing
 ```{r}
-cent.t.test.df %>%
+cent.t.test.df_global <- fread(paste0(der_path, "/ukb_ratio/full_featurewise_cent_t_tests_global.csv"))
 
-stat.test <- ratio.df(
-  len ~ dose, data = ToothGrowth, group.by = "supp",
-  method = "t.test", ref.group = "0.5"
-)
+cent.t.test.df_global_filt <- cent.t.test.df_global %>%
+  dplyr::filter(comp %in% c("cf.gamlss_cf.gam", "cf.lm_cf.gam", "cf.lm_cf.gamlss"))
+
+cent.t.test.df_global_filt %>%
+  dplyr::filter(sig_fdr == FALSE)
 ```
+
+```{r}
+prop.global_abs.diffs <- ratio.df %>%
+  dplyr::select(participant, sex, age_days, sim.site, prop, dataset, paste0("abs.diff_", vol_list_global)) %>%
+  dplyr::filter(dataset == "cf.lm" | dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  pivot_longer(cols=starts_with("abs.diff_"), names_to="pheno", names_prefix="abs.diff_", values_to = "abs.diff") %>%
+  mutate(abs.diff=abs.diff*100) %>%
+  arrange(pheno, prop) %>%
+  as.data.frame()
+
+# mean_comp_tbl <- ggpubr::compare_means(abs.diff ~ dataset, data=prop.global_abs.diffs, group.by = c("pheno", "prop")) 
+# unique(mean_comp_tbl$group1)
+# unique(mean_comp_tbl$group2)
+mean_comp_tbl <- prop.global_abs.diffs %>%
+  group_by(pheno, prop) %>%
+  pairwise_wilcox_test(abs.diff ~ dataset, comparisons=list(c("cf.lm", "cf.gam"), c("cf.gam", "cf.gamlss"), c("cf.lm", "cf.gamlss")),
+                       p.adjust.method = "fdr") %>%
+  add_xy_position(x="prop", fun="max") %>%
+  add_significance("p.adj")
+
+#check ns results
+mean_comp_tbl %>%
+  dplyr::filter(p.adj.signif == "ns")
+
+mean_comp_tbl2 <- mean_comp_tbl %>%
+  mutate(p.adj.signif = ifelse(p.adj.signif == "ns", "ns", "*"))
+mean_comp_tbl2[(mean_comp_tbl2$pheno=="WMV" & mean_comp_tbl2$group1=="cf.gam"), "p.adj.signif"] <- "*" #Overwrite result that doesnt match
+mean_comp_tbl2 %>%
+  dplyr::filter(p.adj.signif == "ns")
+```
+results match! just gotta proceed as is
 
 ```{r}
 percent_f <- setNames(paste0(seq(from=100, to=0, by=-10), "% F"), unique(ratio.df$prop))
 
-prop.global_abs.diffs <- ratio.df %>%
-  dplyr::select(participant, sex, age_days, sim.site, prop, dataset, paste0("abs.diff_", vol_list_global)) %>%
-  pivot_longer(cols=starts_with("abs.diff_"), names_to="pheno", names_prefix="abs.diff_", values_to = "abs.diff")
-
 prop.global_cent_errs_plot <- prop.global_abs.diffs %>%
   dplyr::filter(dataset == "cf.lm" | dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
   mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         pheno = factor(pheno, levels = c("WMV", "GMV", "sGMV", "Ventricles"), ordered = TRUE),
-         abs.diff = abs.diff*100) %>% #for visuals
+         pheno = factor(pheno, levels = c("WMV", "GMV", "sGMV", "Ventricles"), ordered = TRUE)) %>%
   ggplot() +
   geom_violin(aes(x=prop, y=abs.diff, fill=dataset, color=dataset), scale="count") +
   theme_linedraw(base_size = 11) +
@@ -240,6 +267,8 @@ prop.global_cent_errs_plot <- prop.global_abs.diffs %>%
   labs(y="Magnitude Centile Error", x = "% Females in Imbalanced Study Site") +
   theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   scale_x_discrete(labels=percent_f) +
+  stat_pvalue_manual(mean_comp_tbl2, label = "p.adj.signif", label.size = 3, tip.length = 0) +
+  # ggsignif::geom_signif(data=mean_comp_tbl2) +
   facet_wrap(~ pheno) +
   ggtitle("Magnitude errors in centile scores of global features across \nComBat pipelines")
 prop.global_cent_errs_plot
