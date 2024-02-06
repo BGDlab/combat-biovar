@@ -178,9 +178,7 @@ touch $bash_script
 
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext' 'perm'" > $bash_script
 ## qsub bash script
-qsub -N perm_cent_tests -o $bash_dir/cent_test_out.txt -e $bash_dir/cent_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
-
-# sex-bias test of subj-means NEED TO ADD THIS!!!!!!!!!!!
+qsub -N perm_cent_tests_noext -o $bash_dir/cent_test_noext_out.txt -e $bash_dir/cent_test_noext_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
 
 # featurewise sex bias tests
 ## based on `qsub_sex_bias_test.sh`
@@ -190,7 +188,7 @@ touch $bash_script
 
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext' 'perm'" > $bash_script
 ## qsub bash script
-qsub -N perm_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+qsub -N perm_sex-bias_noext -o $bash_dir/sex_bias_test__noext_out.txt -e $bash_dir/sex_bias_test_noext_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
 
 #######################################################
 # CHECK FOR OUTPUTS
