@@ -181,6 +181,7 @@ sex.bias.feat.t.tests <- function(df, feature_list, comp_multiplier=1, ID_col=NA
   
   #add back source file info in ID_col if needed
   if (!is.na(ID_col)) {
+    print(paste("ID col vals:", unique(df[[ID_col]])))
     stopifnot(length(unique(df[[ID_col]])) == 1)
     result_df[[ID_col]] <- unique(df[[ID_col]])
   }
