@@ -33,7 +33,7 @@ rm_ext_cents <- function(og.data, feat_list, col_select){
         dplyr::filter(dataset != "raw") #now drop raw vals
     } else if (col_select == "perm"){
       df <- og.data %>%
-        dplyr::select(participant, sex, age_days, sim.site, Source_File, dataset, prop, all_of(list)) %>% #get correct cols
+        dplyr::select(participant, sex, age_days, sim.site, Source_File, dataset, perm, all_of(list)) %>% #get correct cols
         group_by(participant) %>% 
         dplyr::filter(!any((get(pheno) < 0.05 | get(pheno) > 0.95) & dataset == "raw")) %>% #drop ppts if raw centile is <0.05 or >0.95
         ungroup() %>%
@@ -65,7 +65,7 @@ rm_ext_z <- function(og.data, feat_list, col_select){
         dplyr::filter(dataset != "raw") #now drop raw vals
     } else if (col_select == "perm"){
       df <- og.data %>%
-        dplyr::select(participant, sex, age_days, sim.site, Source_File, dataset, prop, all_of(list)) %>% #get correct cols
+        dplyr::select(participant, sex, age_days, sim.site, Source_File, dataset, perm, all_of(list)) %>% #get correct cols
         group_by(participant) %>% 
         dplyr::filter(!any((get(pheno) < -2 | get(pheno) > 2) & dataset == "raw")) %>%
         dplyr::filter(dataset != "raw") #now drop raw vals
@@ -106,7 +106,7 @@ if (d.type == "perm"){
   perm.raw.df <- perm.raw.df %>%
     mutate(Source_File = as.factor(basename(perm.raw.csv[[1]]))) %>%
     mutate(dataset = gsub("_data|_predictions.csv|perm-|[0-9]|-", "", Source_File),
-           prop=gsub("-raw_predictions.csv", "", Source_File))
+           perm=gsub("-raw_predictions.csv", "", Source_File))
   print(paste("raw cent dataframe dim:", dim(perm.raw.df)))
   
   #MERGE DFS
