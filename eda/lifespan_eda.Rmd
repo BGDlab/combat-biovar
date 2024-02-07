@@ -44,6 +44,10 @@ cn.df.unique <- cn.df %>%
          log_age = log(age_days, base=10))
 
 nrow(cn.df.unique) == n_unique(cn.df.unique$participant)
+
+cn.df.unique%>%
+  dplyr::filter(study != "UKB" & age_days <= (365.25*18)) %>%
+  nrow()
 ```
 
 ```{r}

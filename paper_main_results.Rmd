@@ -578,9 +578,6 @@ stat.test2 <- stat.test %>%
 
 ```{r}
 dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
-addline_format <- function(x,...){
-    gsub('\\s','\n',x)
-}
 
 big_violin_plt <- plt.df %>%
   ggplot(aes(x=pheno, y=diff)) +

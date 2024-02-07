@@ -77,21 +77,46 @@ Sample
 sample_boxplot <- ggplot(cent_deltas_df, aes(y=reorder(study, -age_years), x=age_years, color=sex)) +
   geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
   theme_linedraw(base_size = 11) +
-  labs(color="Sex", x = "Age (Years)", y = "Study")
+  theme(axis.title.x=element_blank(), axis.text.x=element_blank()) +
+  labs(color="Sex", y = "Study")
+
+#overall sample
+full_boxplot <- 
+  cent_deltas_df %>%
+  mutate(ylab = "   Full Sample") %>%
+  ggplot(aes(y=ylab, x=age_years, color=sex)) +
+  geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
+  theme_linedraw(base_size = 11) +
+  # theme(plot.margin = margin(0,0,0,0, 'cm')) +
+  # scale_y_discrete(labels=c("1" = "Full Sample")) +
+  labs(color="Sex", x = "Age (Years)", y="")
 
 sample_barplot <- ggplot(cent_deltas_df) +
   geom_bar(aes( x=..count../tapply(..count.., ..y.. ,sum)[..y..], y=reorder(study, -age_years), fill=sex)) + 
   scale_x_continuous(labels = scales::percent) +
   geom_vline(xintercept = .5, color="lightgray", linetype="longdash") +
   theme_linedraw(base_size = 11) +
-  theme(axis.ticks.y = element_blank(), axis.text.y=element_blank(), axis.title.y=element_blank()) +
-  labs(color="Sex", x = "% Study")
+  theme(axis.ticks.y = element_blank(), axis.text=element_blank(), axis.title=element_blank()) +
+  labs(color="Sex")
 
-ggarrange(sample_boxplot, sample_barplot, 
-          nrow=1, ncol=2, 
-          align = "h", 
+full_barplot <- 
+  cent_deltas_df %>%
+  mutate(ylab = "Full Sample") %>%
+  ggplot() +
+  geom_bar(aes(x=..count../tapply(..count.., ..y.. ,sum)[..y..], y=ylab, fill=sex)) + 
+  scale_x_continuous(labels = scales::percent) +
+  geom_vline(xintercept = .5, color="lightgray", linetype="longdash") +
+  theme_linedraw(base_size = 11) +
+  theme(axis.ticks.y = element_blank(), axis.text.y=element_blank(), axis.title.y=element_blank()) +
+  labs(color="Sex", x = "Sex")
+
+ggarrange(sample_boxplot, sample_barplot,
+          full_boxplot, full_barplot,
+          nrow=2, ncol=2, 
+          align = "hv", 
           common.legend = TRUE,
-          widths=c(2, 1))
+          widths=c(2, 1),
+          heights=c(10, 1))
 ```
 
 ```{r}
@@ -207,8 +232,8 @@ delta_sum.df %>%
 age_effects.plt <- delta_sum.df_piv %>%
   ggplot(aes(x=mean_age_yrs, y=(study_mean_abs.delta*100))) +
   geom_count(aes(size=study_n, color=sex_prop_Female)) +
-  paletteer::scale_color_paletteer_c("grDevices::Oslo", name = "Proportion \nFemale") +
-  geom_smooth(method="lm", color="#060B14FF") +
+  paletteer::scale_color_paletteer_c("ggthemes::Blue", name = "Proportion \nFemale") +
+  geom_smooth(method="lm", color="#2A5783FF") +
   theme_linedraw(base_size = 11) +
   labs(size="Study N", x = "Mean Age (Years)", y = "Mean Absolute Difference in Centile Scores")
 ```
@@ -249,8 +274,8 @@ delta_sum.df %>%
 sex_effects.plt <- delta_sum.df_piv %>%
   ggplot(aes(x=sex_prop_Female, y=(study_mean_delta*100))) +
   geom_count(aes(size=study_n, color=mean_age_yrs)) +
-  geom_smooth(method="lm", color="#006027FF") +
-  paletteer::scale_color_paletteer_c("grDevices::Greens 2", name = "Mean Age \n(Years)") +
+  geom_smooth(method="lm", color="#24693DFF") +
+  paletteer::scale_color_paletteer_c("ggthemes::Green", name = "Mean Age \n(Years)") +
   theme_linedraw(base_size = 11) +
   labs(size="Study N", x = "Proportion Female", y = "Mean Difference in Centile Scores")
 
@@ -373,7 +398,7 @@ regional.delta_plt <- cent_delta_lms.df_toplt %>%
              aes(fill = estimate)) +
   facet_grid(term ~ pheno_cat, labeller = labeller(term = as_labeller(term_names))) + 
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Beta", limits = c(-0.1, 0.1))
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Beta", limits = c(-0.11, 0.11), breaks=c(-0.1, 0, 0.1))
 
 #Global
 global.delta_plt <- cent_delta_lms.df_toplt %>%
@@ -393,21 +418,23 @@ global.delta_plt <- cent_delta_lms.df_toplt %>%
              aes(fill = estimate)) +
   facet_grid(term ~ pheno_cat, labeller = labeller(term = as_labeller(term_names)), switch = 'y') + 
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Beta", limits = c(-0.1, 0.1))
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Beta", limits = c(-0.11, 0.11), breaks=c(-0.1, 0, 0.1))
 ```
 
 #FIGURE 4
 
 ```{r}
 # study demographics
-fig4 <- ggarrange(
+fig5 <- ggarrange(
   ggarrange(
 ggarrange(sample_boxplot, sample_barplot,
-          nrow=1, ncol=2, 
-          align = "h", 
+          full_boxplot, full_barplot,
+          nrow=2, ncol=2, 
+          # align = "hv", 
           common.legend = TRUE,
-          legend="bottom",
-          widths=c(2, 1)),
+          legend = "bottom",
+          widths=c(2, 1),
+          heights=c(6, 1)),
 
 # featurewise effects
 ggarrange(global.delta_plt, regional.delta_plt,
@@ -432,7 +459,7 @@ nrow=1, ncol=2,
 widths=c(1, 1.3)
 )
 
-fig4_annotate <- annotate_figure(fig4, top = text_grob("Figure 4. Differences in centile scores of lifespan consortium data when harmonized with ComBat-GAM and ComBatLS", color = "black", hjust = 0, x = 0))
-fig4_annotate
-ggsave("figs/figure_4.jpeg", fig4_annotate, width=12, height=10, units="in")
+fig5_annotate <- annotate_figure(fig5, top = text_grob("Figure 5. Differences in centile scores of lifespan consortium data when harmonized with ComBat-GAM and ComBatLS", color = "black", hjust = 0, x = 0))
+fig5_annotate
+ggsave("figs/figure_5.jpeg", fig5_annotate, width=12, height=10, units="in")
 ```
