@@ -184,6 +184,7 @@ ggplot() +
   theme(axis.ticks.x = element_blank(), axis.text.x=element_blank(), panel.spacing.x = unit(.1, "lines")) +
   xlab("Simulated Site") +
   ylab("Subjects") +
+  labs(fill="Sex") +
   facet_wrap(~prop, nrow=1, labeller = as_labeller(percent_f))
 ```
 
@@ -233,21 +234,41 @@ prop.global_abs.diffs <- ratio.df %>%
 # mean_comp_tbl <- ggpubr::compare_means(abs.diff ~ dataset, data=prop.global_abs.diffs, group.by = c("pheno", "prop")) 
 # unique(mean_comp_tbl$group1)
 # unique(mean_comp_tbl$group2)
-mean_comp_tbl <- prop.global_abs.diffs %>%
+mean_comp_tbl_calc <- prop.global_abs.diffs %>%
   group_by(pheno, prop) %>%
   pairwise_wilcox_test(abs.diff ~ dataset, comparisons=list(c("cf.lm", "cf.gam"), c("cf.gam", "cf.gamlss"), c("cf.lm", "cf.gamlss")),
-                       p.adjust.method = "fdr") %>%
-  add_xy_position(x="prop", fun="max") %>%
+                       p.adjust.method = "fdr") 
+
+mean_comp_tbl <- mean_comp_tbl_calc %>%
+  mutate(comp = factor(paste(group1, group2, sep="_"), ordered=TRUE, levels=c("cf.gamlss_cf.lm", "cf.gam_cf.lm", "cf.gam_cf.gamlss"))) %>%
+  arrange(prop, comp) %>%
+  add_xy_position(x="prop", fun="max", comparisons=list(c("cf.lm", "cf.gam"), c("cf.gam", "cf.gamlss"), c("cf.lm", "cf.gamlss"))) %>%
   add_significance("p.adj")
 
 #check ns results
 mean_comp_tbl %>%
   dplyr::filter(p.adj.signif == "ns")
 
-mean_comp_tbl2 <- mean_comp_tbl %>%
-  mutate(p.adj.signif = ifelse(p.adj.signif == "ns", "ns", "*"))
-mean_comp_tbl2[(mean_comp_tbl2$pheno=="WMV" & mean_comp_tbl2$group1=="cf.gam"), "p.adj.signif"] <- "*" #Overwrite result that doesnt match
-mean_comp_tbl2 %>%
+#get max w/in each pheno, prop & dataset
+max_abs.errs <- prop.global_abs.diffs %>%
+  group_by(pheno, prop, dataset) %>%
+  summarize(max_err = max(abs.diff)) %>%
+  ungroup() %>%
+  pivot_wider(id_cols=c(pheno, prop), names_from=dataset, values_from=max_err, names_prefix="max_")
+  
+mean_comp_tbl2 <- full_join(mean_comp_tbl, max_abs.errs)
+
+mean_comp_tbl3 <- mean_comp_tbl2 %>%
+  mutate(p.adj.signif = ifelse(p.adj.signif == "ns", "ns", "*"),
+         xmax=case_when(group1=="cf.gamlss" | group2== "cf.gamlss" ~ (x+.266667),
+                        TRUE ~  x),
+         xmin=case_when(group2=="cf.lm" ~ (x-.266667),
+                        TRUE ~  x),
+         y.position=case_when(comp == "cf.gamlss_cf.lm" ~ max_cf.lm + 3.3,
+                              comp == "cf.gam_cf.lm" ~ max_cf.lm + 2,
+                              TRUE ~ max_cf.gam + 1.8))
+mean_comp_tbl3[(mean_comp_tbl3$pheno=="WMV" & mean_comp_tbl3$group1=="cf.gam"), "p.adj.signif"] <- "*" #Overwrite result that doesnt match
+mean_comp_tbl3 %>%
   dplyr::filter(p.adj.signif == "ns")
 ```
 results match! just gotta proceed as is
@@ -264,17 +285,16 @@ prop.global_cent_errs_plot <- prop.global_abs.diffs %>%
   theme_linedraw(base_size = 11) +
   scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
-  labs(y="Magnitude Centile Error", x = "% Females in Imbalanced Study Site") +
+  labs(y="Absolute Centile Error", x = "% Females in Imbalanced Site") +
   theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   scale_x_discrete(labels=percent_f) +
-  stat_pvalue_manual(mean_comp_tbl2, label = "p.adj.signif", label.size = 3, tip.length = 0) +
+  stat_pvalue_manual(mean_comp_tbl3, label = "p.adj.signif", label.size = 2, tip.length = 0) +
   # ggsignif::geom_signif(data=mean_comp_tbl2) +
-  facet_wrap(~ pheno) +
-  ggtitle("Magnitude errors in centile scores of global features across \nComBat pipelines")
+  facet_wrap(~ pheno)
+  # ggtitle("Magnitude errors in centile scores of global features across \nComBat pipelines")
 prop.global_cent_errs_plot
 #ggsave("figs/global_centile_errors.jpeg", global_cent_errs_plot)
 ```
-*need to add stat tests to plot*
 
 Also visualize by sex
 ```{r}
@@ -288,7 +308,7 @@ prop.global_cent_errs_plot_bysex <- prop.global_abs.diffs %>%
   theme_linedraw(base_size = 11) +
   scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
-  labs(y="Magnitude Centile Error", x = "% Females in Imbalanced Study Site") +
+  labs(y="Magnitude Centile Error", x = "% Females in Imbalanced Site") +
   theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   scale_x_discrete(labels=percent_f) +
   facet_grid(sex ~ pheno) +
@@ -404,14 +424,15 @@ sex_err_ratio.plt <- ratio.df %>%
   theme_linedraw(base_size = 11) +
   # scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   # scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
-  labs(y="Centile Error", x = "Imbalanced Study Site Composition") +
+  labs(y="Centile Error", x = "% Females in Imbalanced Site") +
   stat_pvalue_manual(stat_merge2, label = "p.val_fdr.signif", label.size = 3, tip.length = 0, hide.ns = TRUE, remove.bracket = TRUE) +
   scale_x_discrete(labels=percent_f) +
   # facet_wrap(~dataset, labeller=labeller(dataset=dataset_names), nrow=2, strip.position = "right") +
   # guides(x = ggh4x::guide_axis_nested(delim = "&", inv=TRUE)) +
   theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom") +
-  facet_grid(dataset ~ pheno, labeller=labeller(dataset=dataset_names), scales="free_x") +
-  ggtitle("Errors in centile scores of global features in ComBat-GAM and ComBatLS")
+  labs(fill="Sex", color="Sex")+
+  facet_grid(dataset ~ pheno, labeller=labeller(dataset=dataset_names), scales="free_x")
+  # ggtitle("Errors in centile scores of global features in ComBat-GAM and ComBatLS")
 sex_err_ratio.plt
 ```
 
@@ -646,19 +667,19 @@ full_join(noext.z.t.test.df_reduced, z.t.test.df_reduced) %>%
 Test sex-biases in z errors w/in each feature
 **COME BACK TO THIS**
 
-## FIGURE 3
+## FIGURE 4
 ```{r}
-fig_3 <- ggarrange(ggarrange(sampling.plt, prop.global_cent_errs_plot, 
+fig_4 <- ggarrange(ggarrange(sampling.plt, prop.global_cent_errs_plot, 
                              nrow = 2, labels = c("A", "B"),
                              heights=c(1,2)), #nest 1st col
           sex_err_ratio.plt,
           ncol = 2,
-          # widths=c(1, 1.2),
+          widths=c(1.1, 1),
           labels = c(NA, "C")                                    
 ) 
 
-fig_3_annotate <- annotate_figure(fig_3, top = text_grob("Figure 3. Varying M:F ratios across site simulations", color = "black", hjust = 0, x = 0))
-fig_3_annotate
-ggsave("figs/figure_3.jpeg", fig_3_annotate, width=32, height=20, units="cm")
+fig_4_annotate <- annotate_figure(fig_4, top = text_grob("Figure 4. Varying M:F ratios across site simulations", color = "black", hjust = 0, x = 0))
+fig_4_annotate
+ggsave("figs/figure_4.jpeg", fig_4_annotate, width=33, height=20, units="cm")
 ```
 
