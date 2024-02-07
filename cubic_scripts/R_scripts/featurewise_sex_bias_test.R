@@ -42,6 +42,15 @@ for (file in raw_files) {
   assign("diffs_perm.list", df_list)
 }
 
+print(paste(length(diffs_perm.list), "dataframes loaded"))
+#print(ID_col)
+
+#print(names(diffs_perm.list[[1]]))
+
+#print("dataframes ID'd as:")
+#lapply(diffs_perm.list, function(x){print(unique(x[[ID_col]]))})
+
+
 #centile t-tests
 cent.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=diff_list, ID_col=ID_col)
 
