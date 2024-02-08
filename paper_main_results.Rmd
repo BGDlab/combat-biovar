@@ -346,9 +346,8 @@ geom_signif(y_position = c(29, 30.5, 4), xmin = c(0.7, 0.7, 1),
   geom_signif(y_position = c(24, 25.5, 7.5), xmin = c(3.7, 3.7, 4), 
               xmax = c(4, 4.3, 4.3), annotation = c("***","***", "***"),
               tip_length = 0, vjust = 0.6) +
-  labs(y="Magnitude Centile Error", x = "Phenotype") +
-  theme(plot.title = element_text(size=12)) +
-  ggtitle("Magnitude error in centile scores")
+  labs(y="Absolulte Centile Error", x = "Feature") +
+  theme(plot.title = element_text(size=12))
 global_cent_errs_plot
 # ggsave("figs/global_centile_errors.jpeg", global_cent_errs_plot)
 ```
@@ -427,15 +426,44 @@ p_diff <- ggarrange(
   common.legend = TRUE, legend = "bottom"
   )
 
-p_diff_annotate <- annotate_figure(p_diff, top = text_grob("Magnitude Centile Errors", color = "black", hjust = 0, x = 0.06))
-p_diff_annotate
+# p_diff_annotate <- annotate_figure(p_diff)
+# p_diff_annotate
+```
+plot w ref sites
+```{r, eval=FALSE}
+#get means w/in feature 
+mean.cent.diffs.long <- diffs.df %>%
+  dplyr::select(sex, dataset, pheno, pheno_abs.diff.list) %>%
+  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss", "cf.lm_refA", "cf.gam_refA", "cf.gamlss_refA"), ordered = TRUE)) %>%
+  group_by(dataset) %>%
+  summarize(across(starts_with("abs.diff_"), mean)) %>%
+  ungroup() %>%
+  pivot_longer(cols=starts_with("abs.diff_"), values_to="cent_abs.diff", names_to = "pheno", names_prefix = "abs.diff_") %>%
+  # mutate(pheno=gsub(".z", "", pheno)) %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)),
+      label = sub("_[^_]*_", "_", pheno))
+
+mean.cent.diffs.long %>%
+  dplyr::filter(dataset != "ukb_CN") %>%
+  ggplot() +
+  geom_histogram(aes(x=cent_abs.diff, fill=dataset, y = stat(width*density)), color="black", alpha=0.6, position="identity") +
+  theme_linedraw(base_size = 11) +
+  facet_grid(dataset~pheno_cat) +
+  scale_y_continuous(labels = scales::percent) + 
+  labs(y="Percent Features", x = "Mean Absolute Centile Error") +
+  ggtitle("Absolute errors in centiles of brain structure features across ComBat processing pipelines")
 ```
 
 ### Sex-Biases
 
 Playing with different ways to visualize each subject's average centile error (i.e., raw data centile - combatted data centile) and magnitude centile error (absolute value)
 
-```{r}
+```{r, eval=FALSE}
 subj_sum.df %>%
   dplyr::filter(dataset == "cf.gamlss" | dataset == "cf.gam" | dataset == "cf.lm") %>%
   mutate(mean_cent_abs.diff = mean_cent_abs.diff*100) %>% #for visuals
@@ -530,6 +558,16 @@ sex_t_tests_in_feat.df %>%
     as.data.frame()
 ```
 
+```{r,eval=FALSE}
+#view combat gam and combat LS ns
+ns.sex_diff_filt.gam <- sex_t_tests_in_feat.df %>%
+  dplyr::filter(sig_fdr==FALSE & dataset =="cf.gam") %>%
+  arrange(pheno)
+ns.sex_diff_filt.gamlss <- sex_t_tests_in_feat.df %>%
+  dplyr::filter(sig_fdr==FALSE & dataset =="cf.gamlss") %>%
+  arrange(pheno)
+```
+
 quick plot for median diffs
 ```{r}
 sex_t_tests_in_feat.df %>%
@@ -591,11 +629,31 @@ big_violin_plt <- plt.df %>%
   facet_wrap(~dataset, labeller=labeller(dataset=dataset_names), nrow=2) +
   guides(x = ggh4x::guide_axis_nested(delim = "&")) +
   theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), ggh4x.axis.nesttext.x = element_text(angle = 90, vjust=0.4), legend.position="top") +
-  labs(fill = "Sex", color="Sex") +
-  ggtitle("Male and female centile errors")
+  labs(fill = "Sex", color="Sex")
+  # ggtitle("Male and female centile errors")
 big_violin_plt
 ggsave("figs/big_sex_violin_plt.jpeg", big_violin_plt, width=12, height=6, units="in")
 ```
+
+```{r, eval=FALSE}
+big_violin_plt_wlabels <- plt.df %>%
+  ggplot(aes(x=pheno, y=diff)) +
+  geom_violin(aes(x=interaction(pheno,pheno_cat, sep = "&"), y=diff, fill=sex, color=sex)) +
+  # geom_violin(aes(fill=sex, color=sex)) +
+  theme_linedraw(base_size = 11) +
+  labs(y="Centile Error", x = "Brain Feature") +
+  theme(plot.title = element_text(size=12)) +
+  stat_pvalue_manual(stat.test2, label = "p.adj.signif", label.size = 2.5, tip.length = 0, remove.bracket = TRUE) +
+  # facet_grid2(dataset ~ pheno_cat, labeller=labeller(dataset=dataset_names), scales="free_x", space = "free_x", switch="x", strip = custom_strip) +
+  facet_wrap(~dataset, labeller=labeller(dataset=dataset_names), nrow=2) +
+  guides(x = ggh4x::guide_axis_nested(delim = "&")) +
+  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust=0.4, size=6), ggh4x.axis.nesttext.x = element_text(angle = 90, vjust=0.4), legend.position="top") +
+  labs(fill = "Sex", color="Sex")
+  # ggtitle("Male and female centile errors")
+big_violin_plt_wlabels
+ggsave("figs/big_sex_violin_plt_wlabels.jpeg", big_violin_plt_wlabels, width=16, height=9, units="in")
+```
+
 
 ```{r}
 sex_t_tests_in_feat.df2 <- sex_t_tests_in_feat.df %>%
@@ -636,7 +694,7 @@ sex.var.plot <- ggplot(sex.var.plot.df) +
   #            aes(fill=median_sex_diff)) +
   facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Sex Effect", limits = c(-6, 6)) #
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nCentile Error", limits = c(-6, 6)) #
 sex.var.plot
 ```
 
@@ -670,7 +728,7 @@ sex.var.plot.global <- ggplot(sex.var.plot.global.df) +
   facet_grid(dataset~pheno_cat) + 
   theme_linedraw(base_size=12) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork",  limits = c(-6, 6), name = "Sex Effect") #,
+  paletteer::scale_fill_paletteer_c("grDevices::Cork",  limits = c(-6, 6), name = "Male - Female Median \nCentile Error") #,
 # sex.var.plot.global
 ```
 
@@ -746,7 +804,7 @@ dim(no_ext)
 Rerun stats tests
 
 centile error diffs
-```{r}
+```{r, message=FALSE}
 centile.t.tests(no_ext, feature_list=pheno_abs.diff.list)
 ```
 
@@ -929,11 +987,41 @@ z.diffs.plot
 ggsave("figs/win_feature_mean_z_abs.diffs.jpeg", z.diffs.plot)
 ```
 
+plot w ref sites
+```{r, eval=FALSE}
+#get means w/in feature 
+mean.z.diffs.long <- diffs.df %>%
+  dplyr::select(sex, dataset, pheno, z.pheno_abs.diff.list) %>%
+  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss", "cf.lm_refA", "cf.gam_refA", "cf.gamlss_refA"), ordered = TRUE)) %>%
+  group_by(dataset) %>%
+  summarize(across(starts_with("abs.diff_"), mean)) %>%
+  ungroup() %>%
+  pivot_longer(cols=starts_with("abs.diff_"), values_to="z_abs.diff", names_to = "pheno", names_prefix = "abs.diff_") %>%
+  mutate(pheno=gsub(".z", "", pheno)) %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)),
+      label = sub("_[^_]*_", "_", pheno))
+
+mean.z.diffs.long %>%
+  dplyr::filter(dataset != "ukb_CN") %>%
+  ggplot() +
+  geom_histogram(aes(x=z_abs.diff, fill=dataset, y = stat(width*density)), color="black", alpha=0.6, position="identity") +
+  theme_linedraw(base_size = 11) +
+  facet_grid(dataset~pheno_cat) +
+  scale_y_continuous(labels = scales::percent) + 
+  labs(y="Percent Features", x = "Mean Absolute Z-Score Error") +
+  ggtitle("Absolute errors in zscores of brain structure features across ComBat processing pipelines")
+```
+
 ### Sex-Biases
 
 Visualize
 
-```{r}
+```{r, eval=FALSE}
 subj_sum.df %>%
   dplyr::filter(dataset == "cf.gamlss" | dataset == "cf.gam" | dataset == "cf.lm") %>%
   ggplot() +
@@ -988,7 +1076,7 @@ print(p)
 
 skewed but ~ variances? sticking with t test of ranks. Also calculating the median z-score errors of males and females
 
-```{r, warning=FALSE}
+```{r, message=FALSE}
 z.sex_t_tests_in_feat.df <- sex.bias.feat.t.tests(diffs.df, feature_list=z.pheno_diff_list)
 
 #also get summary
@@ -1001,7 +1089,7 @@ z.sex_t_tests_in_feat.df %>%
     as.data.frame()
 ```
 
-### W/o extremes
+<!-- ### W/o extremes -->
 Are extreme z-scores (<-2 and >2) driving observed results?
 
 Get raw centiles and merge with centile differences
@@ -1070,7 +1158,7 @@ z.no.ext_merge <- full_join(z.no.ext_mean.diffs.long, mean.z.diffs.long)
 z.no.ext_merge %>%
   ggplot() +
   geom_boxplot(aes(x=type, y=z_abs.diff, fill=dataset)) +
-  ggtitle("W/in feature average magnitude of centile error, w/ and w/o extreme subjects")
+  ggtitle("W/in feature average magnitude of z error, w/ and w/o extreme subjects")
 ```
 
 w/in feature sex-biases
@@ -1243,11 +1331,10 @@ wmv_centile_fan <- ggplot(wmv.df) +
   facet_wrap(~sex) + 
   scale_linetype_manual(values = c('ukb-CN-simsites'= "dotted", cf.gam = "solid", cf.gamlss = "solid", cf.lm = "solid"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values = c('ukb-CN-simsites'= "black", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) + 
-  geom_label(data=tmp_labels, aes(x=age_years, y=value, label=as.character(centile)), nudge_x = 0.35, size=2) +
-  xlab("Age (yrs)") + ylab("Volume (mm3)") +
+  geom_label(data=tmp_labels, aes(x=age_years, y=value, label=as.character(centile)), nudge_x = 0.35, size=2.5) +
+  xlab("Age (yrs)") + ylab("White Matter Volume (mm3)") +
   theme_linedraw(base_size = 11) +
-  theme(plot.title = element_text(size=12), legend.position="bottom") +
-  labs(title="White matter volume brain charts")
+  theme(plot.title = element_text(size=12), legend.position="bottom")
 wmv_centile_fan
 ```
 Look at other phenotypes
@@ -1365,9 +1452,9 @@ ggplot(r.sa.pc.df) +
   labs(title="SA of right postcentral brain charts")
 ```
 
-## METHODS FIG
+## FIGURE 1: METHODS
 
-toy brain chart for figs
+toy brain chart for figs, diagram portion done in canva
 
 ```{r}
 ven.df %>%
@@ -1412,10 +1499,10 @@ rbind(cf.df, cf.gam.df, cf.gamlss.df) %>%
   scale_x_continuous(labels=c('', '', '', 0, '', '', ''))
 ```
 
-## FIGURE 1
+## FIGURE 2
 
 not sure whether to include
-```{r}
+```{r, eval=FALSE}
 #look at sex distributions of ppts across sites
 data.p <- subj_sum.df %>%
   count(sim.site, sex) %>% 
@@ -1430,29 +1517,29 @@ data.p <- subj_sum.df %>%
 Combine plots
 
 ```{r}
-fig_1 <- ggarrange(
+fig_2 <- ggarrange(
   wmv_centile_fan,
-  ggarrange(global_cent_errs_plot, p_diff_annotate, ncol=1, nrow=2, heights = c(1.2, 2), common.legend = FALSE, labels=c("B", "C")),
+  ggarrange(global_cent_errs_plot, p_diff, ncol=1, nrow=2, heights = c(1.2, 2), common.legend = FALSE, labels=c(NA, "C"), vjust = c(-0.25)),
   ncol=2, nrow=1, 
-  labels=c("A", NA),
+  labels=c("A", "B"),
   widths=c(1.1, 1)
   #hjust=0.01,
   # align = "hv"
   )
 
-fig_1_annotate <- annotate_figure(fig_1, top = text_grob("Figure 1. Choice of ComBat configuration can induce errors in brain feature centile scores",
+fig_2_annotate <- annotate_figure(fig_2, top = text_grob("Figure 2. Choice of ComBat configuration can induce errors in brain feature centile scores",
                color = "black", hjust = 0, x = 0))
-fig_1_annotate
-ggsave("figs/figure_1.jpeg", fig_1_annotate, width=11, height=7, units="in")
+fig_2_annotate
+ggsave("figs/figure_2.jpeg", fig_2_annotate, width=11, height=7, units="in")
 ```
 
 
-## FIGURE 2
+## FIGURE 3
 
 ```{r}
 blank <- ggplot() + theme_void()
 
-fig_2 <- ggarrange(
+fig_3 <- ggarrange(
   ggarrange(blank, 
             annotate_figure(
               ggarrange(sex.var.plot.global, sex.var.plot,
@@ -1461,7 +1548,7 @@ fig_2 <- ggarrange(
   hjust=0.01,
   align = "hv",
   common.legend = TRUE, legend = "right"
-  ), top = text_grob("Differences in males' and females' median centile errors", color = "black", hjust = 0, x = 0)),
+  )),
   blank,
   ncol=3, nrow=1,
   widths=c(.5, 1, .5)),
@@ -1476,7 +1563,7 @@ fig_2 <- ggarrange(
   )
 # fig_2
 
-fig_2_annotate <- annotate_figure(fig_2, top = text_grob("Figure 2. Sex-biases in centile score errors across ComBat configurations", color = "black", hjust = 0, x = 0))
-fig_2_annotate
-ggsave("figs/figure_2.jpeg", fig_2_annotate, width=11.5, height=10, units="in")
+fig_3_annotate <- annotate_figure(fig_3, top = text_grob("Figure 3. Sex-biases in centile score errors across ComBat configurations", color = "black", hjust = 0, x = 0))
+fig_3_annotate
+ggsave("figs/figure_3.jpeg", fig_3_annotate, width=11.5, height=10, units="in")
 ```
