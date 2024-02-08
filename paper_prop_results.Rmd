@@ -325,7 +325,7 @@ cent.subj.mean.test.df <- fread(paste0(der_path, "/ukb_ratio/subj.abs.mean_sex_b
 cent.subj.mean.test.df <- cent.subj.mean.test.df %>%
   mutate(prop = factor(prop, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
          dataset = as.factor(dataset))
-cent.subj.mean.test.df
+# cent.subj.mean.test.df
 ```
 
 ```{r}
@@ -434,6 +434,15 @@ sex_err_ratio.plt <- ratio.df %>%
   facet_grid(dataset ~ pheno, labeller=labeller(dataset=dataset_names), scales="free_x")
   # ggtitle("Errors in centile scores of global features in ComBat-GAM and ComBatLS")
 sex_err_ratio.plt
+```
+
+look at just cf.gam & cf.gamlss
+
+```{r, eval=FALSE}
+cent.subj.sex.test.df %>%
+  dplyr::filter(dataset == "cf.gamlss") %>%
+  dplyr::select(pheno, prop, sig_fdr) %>%
+  arrange(pheno, prop)
 ```
 
 Plot on brains for 60% F imbalance:
@@ -561,7 +570,22 @@ full_join(noext.cent.t.test.df_reduced, cent.t.test.df_reduced) %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 Test sex-biases in centile errors w/in each feature
-**COME BACK TO THIS**
+```{r}
+noext_cent.subj.sex.test.list <- readRDS(paste0(der_path, "/ukb_ratio/no.ext_featurewise_cent_sex_bias_tests.RDS"))
+noext_cent.subj.sex.test.df <- bind_rows(noext_cent.subj.sex.test.list)
+```
+
+simple bar-plot to count regions w sigificant sex-biases
+
+```{r}
+noext_cent.subj.sex.test.df %>%
+  ggplot() +
+  geom_bar(aes(x=prop, fill=sig_fdr)) +
+  facet_wrap(~dataset) +
+  scale_x_discrete(labels=percent_f) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
 
 ## Z-SCORES
 
@@ -633,7 +657,22 @@ z.subj.mean.test.df %>%
 ```
 
 Test w/in feature sex-biases in errors (diff_list) using `featurewise_sex_bias_test.R`, saved as `full_featurewise_cent_sex_bias_tests.RDS`
-**RERUNNING TO KEEP PROP VALS AS EXPLICIT NAMES, COME BACK TO THIS**
+
+```{r}
+z.subj.sex.test.list <- readRDS(paste0(der_path, "/ukb_ratio/full_featurewise_z_sex_bias_tests.RDS"))
+z.subj.sex.test.df <- bind_rows(z.subj.sex.test.list)
+```
+
+simple bar-plot to count regions w sigificant sex-biases
+
+```{r}
+z.subj.sex.test.df %>%
+  ggplot() +
+  geom_bar(aes(x=prop, fill=sig_fdr)) +
+  facet_wrap(~dataset) +
+  scale_x_discrete(labels=percent_f) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
 
 ### W/o extremes
 
@@ -665,17 +704,32 @@ full_join(noext.z.t.test.df_reduced, z.t.test.df_reduced) %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 Test sex-biases in z errors w/in each feature
-**COME BACK TO THIS**
+
+```{r}
+noext_z.subj.sex.test.list <- readRDS(paste0(der_path, "/ukb_ratio/no.ext_featurewise_z_sex_bias_tests.RDS"))
+noext_z.subj.sex.test.df <- bind_rows(noext_z.subj.sex.test.list)
+```
+
+simple bar-plot to count regions w sigificant sex-biases
+
+```{r}
+noext_z.subj.sex.test.df %>%
+  ggplot() +
+  geom_bar(aes(x=prop, fill=sig_fdr)) +
+  facet_wrap(~dataset) +
+  scale_x_discrete(labels=percent_f) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
 
 ## FIGURE 4
 ```{r}
 fig_4 <- ggarrange(ggarrange(sampling.plt, prop.global_cent_errs_plot, 
-                             nrow = 2, labels = c("A", "B"),
+                             nrow = 2, labels = c("A", "C"),
                              heights=c(1,2)), #nest 1st col
           sex_err_ratio.plt,
           ncol = 2,
           widths=c(1.1, 1),
-          labels = c(NA, "C")                                    
+          labels = c(NA, "B")                                    
 ) 
 
 fig_4_annotate <- annotate_figure(fig_4, top = text_grob("Figure 4. Varying M:F ratios across site simulations", color = "black", hjust = 0, x = 0))
