@@ -75,7 +75,7 @@ csv_fname=$(basename $csv .csv)
 
 #######################################################################################
 #SET COVAR COLS
-covar_list="log_age,sexMale,sex.age" #age_days
+covar_list="age_days,sexMale,sex.age" #age_days
 #SET BATCH COL
 batch="site" #study
 
@@ -107,7 +107,7 @@ do
 	#COMBAT GAM
 	elif [ $config = "cf.gam" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gam, formula = y ~ s(log_age) + sexMale + s(sex.age)'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gam, formula = y ~ s(age_days) + sexMale + s(sex.age)'" > $bash_script
 
 	#COMBAT GAM W/ REF SITE
 	elif [ $config = "cf.gam_refA" ]
@@ -117,7 +117,7 @@ do
 	#COMBAT GAMLSS
 	elif [ $config = "cf.gamlss" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(log_age) + sexMale + pb(sex.age), sigma.formula = ~ pb(log_age) + sexMale + pb(sex.age)'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + pb(sex.age), sigma.formula = ~ pb(age_days) + sexMale + pb(sex.age)'" > $bash_script
 
 	#COMBAT GAMLSS W/ REF SITE
 	elif [ $config = "cf.gamlss_refA" ]
