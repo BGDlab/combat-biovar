@@ -151,6 +151,14 @@ Write out
 ```{r}
 fwrite(cn.df.site, file=paste0(base_path, "/data/lifespan_CN_site-level.csv"))
 ```
+write out imagen data for testing
+```{r}
+imagen.df <- cn.df.site %>%
+  dplyr::filter(study=="IMAGEN")
+skim(imagen.df)
+
+fwrite(imagen.df, file=paste0(base_path, "/data/imagen_CN.csv"))
+```
 
 looking into whether all global measures should be log-transformed to account for skew (getting neg vals for ventricles with combat-GAM)
 

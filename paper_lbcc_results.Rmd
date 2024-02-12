@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, skimr)
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, skimr, gam)
 #Sys.setenv("MC_CORES"=10L)
 options("mc.cores")
 
@@ -35,6 +35,7 @@ dk.parc <- dk_nomed$data %>%
 
 #PHENO LISTS
 pheno_list <- readRDS(file="cubic_scripts/R_scripts/pheno_list.rds")
+pheno_list.z <- paste0(pheno_list, ".z")
 vol_list_global <- readRDS(file="cubic_scripts/R_scripts/vol_list_global.rds")
 vol_list_regions <- readRDS(file="cubic_scripts/R_scripts/Vol_list_regions.rds")
 sa_list <- readRDS(file="cubic_scripts/R_scripts/SA_list.rds")
@@ -420,6 +421,343 @@ global.delta_plt <- cent_delta_lms.df_toplt %>%
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
   paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Beta", limits = c(-0.11, 0.11), breaks=c(-0.1, 0, 0.1))
 ```
+
+#Site Effects
+
+Test to see if centile score is associated with site in either ComBatLS or ComBat-GAM harmonized data.
+
+## ComBat-GAM
+
+```{r}
+#clean predictions
+gam_centile_df.clean <- gam_centile_df %>%
+  mutate(study=sub("\\_.*", "", site),
+         age_years=age_days/365.25) %>%
+  dplyr::select(!contains(".z") & !ends_with("_total") & !contains("TBV")) #drop z-scores and non-centiles
+
+skim(gam_centile_df.clean)
+```
+
+w/in feature ANOVAs
+
+```{r}
+gam.feat_to_test <- intersect(pheno_list, names(gam_centile_df.clean))
+
+df_gam_feat_aov <- data.frame()
+for(pheno in gam.feat_to_test){
+  # print(pheno)
+  df <- tidy(aov(gam_centile_df.clean[[pheno]] ~ gam_centile_df.clean[["study"]]))
+  df$pheno <- pheno
+  df_gam_feat_aov <- rbind(df_gam_feat_aov, df)
+}
+
+df_gam_feat_aov.study <- df_gam_feat_aov %>%
+  dplyr::filter(term != "Residuals") %>%
+  dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(gam.feat_to_test)), #apply fdr correction across all phenos tested
+                  sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
+                                      p.val_fdr >= 0.05 ~ FALSE))
+df_gam_feat_aov.study %>%
+  ggplot() +
+  geom_bar(aes(y=sig_fdr))
+```
+
+```{r}
+gam_centile_df.clean %>%
+  ggplot() +
+  geom_boxplot(aes(x=study, y=WMV)) +
+  theme(axis.text.x = element_text(angle=90, hjust=0.5))
+
+summary(lm(WMV ~ study + age_days + sex, data = gam_centile_df.clean))
+```
+
+average w/in subject
+
+```{r}
+gam_centile_df.mean <- gam_centile_df.clean %>%
+  pivot_longer(cols=any_of(pheno_list), names_to="pheno", values_to = "centile") %>%
+  group_by(participant) %>%
+  summarize(study = unique(study),
+            site = unique(site),
+            age_days=unique(age_days),
+            sex=unique(sex),
+            mean_cent=mean(centile))
+nrow(gam_centile_df.mean) == n_unique(gam_centile_df.mean$participant)
+```
+
+```{r}
+gam_centile_df.mean %>%
+  ggplot() +
+  geom_boxplot(aes(x=study, y=mean_cent)) +
+  theme(axis.text.x = element_text(angle=90, hjust=0.5))
+
+gam_centile_df.mean %>%
+  ggplot() +
+  geom_point(aes(x=age_days/365.25, y=mean_cent, color=site), alpha=0.5) +
+  geom_smooth(aes(x=age_days/365.25, y=mean_cent), method="lm") +
+  theme(legend.position = "none") +
+  facet_wrap(~study)
+```
+
+linear model
+
+```{r}
+summary(lm(mean_cent ~ study, data=gam_centile_df.mean))
+
+summary(aov(mean_cent ~ study, data=gam_centile_df.mean))
+pairwise.t.test(gam_centile_df.mean$mean_cent, gam_centile_df.mean$study, p.adjust.method = "fdr")
+
+mean_cent_gam.lm <- lm(mean_cent ~ study + age_days + sex, data=gam_centile_df.mean)
+
+gtsummary::tbl_regression(mean_cent_gam.lm) %>%
+  gtsummary::add_global_p()
+```
+
+###Z-Scores
+
+```{r}
+#clean predictions
+gam_z_df.clean <- gam_centile_df %>%
+  mutate(study=sub("\\_.*", "", site),
+         age_years=age_days/365.25) %>%
+  dplyr::select(!any_of(pheno_list) & !ends_with("_total") & !contains("TBV")) #drop z-scores and non-centiles
+```
+
+w/in feature ANOVAs
+
+```{r}
+gam.feat_to_test.z <- paste0(gam.feat_to_test, ".z")
+df_gam_feat_aov.z <- data.frame()
+for(pheno in gam.feat_to_test.z){
+  # print(pheno)
+  df <- tidy(aov(gam_z_df.clean[[pheno]] ~ gam_z_df.clean[["study"]]))
+  df$pheno <- pheno
+  df_gam_feat_aov.z <- rbind(df_gam_feat_aov.z, df)
+}
+
+df_gam_feat_aov.z.study <- df_gam_feat_aov.z %>%
+  dplyr::filter(term != "Residuals") %>%
+  dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(gam.feat_to_test.z)), #apply fdr correction across all phenos tested
+                  sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
+                                      p.val_fdr >= 0.05 ~ FALSE))
+df_gam_feat_aov.z.study %>%
+  ggplot() +
+  geom_bar(aes(y=sig_fdr))
+```
+
+average w/in subject
+
+```{r}
+gam_z_df.mean <- gam_z_df.clean %>%
+  pivot_longer(cols=any_of(pheno_list.z), names_to="pheno", values_to = "z_score") %>%
+  group_by(participant) %>%
+  summarize(study = unique(study),
+            age_days=unique(age_days),
+            sex=unique(sex),
+            mean_z=mean(z_score))
+nrow(gam_z_df.mean) == n_unique(gam_z_df.clean$participant)
+```
+
+```{r}
+gam_z_df.mean %>%
+  ggplot() +
+  geom_point(aes(x=age_days/365.25, y=mean_z), alpha=0.5) +
+  geom_smooth(aes(x=age_days/365.25, y=mean_z), method="lm") 
+# +
+#   facet_wrap(~study)
+```
+
+linear model
+
+```{r}
+summary(lm(mean_z ~ study, data=gam_z_df.mean))
+
+summary(aov(mean_z ~ study, data=gam_z_df.mean))
+pairwise.t.test(gam_z_df.mean$mean_z, gam_z_df.mean$study, p.adjust.method = "fdr")
+
+mean_z_gam.lm <- lm(mean_z ~ study + age_days + sex, data=gam_z_df.mean)
+summary(mean_z_gam.lm)
+```
+
+
+##ComBatLS
+
+```{r}
+#clean predictions
+gamlss_centile_df.clean <- gamlss_centile_df %>%
+  mutate(study=sub("\\_.*", "", site),
+         age_years=age_days/365.25) %>%
+  dplyr::select(!contains(".z") & !ends_with("_total") & !contains("TBV")) #drop z-scores and non-centiles
+```
+
+```{r}
+gamlss_centile_df.clean %>%
+  ggplot() +
+  geom_boxplot(aes(x=study, y=WMV))
+
+wmv_cent_gamlss.lm <- lm(WMV ~ study + age_days + sex, data=gamlss_centile_df.clean)
+
+# gtsummary::tbl_regression(wmv_cent_gamlss.lm) %>%
+#   gtsummary::add_global_p()
+
+gamlss_centile_df.clean %>%
+  ggplot() +
+  geom_boxplot(aes(x=site, y=WMV, fill=study)) +
+  theme(axis.text.x = element_text(angle=90), legend.position = "none")
+```
+
+w/in feature ANOVAs
+
+```{r}
+feat_to_test <- intersect(pheno_list, names(gamlss_centile_df.clean))
+
+df_gamlss_feat_aov <- data.frame()
+for(pheno in feat_to_test){
+  # print(pheno)
+  df <- tidy(aov(gamlss_centile_df.clean[[pheno]] ~ gamlss_centile_df.clean[["study"]]))
+  df$pheno <- pheno
+  df_gamlss_feat_aov <- rbind(df_gamlss_feat_aov, df)
+}
+
+df_gamlss_feat_aov.study <- df_gamlss_feat_aov %>%
+  dplyr::filter(term != "Residuals") %>%
+  dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(feat_to_test)), #apply fdr correction across all phenos tested
+                  sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
+                                      p.val_fdr >= 0.05 ~ FALSE))
+df_gamlss_feat_aov.study %>%
+  ggplot() +
+  geom_bar(aes(y=sig_fdr))
+
+df_gamlss_feat_aov.study %>%
+  dplyr::filter(sig_fdr==TRUE)
+```
+average w/in subject
+
+```{r}
+gamlss_centile_df.mean <- gamlss_centile_df.clean %>%
+  pivot_longer(cols=any_of(pheno_list), names_to="pheno", values_to = "centile") %>%
+  group_by(participant) %>%
+  summarize(study = unique(study),
+            site = unique(site),
+            age_days=unique(age_days),
+            sex=unique(sex),
+            log_age=unique(log_age),
+            sexMale=unique(sexMale),
+            fs_version=unique(fs_version),
+            mean_cent=mean(centile))
+nrow(gamlss_centile_df.mean) == n_unique(gamlss_centile_df.mean$participant)
+```
+
+```{r}
+gamlss_centile_df.mean %>%
+  ggplot() +
+  geom_boxplot(aes(x=reorder(study, age_days), y=mean_cent)) + 
+  theme(axis.text.x = element_text(angle=90))
+
+gamlss_centile_df.mean %>%
+  ggplot() +
+  geom_violin(aes(x=reorder(study, age_days), y=mean_cent), scale="count") + 
+  theme(axis.text.x = element_text(angle=90))
+
+
+gamlss_centile_df.mean %>%
+  ggplot() +
+  geom_point(aes(x=age_days/365.25, y=mean_cent, color=site), alpha=0.5) +
+  geom_smooth(aes(x=age_days/365.25, y=mean_cent), method="lm") +
+  theme(legend.position = "none") +
+  facet_wrap(~study)
+
+gamlss_centile_df.mean %>%
+  ggplot() +
+  geom_boxplot(aes(x=site, y=mean_cent, fill=study)) + 
+  theme(axis.text.x = element_text(angle=90), legend.position = "none")
+```
+
+linear model
+
+```{r}
+summary(lm(mean_cent ~ study, data=gamlss_centile_df.mean))
+
+summary(aov(mean_cent ~ study, data=gamlss_centile_df.mean))
+pairwise.t.test(gamlss_centile_df.mean$mean_cent, gamlss_centile_df.mean$study, p.adjust.method = "fdr")
+
+mean_cent_gamlss.lm <- lm(mean_cent ~ study + age_days + sex + fs_version, data=gamlss_centile_df.mean)
+summary(mean_cent_gamlss.lm)
+
+mean_cent_gamlss.gam <- gam(mean_cent ~ study + s(log_age) + sex, data=gamlss_centile_df.mean)
+summary(mean_cent_gamlss.gam)
+
+mean_cent_gam.gam <- gam(mean_cent ~ study + s(log_age) + sex, data=gam_centile_df.mean)
+summary(mean_cent_gam.gam)
+
+gtsummary::tbl_regression(mean_cent_gamlss.lm) %>%
+  gtsummary::add_global_p()
+```
+
+###Z-Scores
+
+```{r}
+#clean predictions
+gamlss_z_df.clean <- gamlss_centile_df %>%
+  mutate(study=sub("\\_.*", "", site),
+         age_years=age_days/365.25) %>%
+  dplyr::select(!any_of(pheno_list) & !ends_with("_total") & !contains("TBV")) #drop z-scores and non-centiles
+```
+
+w/in feature ANOVAs
+
+```{r}
+gamlss.feat_to_test.z <- paste0(feat_to_test, ".z")
+df_gamlss_feat_aov.z <- data.frame()
+for(pheno in gamlss.feat_to_test.z){
+  # print(pheno)
+  df <- tidy(aov(gamlss_z_df.clean[[pheno]] ~ gamlss_z_df.clean[["study"]]))
+  df$pheno <- pheno
+  df_gamlss_feat_aov.z <- rbind(df_gamlss_feat_aov.z, df)
+}
+
+df_gamlss_feat_aov.z.study <- df_gamlss_feat_aov.z %>%
+  dplyr::filter(term != "Residuals") %>%
+  dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(gamlss.feat_to_test.z)), #apply fdr correction across all phenos tested
+                  sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
+                                      p.val_fdr >= 0.05 ~ FALSE))
+df_gamlss_feat_aov.z.study %>%
+  ggplot() +
+  geom_bar(aes(y=sig_fdr))
+```
+
+average w/in subject
+
+```{r}
+gamlss_z_df.mean <- gamlss_z_df.clean %>%
+  pivot_longer(cols=any_of(pheno_list.z), names_to="pheno", values_to = "z_score") %>%
+  group_by(participant) %>%
+  summarize(study = unique(study),
+            age_days=unique(age_days),
+            sex=unique(sex),
+            mean_z=mean(z_score))
+nrow(gamlss_z_df.mean) == n_unique(gamlss_z_df.clean$participant)
+```
+
+```{r}
+gamlss_z_df.mean %>%
+  ggplot() +
+  geom_point(aes(x=age_days/365.25, y=mean_z, color=study), alpha=0.5) +
+  geom_smooth(aes(x=age_days/365.25, y=mean_z), method="lm") +
+  facet_wrap(~study)
+```
+
+linear model
+
+```{r}
+summary(lm(mean_z ~ study, data=gamlss_z_df.mean))
+
+summary(aov(mean_z ~ study, data=gamlss_z_df.mean))
+pairwise.t.test(gamlss_z_df.mean$mean_z, gamlss_z_df.mean$study, p.adjust.method = "fdr")
+
+mean_cent_gamlss.lm <- lm(mean_z ~ study + age_days + sex, data=gamlss_z_df.mean)
+summary(mean_cent_gamlss.lm)
+```
+
 
 #FIGURE 4
 
