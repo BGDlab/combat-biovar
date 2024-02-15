@@ -458,6 +458,40 @@ mean.cent.diffs.long %>%
   labs(y="Percent Features", x = "Mean Absolute Centile Error") +
   ggtitle("Absolute errors in centiles of brain structure features across ComBat processing pipelines")
 ```
+Quick comp of cf.gam and cf.gamlss
+
+```{r}
+gam.gamlss.diffs <- diffs.df %>%
+  dplyr::filter(dataset=="cf.gam" | dataset=="cf.gamlss")
+
+gam_better <- gam.gamlss.diffs %>%
+  group_by(dataset) %>%
+  summarize_at(pheno_abs.diff.list, median) %>%
+  ungroup() %>%
+  pivot_longer(cols = all_of(pheno_abs.diff.list), names_to="pheno") %>%
+  pivot_wider(names_from = dataset, values_from=value, names_glue = "med_{dataset}") %>%
+  mutate(gam_minus_gamlss = (med_cf.gam - med_cf.gamlss),
+         pheno = sub("abs.diff_", "", pheno)) %>%
+  ungroup() %>%
+  dplyr::filter(gam_minus_gamlss < 0)
+
+gam_better$pheno
+
+ns_gam_gamlss_comp <- full_cent_res %>%
+  dplyr::filter(comp=="cf.gamlss_cf.gam" & sig_fdr == TRUE)
+
+intersect(gam_better$pheno, ns_gam_gamlss_comp$pheno)
+```
+```{r, eval=FALSE}
+for (pheno in pheno_abs.diff.list){
+  p <- ggplot(gam.gamlss.diffs, aes(y = gam.gamlss.diffs[[pheno]], fill= dataset)) +
+      geom_boxplot() +
+    ggtitle(pheno)
+print(p)
+}
+```
+
+**21 regions where ComBat GAM is better than ComBat-LS! All cortical thickness -> 206-21 = 185 regions where ComBat-LS fits better.
 
 ### Sex-Biases
 
@@ -1017,6 +1051,32 @@ mean.z.diffs.long %>%
   ggtitle("Absolute errors in zscores of brain structure features across ComBat processing pipelines")
 ```
 
+Quick comp of cf.gam and cf.gamlss
+
+```{r, message=FALSE}
+full_z_res <- centile.t.tests.full_result(diffs.df, feature_list=z.pheno_abs.diff.list)
+```
+
+```{r}
+gam_better.z <- gam.gamlss.diffs %>%
+  group_by(dataset) %>%
+  summarize_at(z.pheno_abs.diff.list, median) %>%
+  ungroup() %>%
+  pivot_longer(cols = all_of(z.pheno_abs.diff.list), names_to="pheno") %>%
+  pivot_wider(names_from = dataset, values_from=value, names_glue = "med_{dataset}") %>%
+  mutate(gam_minus_gamlss = (med_cf.gam - med_cf.gamlss),
+         pheno = sub("abs.diff_", "", pheno)) %>%
+  ungroup() %>%
+  dplyr::filter(gam_minus_gamlss < 0)
+
+gam_better.z$pheno
+
+ns_gam_gamlss_comp.z <- full_z_res %>%
+  dplyr::filter(comp=="cf.gamlss_cf.gam" & sig_fdr == TRUE)
+
+intersect(gam_better.z$pheno, ns_gam_gamlss_comp.z$pheno)
+```
+
 ### Sex-Biases
 
 Visualize
@@ -1089,7 +1149,7 @@ z.sex_t_tests_in_feat.df %>%
     as.data.frame()
 ```
 
-<!-- ### W/o extremes -->
+### W/o extremes
 Are extreme z-scores (<-2 and >2) driving observed results?
 
 Get raw centiles and merge with centile differences

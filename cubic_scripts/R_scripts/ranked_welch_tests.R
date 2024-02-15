@@ -99,8 +99,34 @@ pairwise.rank.welch.t.test <- function(x, g, p.adjust.method = p.adjust.methods,
   
   ## compile results
   PVAL <- pairwise.table(compare.levels, levels(g), p.adjust.method)
+  
+  #find which site has larger estimate 
+  ## comp matrix
+  compare.levels.est <- function(i, j) {
+    
+    ## get vals
+    xi <- x[as.integer(g) == i]
+    xj <- x[as.integer(g) == j]
+    
+    #rank pooled vals
+    pooled <- c(xi, xj)
+    pooled_r <- rank(pooled)
+    
+    ## split rankings back into the original lists
+    x_ranks <- pooled_r[seq_along(xi)]
+    y_ranks <- pooled_r[seq_along(xj) + length(xi)]
+    
+    ## get est
+    est <- broom::tidy(t.test(x_ranks, y_ranks, paired=paired, var.equal = FALSE, alternative = alternative, ...))$estimate
+    
+    bigger_group <- ifelse(est > 0, i, j)
+  }
+  # (estimate = estimate1-estimate2) ~ positive -> levels(g)[1], negative -> levels(g)[2]
+  big_group <- pairwise.table(compare.levels.est, levels(g), p.adjust.method)
+  est_matrix <- matrix(as.list(levels(g))[big_group], ncol = ncol(big_group), dimnames = dimnames(big_group))
+  
   ans <- list(method = METHOD, data.name = DNAME,
-              p.value = PVAL, p.adjust.method=p.adjust.method)
-  class(ans) <- "pairwise.htest"
+              p.value = PVAL, p.adjust.method=p.adjust.method, larger_group = est_matrix)
+  # class(ans) <- "pairwise.htest"
   ans
 }
