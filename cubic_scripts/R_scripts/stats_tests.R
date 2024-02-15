@@ -70,17 +70,33 @@ centile.t.tests.full_result <- function(df, feature_list, comp_multiplier=1){
   attach(df)
   for (pheno in feature_list) {
     df.pairwise.t <- tidy(pairwise.rank.welch.t.test(x=df[[pheno]], g=df[["dataset"]], paired = TRUE, p.adj = "none"))
-    df.pairwise.t$pheno <- pheno
-    t.df <- rbind(t.df, df.pairwise.t)
+    # print(df.pairwise.t)
+    
+    #also find bigger group
+    df.pairwise.est <- tidy(pairwise.rank.maxgrp(x=df[[pheno]], g=df[["dataset"]], paired = TRUE, p.adj = "none"))
+    df.pairwise.est <- df.pairwise.est %>%
+      rename(bigger_group = p.value) #fix name
+    # print(df.pairwise.est)
+    
+    #join
+    df.pairwise.t2 <- left_join(df.pairwise.t, df.pairwise.est)
+    
+    stopifnot(nrow(df.pairwise.t2) == nrow(df.pairwise.t))
+    
+    df.pairwise.t2$pheno <- pheno
+    t.df <- rbind(t.df, df.pairwise.t2)
   }
   n_comp <- nrow(t.df)
+  
+  dataset_vec <- levels(as.factor(df$dataset))
   
   #apply fdr correction
   t.df <- t.df %>%
     dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = (n_comp*comp_multiplier)),
                   sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
                                       p.val_fdr >= 0.05 ~ FALSE),
-                  pheno = sub("abs.diff_", "", pheno)) %>%
+                  pheno = sub("abs.diff_", "", pheno),
+                  bigger_group = dataset_vec[bigger_group]) %>%
     unite(comp, c("group1", "group2")) %>%
     dplyr::mutate(comp = as.factor(comp))
   

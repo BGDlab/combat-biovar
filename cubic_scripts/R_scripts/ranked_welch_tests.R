@@ -127,6 +127,50 @@ pairwise.rank.welch.t.test <- function(x, g, p.adjust.method = p.adjust.methods,
   
   ans <- list(method = METHOD, data.name = DNAME,
               p.value = PVAL, p.adjust.method=p.adjust.method, larger_group = est_matrix)
-  # class(ans) <- "pairwise.htest"
+  class(ans) <- "pairwise.htest" # prevents larger_group from displaying but enables tidy()
+  ans
+}
+
+#making new fun that will return the level with the greater estimated ranks in each pairwise comparison
+pairwise.rank.maxgrp <- function(x, g, p.adjust.method = p.adjust.method,
+                                       paired = FALSE, alternative = c("two.sided", "less", "greater"),
+                                       ...){
+  
+  ## parse args
+  p.adjust.method <- match.arg(p.adjust.method)
+  DNAME <- paste(deparse(substitute(x)), "and", deparse(substitute(g)))
+  g <- factor(g)
+  METHOD <- if (paired) "return group with larger ranks estimated by Wilcoxon signed rank test"
+  else "return group with larger ranks estimated by Wilcoxon rank sum test"
+  
+
+  #find which site has larger estimate 
+  ## comp matrix
+  compare.levels.est <- function(i, j) {
+    
+    ## get vals
+    xi <- x[as.integer(g) == i]
+    xj <- x[as.integer(g) == j]
+    
+    #rank pooled vals
+    pooled <- c(xi, xj)
+    pooled_r <- rank(pooled)
+    
+    ## split rankings back into the original lists
+    x_ranks <- pooled_r[seq_along(xi)]
+    y_ranks <- pooled_r[seq_along(xj) + length(xi)]
+    
+    ## get est
+    est <- broom::tidy(t.test(x_ranks, y_ranks, paired=paired, var.equal = FALSE, alternative = alternative, ...))$estimate
+    
+    bigger_group <- ifelse(est > 0, i, j) #i, j
+  }
+  # (estimate = estimate1-estimate2) ~ positive -> levels(g)[1], negative -> levels(g)[2]
+  big_group <- pairwise.table(compare.levels.est, levels(g), p.adjust.method)
+  # est_matrix <- matrix(as.list(levels(g))[big_group], ncol = ncol(big_group), dimnames = dimnames(big_group))
+  
+  ans <- list(method = METHOD, data.name = DNAME,
+              p.value = big_group, p.adjust.method=p.adjust.method) #estimate column needs to be mislabeld so that tidy() work
+  class(ans) <- "pairwise.htest"
   ans
 }
