@@ -1,0 +1,1 @@
+singularity run --cleanenv /cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif Rscript --save /cbica/home/gardnerm/combat-biovar/cubic_scripts/R_scripts/featurewise_sex_bias_test.R /cbica/home/gardnerm/combat-biovar/ukb_permute/perm_centile_csvs 'no.ext' 'perm'

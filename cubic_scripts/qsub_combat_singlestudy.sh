@@ -91,7 +91,7 @@ do
 	touch $bash_script
 
 	#COMBAT GAM
-	elif [ $config = "cf.gam" ]
+	if [ $config = "cf.gam" ]
 	then
 		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gam, formula = y ~ s(age_days, k=5) + sexMale + s(sex.age, k=5)'" > $bash_script
 
@@ -99,7 +99,7 @@ do
 	elif [ $config = "cf.gamlss" ]
 	then
 		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + pb(sex.age), sigma.formula = ~ pb(age_days) + sexMale'" > $bash_script
-
+	fi
 #qsub bash script
 	qsub -l h_vmem=64G,s_vmem=64G -N ${config}.${csv_fname} -o $bash_dir/${config}.${csv_fname}_out.txt -e $bash_dir/${config}.${csv_fname}_err.txt $bash_script
 done
