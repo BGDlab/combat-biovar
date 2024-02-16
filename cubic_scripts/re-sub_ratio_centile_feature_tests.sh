@@ -27,3 +27,13 @@ touch $bash_script
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'full'" > $bash_script
 ## qsub bash script
 qsub -N prop_cent_tests -o $bash_dir/cent_test_out.txt -e $bash_dir/cent_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+
+#######################################################################################
+# No-Ext: STATS TESTS OF ERRORS
+
+bash_script=$bash_dir/noext_centile_tests.sh
+touch $bash_script
+
+echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext'" > $bash_script
+## qsub bash script
+qsub -N prop_cent_tests_noext -o $bash_dir/noext_cent_test_out.txt -e $bash_dir/noext_cent_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
