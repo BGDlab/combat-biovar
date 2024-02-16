@@ -259,7 +259,28 @@ Foregoing anova based on emails with andrew (anova violates assumtptions of no e
 Within each feature (phenotype), iterate paired t test of ranks between each combo of combat dfs (nonparametric per discussion with Andrew). (see Zimmerman & Zumbo, 1993). Using custom functions from `ranked_welch_tests.R`.
 
 ```{r}
-centile.t.tests(diffs.df, feature_list=pheno_abs.diff.list) #testing abs(error)
+full_cent_res <- centile.t.tests.full_result(diffs.df, feature_list=pheno_abs.diff.list)
+full_cent_res %>%
+  group_by(comp, bigger_group) %>%
+  summarize(n_sig_regions = sum(sig_fdr),
+            min_pval=min(p.val_fdr),
+            max_pval=max(p.val_fdr)) %>%
+  dplyr::filter(!grepl('_refA', comp))#drop refA levels
+```
+
+```{r, eval=FALSE}
+full_cent_res%>%
+  dplyr::filter(comp =="cf.gamlss_cf" & bigger_group == "cf.gamlss" & sig_fdr ==TRUE)
+
+diffs.df %>%
+  dplyr::filter(dataset=="cf.gamlss" | dataset =="cf") %>%
+  ggplot() +
+  geom_boxplot(aes(y=abs.diff_rh_CT_parstriangularis, fill=dataset))
+
+diffs.df %>%
+  dplyr::filter(dataset=="cf.gamlss" | dataset =="cf") %>%
+  ggplot() +
+  geom_boxplot(aes(y=diff_rh_CT_parstriangularis, fill=dataset))
 ```
 
 Little plot
@@ -307,9 +328,12 @@ Plot errors for global phenotypes
 
 get stat results for global phenos:
 ```{r, message=FALSE}
-full_cent_res <- centile.t.tests.full_result(diffs.df, feature_list=pheno_abs.diff.list)
 full_cent_res %>%
   dplyr::filter(pheno %in% vol_list_global) %>%
+  dplyr::filter(!grepl('_refA', comp))
+
+full_cent_res %>%
+  dplyr::filter(bigger_group == "cf.gamlss")%>%
   dplyr::filter(!grepl('_refA', comp))
 ```
 
@@ -838,8 +862,14 @@ dim(no_ext)
 Rerun stats tests
 
 centile error diffs
-```{r, message=FALSE}
-centile.t.tests(no_ext, feature_list=pheno_abs.diff.list)
+```{r}
+noext_cent_res <- centile.t.tests.full_result(no_ext, feature_list=pheno_abs.diff.list)
+noext_cent_res %>%
+  group_by(comp, bigger_group) %>%
+  summarize(n_sig_regions = sum(sig_fdr),
+            min_pval=min(p.val_fdr),
+            max_pval=max(p.val_fdr)) %>%
+  dplyr::filter(!grepl('_refA', comp))#drop refA levels
 ```
 
 Little plot
@@ -980,7 +1010,13 @@ Foregoing anova based on emails with andrew (anova violates assumtptions of no e
 Within each phenotype, iterate paired t test of ranks between each combo of combat dfs (nonparametric per discussion with Andrew). (see Zimmerman & Zumbo, 1993). Using custom functions from `ranked_welch_tests.R`.
 
 ```{r}
-centile.t.tests(diffs.df, feature_list=z.pheno_abs.diff.list)
+full_z_res <- centile.t.tests.full_result(diffs.df, feature_list=z.pheno_abs.diff.list)
+full_z_res %>%
+  group_by(comp, bigger_group) %>%
+  summarize(n_sig_regions = sum(sig_fdr),
+            min_pval=min(p.val_fdr),
+            max_pval=max(p.val_fdr)) %>%
+  dplyr::filter(!grepl('_refA', comp))#drop refA levels
 ```
 
 Little plot
@@ -1183,7 +1219,13 @@ Rerun stats tests
 
 z error diffs
 ```{r}
-centile.t.tests(z.no_ext, feature_list=z.pheno_abs.diff.list)
+noext_z_res <- centile.t.tests.full_result(z.no_ext, feature_list=z.pheno_abs.diff.list)
+noext_z_res %>%
+  group_by(comp, bigger_group) %>%
+  summarize(n_sig_regions = sum(sig_fdr),
+            min_pval=min(p.val_fdr),
+            max_pval=max(p.val_fdr)) %>%
+  dplyr::filter(!grepl('_refA', comp))#drop refA levels
 ```
 
 Little plot
