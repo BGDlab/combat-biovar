@@ -36,10 +36,10 @@ then
 fi
 #######################################################################################
 # DEFINE COMBAT .R SCRIPT (DEPENDING ON TRANSFORMATION OPTION)
-if [ "$transform" = true ]
+if [ "${transform,,}" = true ]
 then
 cf_script=$base/cubic_scripts/R_scripts/combat_apply_w_transform.R #path to .R script - set to apply log-transform to global vols before combatting
-elif [ "$transform" = false ]
+elif [ "${transform,,}" = false ]
 then
 cf_script=$base/cubic_scripts/R_scripts/combat_apply.R #path to .R script
 else
