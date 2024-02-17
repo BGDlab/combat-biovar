@@ -119,10 +119,10 @@ left_join(cn.df.eulerfilt, study_mad) %>%
   geom_boxplot(aes(x=study, y=surfholes)) +
   geom_point(aes(x=study, y=(study_euler_median+2*study_euler_mad)), color="red")
 
-left_join(cn.df.eulerfilt, study_mad) %>%
-  ggplot() +
-  geom_boxplot(aes(x=study, y=surfholes)) +
-  geom_point(aes(x=study, y=(study_euler_median+2*study_euler_madconst1)), color="red")
+# left_join(cn.df.eulerfilt, study_mad) %>%
+#   ggplot() +
+#   geom_boxplot(aes(x=study, y=surfholes)) +
+#   geom_point(aes(x=study, y=(study_euler_median+2*study_euler_madconst1)), color="red")
 ```
 
 using default mad() constant, looks better
