@@ -12,22 +12,24 @@ save_path=$base/data/lifespan
 helpFunction()
 {
    echo ""
-   echo "Usage: $0 -c data.csv -t true"
+   echo "Usage: $0 -c data.csv -t true -b 'batch variable'"
    echo -e "\t-c Path to data as .csv file"
    echo -e "\t-t true/false to log-transform"
+   echo -e "\t-t name of variable (e.g. site, study) that defines batches"
    exit 1 # Exit script after printing help
 }
 #######################################################################################
 # GET ARGS
-while getopts ":c:t:" opt
+while getopts ":c:t:b:" opt
 do
    case "$opt" in
 	c ) csv="$OPTARG" ;;
 	t ) transform="$OPTARG" ;;
+	b ) batch="$OPTARG" ;;
    esac
 done
 
-if [ -z "$csv" ] || [ -z "$transform" ]
+if [ -z "$csv" ] || [ -z "$transform" ] || [ -z "$batch" ]
 then
    echo "provide: path to data and whether to log-transform global vols before running ComBat";
    helpFunction
@@ -76,8 +78,6 @@ csv_fname=$(basename $csv .csv)
 #######################################################################################
 #SET COVAR COLS
 covar_list="age_days,sexMale,sex.age" #age_days
-#SET BATCH COL
-batch="site" #study
 
 #LIST POSSIBLE CONFIGS
 config_list="cf.gam cf.gamlss" #cf cf.lm cf.lm_refA cf.gam_refA cf.gamlss_refA
