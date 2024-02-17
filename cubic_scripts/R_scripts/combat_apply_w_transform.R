@@ -108,6 +108,13 @@ for (l in list_of_feature_lists){
   #make sure batch, covars, and pheno dfs are all the same length
   stopifnot(nrow(pheno.df) == length(batch))
   
+  #turn off empirical bayes if combatting global voluems
+  if (names(list_of_feature_lists[i]) == "VolGlob" ) {
+    eb_arg <- FALSE
+  } else {
+    eb_arg <- TRUE
+  }
+  
   #run combat w/ or w/o additional args
   if (length(args) < 5){
     cf.obj <- comfam(pheno.df, batch)
@@ -127,22 +134,22 @@ for (l in list_of_feature_lists){
       #Combat w ref
       if ("cf.gamlss" %in% config_name){
         #def combatls fun
-        cf_gamlss_try <- function(x, y){
+        cf_gamlss_try <- function(x, y, eb_arg){
           result <- tryCatch({
-            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", x, " ref.batch = '", as.factor(y),"')")))
+            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, eb = ", eb_arg, ", ", x, " ref.batch = '", as.factor(y),"')")))
           } , warning = function(w) {
             message("warning")
-            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", x, " ref.batch = '", as.factor(y),"')")))
+            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, eb = ", eb_arg, ", ", x, " ref.batch = '", as.factor(y),"')")))
           } , error = function(e) {
             message("error, trying method=CG()")
-            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", x, " method=CG(), ref.batch = '", as.factor(y),"')")))
+            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, eb = ", eb_arg, ", ", x, " method=CG(), ref.batch = '", as.factor(y),"')")))
           } , finally = {
             message("done")
           } )
         }
-      cf.obj <- cf_gamlss_try(cf.arg1, ref_batch)
+      cf.obj <- cf_gamlss_try(cf.arg1, ref_batch, eb_arg)
       } else {
-      cf.obj <- eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", cf.arg1, " ref.batch = '", as.factor(ref_batch),"')")))
+      cf.obj <- eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, eb = ", eb_arg, ", ", cf.arg1, " ref.batch = '", as.factor(ref_batch),"')")))
       }
     } else {
       #Combat w/o ref
@@ -150,20 +157,20 @@ for (l in list_of_feature_lists){
         #def combatls fun
         cf_gamlss_try <- function(x){
           result <- tryCatch({
-            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", x, ")")))
+            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, eb = ", eb_arg, ", ", x, ")")))
           } , warning = function(w) {
             message("warning")
-            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", x, ")")))
+            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, eb = ", eb_arg, ", ", x, ")")))
           } , error = function(e) {
             message("error, trying method=CG()")
-            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, ", x, ")")))
+            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, eb = ", eb_arg, ", ", x, ")")))
           } , finally = {
             message("done")
           } )
         }
         cf.obj <- cf_gamlss_try(cf.args)
       } else {
-        cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df,", cf.args, ")")))
+        cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df, eb = ", eb_arg, ", ", cf.args, ")")))
       }
     }
   }
