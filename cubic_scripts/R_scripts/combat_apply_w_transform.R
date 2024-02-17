@@ -155,7 +155,7 @@ for (l in list_of_feature_lists){
       #Combat w/o ref
       if ("cf.gamlss" %in% config_name){
         #def combatls fun
-        cf_gamlss_try <- function(x){
+        cf_gamlss_try <- function(x, eb_arg){
           result <- tryCatch({
             eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, eb = ", eb_arg, ", ", x, ")")))
           } , warning = function(w) {
@@ -168,7 +168,7 @@ for (l in list_of_feature_lists){
             message("done")
           } )
         }
-        cf.obj <- cf_gamlss_try(cf.args)
+        cf.obj <- cf_gamlss_try(cf.args, eb_arg)
       } else {
         cf.obj <- eval(parse(text = paste("comfam(pheno.df, batch, covar.df, eb = ", eb_arg, ", ", cf.args, ")")))
       }
