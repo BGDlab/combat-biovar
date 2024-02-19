@@ -149,7 +149,9 @@ Plot CT with combatGAM and combatLS on brains
 ct.t.tests <- cent.feat.t.test.df %>%
   dplyr::filter(comp =="cf.gamlss_cf.gam" & stringr::str_detect(pheno, "CT")) %>%
   mutate(label=gsub("_CT", "", pheno),
-         worsefit = ifelse(sig_fdr==TRUE, bigger_group, "NS"))
+         better_fit = case_when(sig_fdr==TRUE & bigger_group == "cf.gam" ~ "cf.gamlss",
+                              sig_fdr==TRUE & bigger_group == "cf.gamlss" ~ "cf.gam",
+                              sig_fdr==FALSE ~ "NS"))
 
 ct.t.tests_to_plt <- left_join(ct.t.tests, dk.parc)
 
@@ -158,8 +160,10 @@ ct.t.tests_to_plt %>%
   theme_linedraw(base_size=12) +
   ggseg::geom_brain(atlas = dk_nomed, 
              position = position_brain(hemi ~ side),
-            aes(fill=worsefit)) +
-  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
+            aes(fill=better_fit)) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank(),
+        legend.position="top") +
+  scale_fill_manual(values = c(NS= "darkgray", cf.gam = "#3D75C2", cf.gamlss ="#CFB023FF"), name = "Better ComBat Method") +
   facet_wrap(~perm, nrow=2)
 ```
 
