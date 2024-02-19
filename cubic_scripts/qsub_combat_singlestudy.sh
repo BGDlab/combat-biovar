@@ -91,7 +91,7 @@ do
 	touch $bash_script
 
 	#COMBAT GAM
-	elif [ $config = "cf.gam" ]
+	if [ $config = "cf.gam" ]
 	then
 		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gam, formula = y ~ s(age_days, k=5) + sexMale + s(sex.age, k=5)'" > $bash_script
 

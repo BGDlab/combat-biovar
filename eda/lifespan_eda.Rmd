@@ -210,7 +210,7 @@ fwrite(imagen.df, file=paste0(base_path, "/data/imagen_CN.csv"))
 troubleshooting combat
 
 ```{r, eval=FALSE}
-gamlss(formula = rh_Vol_posteriorcingulate ~ pb(age_days) + sexMale + pb(sex.age) + site, sigma.formula= ~ pb(age_days) + sexMale + site, data=imagen.df)
+gamlss(formula = rh_Vol_posteriorcingulate ~ pb(age_days) + sexMale + sex.age + site, sigma.formula= ~ pb(age_days) + sexMale + site, data=imagen.df)
 ```
 
 looking into whether all global measures should be log-transformed to account for skew (getting neg vals for ventricles with combat-GAM)
