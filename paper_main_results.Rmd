@@ -388,6 +388,47 @@ global_cent_errs_plot
 # ggsave("figs/global_centile_errors.jpeg", global_cent_errs_plot)
 ```
 
+All features:
+```{r}
+long_abs.diffs <- diffs.df %>%
+  dplyr::filter(dataset == "cf.lm" | dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
+  dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("abs.diff_", pheno_list)) %>%
+  pivot_longer(cols=starts_with("abs.diff_"), names_to="pheno", names_prefix="abs.diff_", values_to = "abs.diff") %>%
+  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
+         abs.diff = abs.diff*100,
+         pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)))
+
+long_abs_diff.plt <- long_abs.diffs %>%
+  ggplot(aes(pheno, abs.diff)) +
+  geom_violin(aes(x=pheno, y=abs.diff, fill=dataset, color=dataset), scale="count") +
+  theme_linedraw(base_size = 11) +
+  scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  labs(y="Absolulte Centile Error", x = "Feature") +
+  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust=0.4, size=6), legend.position="top") +
+  facet_wrap(~pheno_cat, nrow=4, scales="free")
+ggsave("figs/all_abs_err_plt_wlabels.jpeg", long_abs_diff.plt, width=13, height=10.5, units="in")
+
+long_abs.diffs %>%
+  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  ggplot(aes(pheno, abs.diff)) +
+  geom_violin(aes(x=interaction(pheno,pheno_cat, sep = "&"), y=abs.diff,  fill=dataset, color=dataset), scale="count") +
+  theme_linedraw(base_size = 11) +
+  scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  labs(y="Absolulte Centile Error", x = "Feature") +
+  guides(x = ggh4x::guide_axis_nested(delim = "&")) +
+  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust=0.4, size=6), ggh4x.axis.nesttext.x = element_text(angle = 90, vjust=0.4), legend.position="top")
+
+
+# ggsave("figs/global_centile_errors.jpeg", global_cent_errs_plot)
+```
+
 plot median on brain
 ```{r}
 #get median w/in feature 
@@ -516,8 +557,20 @@ gam_better$pheno
 ns_gam_gamlss_comp <- full_cent_res %>%
   dplyr::filter(comp=="cf.gamlss_cf.gam" & sig_fdr == TRUE)
 
-intersect(gam_better$pheno, ns_gam_gamlss_comp$pheno)
+cfgam.better <- intersect(gam_better$pheno, ns_gam_gamlss_comp$pheno)
 ```
+```{r, eval=FALSE}
+cfgam.better.ct <- gsub("_CT", "", cfgam.better)
+cfgam.better.ct_plot <- dk.parc %>%
+  dplyr::mutate(gam_better = ifelse(label %in% cfgam.better.ct, 1, 0))
+
+ggplot(cfgam.better.ct_plot) +
+  theme_linedraw(base_size=12) +
+  ggseg::geom_brain(atlas = dk_nomed, 
+             position = position_brain(hemi ~ side),
+            aes(fill=as.factor(gam_better)))
+```
+
 ```{r, eval=FALSE}
 for (pheno in pheno_abs.diff.list){
   p <- ggplot(gam.gamlss.diffs, aes(y = gam.gamlss.diffs[[pheno]], fill= dataset)) +
