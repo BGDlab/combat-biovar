@@ -11,10 +11,12 @@ cent_path=$base/lifespan/centile_csvs #path to centile csvs
 bash_dir=$base/lifespan/centile_qsubs
 
 #search string:
-config="batch.study"
+config_list="batch.study batch.site"
 #######################################################################################
 cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
+for config in $config_list
+do
 bash_script=$bash_dir/${config}_deltas.sh
 touch $bash_script
 
@@ -23,3 +25,4 @@ echo "singularity run --cleanenv $img Rscript --save $r_script $cent_path/cf.gam
 
 #qsub bash script
 qsub -N $config -o $bash_dir/${config}_deltas_out.txt -e $bash_dir/${config}_deltas_err.txt $bash_script
+done
