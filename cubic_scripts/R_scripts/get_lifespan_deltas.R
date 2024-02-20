@@ -8,15 +8,16 @@ library(dplyr)
 
 #get args
 args <- commandArgs(trailingOnly = TRUE)
-gam_csv_path <- as.character(args[1]) #path to combat-GAM fit centiles
-gamlss_csv_path <- as.character(args[2]) #path to combatLS fit centiles
-save_path <- as.character(args[3]) #path to save output csv
-fname_str <- as.character(args[4]) #string for saving nameå
+csv_path <- as.character(args[1]) #path to read & save csvs
+config <- as.character(args[2]) #search str to match gam and gamlss fit centile csvs
+fname_str <- as.character(args[3]) #string for saving nameå
 
 #LOAD DFS
 #read in data
-gam.df <- fread(gam_csv_path)
-gamlss.df <- fread(gamlss_csv_path)
+gam.df.path <- list.files(path = csv_path, pattern = paste0("cf.gam-", config), full.names = TRUE) %>% unlist()
+gam.df <- fread(gam.df.path)
+gamlss.df.path <- list.files(path = csv_path, pattern = paste0("cf.gamlss-", config), full.names = TRUE) %>% unlist()
+gamlss.df <- fread(gamlss.df.path)
 
 #get identifiers
 id_cols <- c("participant", "sex", "age_days", "site", "log_age", "sexMale", "sex.age", "fs_version")
@@ -61,7 +62,7 @@ cf_deltas <- base::merge(id.gam.df, diff.df, by = "id") %>%
 
 #SAVE
 print("saving deltas")
-fwrite(cf_deltas, paste0(save_path, "/", fname_str, "_pred_deltas.csv"))
+fwrite(cf_deltas, paste0(csv_path, "/", fname_str, "_pred_deltas.csv"))
 
 
 print("DONE")
