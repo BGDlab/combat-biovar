@@ -1,6 +1,6 @@
 #!/bin/bash
 # Apply ComFam() with different arguments to specified dataset. 
-#smaller K for fitting, also removing pb(sex.age) from sigma based on troubleshooting (NA's in the working vector or weights for parameter sigma)
+#smaller K for fitting, also removing pb(sex.age) from sigma based on troubleshooting & and making linear in mu (NA's in the working vector or weights for parameter sigma)
 
 #STEP 2 OF ANALYSIS PIPELINE#
 
@@ -93,13 +93,13 @@ do
 	#COMBAT GAM
 	if [ $config = "cf.gam" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gam, formula = y ~ s(age_days, k=5) + sexMale + s(sex.age, k=5)'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gam, formula = y ~ s(age_days, k=5) + sexMale + sex.age'" > $bash_script
 
 	#COMBAT GAMLSS
 	elif [ $config = "cf.gamlss" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + pb(sex.age), sigma.formula = ~ pb(age_days) + sexMale'" > $bash_script
-
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + sex.age, sigma.formula = ~ pb(age_days) + sexMale'" > $bash_script
+	fi
 #qsub bash script
 	qsub -l h_vmem=64G,s_vmem=64G -N ${config}.${csv_fname} -o $bash_dir/${config}.${csv_fname}_out.txt -e $bash_dir/${config}.${csv_fname}_err.txt $bash_script
 done
