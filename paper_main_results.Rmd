@@ -88,6 +88,10 @@ for (file in pred.csvs) {
   # Bind the data to the combined dataframe
   combined_preds <- bind_rows(combined_preds, data)
 }
+
+#drop refA sites, not using for these analyses
+combined_preds <- combined_preds %>%
+  dplyr::filter(!grepl('_refA', dataset)) #drop refA levels
 ```
 
 **QC: find ppts with centiles at 1 or 0**
@@ -114,6 +118,10 @@ raw_files <- list.files(path = paste0(data_path, "/ukb_basic"), pattern = "_diff
 
 diffs.df <- fread(file = raw_files, sep=",") %>%
      mutate(dataset = gsub("_data|_data_predictions.csv|prop-|[0-9]|-", "", Source_File))
+
+#drop refA sites, not using for these analyses
+diffs.df <- diffs.df %>%
+  dplyr::filter(!grepl('_refA', dataset)) #drop refA levels
 ```
 
 Get subject-wise summaries
@@ -124,6 +132,10 @@ raw_files <- list.files(path = paste0(data_path, "/ukb_basic"), pattern = "_subj
 
 subj_sum.df <- fread(file = raw_files, sep=",") %>%
      mutate(dataset = gsub("_data|_data_predictions.csv|prop-|[0-9]|-", "", Source_File))
+
+#drop refA sites, not using for these analyses
+subj_sum.df <- subj_sum.df %>%
+  dplyr::filter(!grepl('_refA', dataset)) #drop refA levels
 ```
 
 Get differences in male vs female predicted variances at mean sample age
@@ -166,6 +178,10 @@ plot.info <- sigma.sex.df %>%
          dataset = gsub("_simsites", "", dataset))
 
 combined_var <- inner_join(combined_var, plot.info)
+
+#drop refA sites, not using for these analyses
+combined_var <- combined_var %>%
+  dplyr::filter(!grepl('_refA', dataset)) #drop refA levels
 ```
 
 ## SCALE EFFECTS OF SEX
@@ -543,35 +559,7 @@ p_diff <- ggarrange(
 # p_diff_annotate <- annotate_figure(p_diff)
 # p_diff_annotate
 ```
-plot w ref sites
-```{r, eval=FALSE}
-#get means w/in feature 
-mean.cent.diffs.long <- diffs.df %>%
-  dplyr::select(sex, dataset, pheno, pheno_abs.diff.list) %>%
-  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss", "cf.lm_refA", "cf.gam_refA", "cf.gamlss_refA"), ordered = TRUE)) %>%
-  group_by(dataset) %>%
-  summarize(across(starts_with("abs.diff_"), mean)) %>%
-  ungroup() %>%
-  pivot_longer(cols=starts_with("abs.diff_"), values_to="cent_abs.diff", names_to = "pheno", names_prefix = "abs.diff_") %>%
-  # mutate(pheno=gsub(".z", "", pheno)) %>%
-  mutate(pheno_cat = as.factor(case_when(
-      pheno %in% vol_list_global ~ "Global Volume",
-      pheno %in% vol_list_regions ~ "Regional Volume",
-      pheno %in% sa_list ~ "Regional SA",
-      pheno %in% ct_list ~ "Regional CT",
-      TRUE ~ NA_character_)),
-      label = sub("_[^_]*_", "_", pheno))
 
-mean.cent.diffs.long %>%
-  dplyr::filter(dataset != "ukb_CN") %>%
-  ggplot() +
-  geom_histogram(aes(x=cent_abs.diff, fill=dataset, y = stat(width*density)), color="black", alpha=0.6, position="identity") +
-  theme_linedraw(base_size = 11) +
-  facet_grid(dataset~pheno_cat) +
-  scale_y_continuous(labels = scales::percent) + 
-  labs(y="Percent Features", x = "Mean Absolute Centile Error") +
-  ggtitle("Absolute errors in centiles of brain structure features across ComBat processing pipelines")
-```
 Quick comp of cf.gam and cf.gamlss
 
 ```{r}
@@ -588,8 +576,6 @@ gam_better <- gam.gamlss.diffs %>%
          pheno = sub("abs.diff_", "", pheno)) %>%
   ungroup() %>%
   dplyr::filter(gam_minus_gamlss < 0)
-
-gam_better$pheno
 
 ns_gam_gamlss_comp <- full_cent_res %>%
   dplyr::filter(comp=="cf.gamlss_cf.gam" & sig_fdr == TRUE)
