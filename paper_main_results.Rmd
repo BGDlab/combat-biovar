@@ -249,6 +249,43 @@ p_annotate <- annotate_figure(p, top = text_grob("Figure 1B. Standardized effect
 p_annotate
 ggsave("figs/male_variance_ohbm_big.jpeg", p_annotate, width=7, height=8)
 ```
+Look at relative estimates for sex in sigma across features in raw data
+
+```{r}
+gamlss.sum.df <- fread(paste0(data_path, "/ukb_basic/gamlss_summary.csv"))
+gamlss.sum.df.raw <- gamlss.sum.df %>%
+  dplyr::filter(dataset=="ukb-CN-data-simsites")
+
+gamlss.sum.df.raw.sexsig <- gamlss.sum.df.raw %>%
+  dplyr::filter(parameter =="sigma" & term == "sexMale") %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)),
+      est_over_moment = estimate/moment.mean)
+
+gamlss.sum.df.raw.sexsig %>%
+  ggplot(aes(y=estimate, x=pheno_cat, fill=pheno_cat)) +
+  geom_boxplot() +
+  # geom_hline(yintercept = mean(gamlss.sum.df.raw.sexsig$t_stat), linetype = 2) +
+  stat_compare_means(method = "anova", label.y = 0.07)+    
+  stat_compare_means(label = "p.signif", method = "t.test",
+                     ref.group = ".all.")
+
+gamlss.sum.df.raw.sexsig %>%
+  ggplot() +
+  geom_histogram(aes(x=est_over_moment, fill=pheno_cat, color=pheno_cat), alpha=0.5, position="identity")
+
+gamlss.sum.df.raw.sexsig %>%
+  ggplot(aes(y=t_stat, x=pheno_cat, fill=pheno_cat)) +
+  geom_boxplot() +
+  # geom_hline(yintercept = mean(gamlss.sum.df.raw.sexsig$t_stat), linetype = 2) +
+  stat_compare_means(method = "anova", label.y = -7)+    
+  stat_compare_means(label = "p.signif", method = "t.test",
+                     ref.group = ".all.")
+```
 
 
 ## CENTILES

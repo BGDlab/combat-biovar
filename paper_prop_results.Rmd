@@ -22,7 +22,7 @@ source("./cubic_scripts/R_scripts/stats_tests.R")
 ```
 
 ```{r}
-der_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives"
+data_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives/ukb_ratio"
 
 #pheno lists
 pheno_list <- readRDS(file="cubic_scripts/R_scripts/pheno_list.rds")
@@ -63,8 +63,9 @@ pulled within-subj summaries from cubic using `scp -r 'gardnerm@cubic-login.uphs
 
 Read in centile/z-score errors
 
+
 ```{r}
-raw_files <- list.files(path = paste0(der_path, "/ukb_ratio"), pattern = "_diffs.csv", full.names = TRUE)
+raw_files <- list.files(path = data_path, pattern = "_diffs.csv", full.names = TRUE)
 
 df_list <- list() #new empty list
 for (file in raw_files) {
@@ -92,7 +93,7 @@ ratio.df <- bind_rows(ratio_list)
 Read in subject-wise summary stats
 
 ```{r}
-raw_files <- list.files(path = paste0(der_path, "/ukb_ratio"), pattern = "_subj_pred.csv", full.names = TRUE)
+raw_files <- list.files(path = data_path, pattern = "_subj_pred.csv", full.names = TRUE)
 
 df_list <- list() #new empty list
 for (file in raw_files) {
@@ -116,7 +117,7 @@ min(ratio_subj.df$mean_z)
 ```
 some quick eda
 
-```{r}
+```{r, eval=FALSE}
 ratio.df %>%
   ggplot() +
   geom_violin(aes(y=diff_GMV, x= sex, fill=sim.site)) +
@@ -130,7 +131,7 @@ ratio.df %>%
 
 Read in predicted centiles & z scores FROM RAW DATA ONLY (to save memory)
 ```{r, eval=FALSE}
-pred.csvs <- list.files(path = paste0(der_path, "/ukb_ratio"), pattern = "raw_predictions.csv", full.names = TRUE)
+pred.csvs <- list.files(path = data_path, pattern = "raw_predictions.csv", full.names = TRUE)
 
 df_list <- list() #new empty list
 for (file in pred.csvs) {
@@ -186,34 +187,46 @@ ggplot() +
   ylab("Subjects") +
   labs(fill="Sex") +
   facet_wrap(~prop, nrow=1, labeller = as_labeller(percent_f))
+sampling.plt
 ```
 
 ## CENTILES
 
 Do centile score absolute errors change based on combat version? Tested by `ratio_results.R`, results written to `full_featurewise_cent_t_tests.csv`
-*need to look and see what happens for subjects who aren't in all samples?*
+
 
 ```{r}
-cent.t.test.df <- fread(paste0(der_path, "/ukb_ratio/full_featurewise_cent_t_tests.csv"))
-cent.t.test.df <- cent.t.test.df %>%
-  mutate(prop = factor(column_label, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
-         comp = as.factor(comp))
+cent.feat.t.test <- readRDS(paste0(data_path, "/full_featurewise_cent_t_tests_all_out.RDS"))
+# names(cent.feat.t.test) <- n_perm_list
+cent.t.test.df <- bind_rows(cent.feat.t.test, .id="prop") %>%
+  mutate(prop = factor(prop, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
+         comp = as.factor(comp),
+         pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)))
+
+cent.t.test.df %>%
+  group_by(comp, bigger_group) %>%
+  summarize(n_sig=sum(sig_fdr))
 ```
 
 ```{r}
 cent.t.test.df %>%
-  # filter(comp=="cf.gamlss_cf.gam") %>%
-  ggplot() +
-  geom_col(aes(x=prop, y=n_sig_regions, fill=comp), position="dodge") +
-  facet_wrap(~comp) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="none")
+  dplyr::filter(sig_fdr==TRUE) %>%
+ggplot() +
+  geom_bar(aes(x=prop, fill=bigger_group)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_wrap(~comp)
 ```
 
 Plot errors for global phenotypes
 
 add significance testing
 ```{r}
-cent.t.test.df_global <- fread(paste0(der_path, "/ukb_ratio/full_featurewise_cent_t_tests_global.csv"))
+cent.t.test.df_global <- fread(paste0(data_path, "/full_featurewise_cent_t_tests_global.csv"))
 
 cent.t.test.df_global_filt <- cent.t.test.df_global %>%
   dplyr::filter(comp %in% c("cf.gamlss_cf.gam", "cf.lm_cf.gam", "cf.lm_cf.gamlss"))
@@ -297,7 +310,7 @@ prop.global_cent_errs_plot
 ```
 
 Also visualize by sex
-```{r}
+```{r, eval=FALSE}
 prop.global_cent_errs_plot_bysex <- prop.global_abs.diffs %>%
   dplyr::filter(dataset == "cf.lm" | dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
   mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
@@ -321,7 +334,7 @@ prop.global_cent_errs_plot_bysex <- prop.global_abs.diffs %>%
 Test subj. mean abs errors (mean_cent_abs.diff) using `ratio_subject-wise_results.R`, saved as `subj.abs.mean_sex_bias_cent_t_tests.csv`
 
 ```{r}
-cent.subj.mean.test.df <- fread(paste0(der_path, "/ukb_ratio/subj.abs.mean_sex_bias_cent_t_tests.csv"))
+cent.subj.mean.test.df <- fread(paste0(data_path, "/subj.abs.mean_sex_bias_cent_t_tests.csv"))
 cent.subj.mean.test.df <- cent.subj.mean.test.df %>%
   mutate(prop = factor(prop, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
          dataset = as.factor(dataset))
@@ -340,7 +353,7 @@ cent.subj.mean.test.df %>%
 Test w/in feature sex-biases in errors (diff_list) using `featurewise_sex_bias_test.R`, saved as `full_featurewise_cent_sex_bias_tests.RDS`
 
 ```{r}
-cent.subj.sex.test.list <- readRDS(paste0(der_path, "/ukb_ratio/full_featurewise_cent_sex_bias_tests.RDS"))
+cent.subj.sex.test.list <- readRDS(paste0(data_path, "/full_featurewise_cent_sex_bias_tests.RDS"))
 cent.subj.sex.test.df <- bind_rows(cent.subj.sex.test.list)
 ```
 
@@ -357,7 +370,7 @@ cent.subj.sex.test.df %>%
 
 visualize magnitude of significant sex-biases
 
-```{r}
+```{r, eval=FALSE}
 cent.subj.sex.test.df %>%
   mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
                               TRUE ~ median_sex_diff*100)) %>%
@@ -446,7 +459,7 @@ cent.subj.sex.test.df %>%
 ```
 
 Plot on brains for 60% F imbalance:
-```{r}
+```{r, eval=FALSE}
 aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
 
 cent.subj.sex.test.df2 <- cent.subj.sex.test.df %>%
@@ -547,31 +560,44 @@ Are extreme centiles (<5% and >95%) driving observed results?
 Test differences in abs. magnitude of centile errors w/in each feature
 
 ```{r}
-noext.cent.t.test.df <- fread(paste0(der_path, "/ukb_ratio/no.ext_featurewise_cent_t_tests.csv"))
-noext.cent.t.test.df <- noext.cent.t.test.df %>%
-  mutate(prop = factor(column_label, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
-         comp = as.factor(comp))
+noext.cent.feat.t.test <- readRDS(paste0(data_path, "/no.ext_featurewise_cent_t_tests_all_out.RDS"))
+noext.cent.t.test.df <- bind_rows(noext.cent.feat.t.test, .id="prop") %>%
+  mutate(prop = factor(prop, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
+         comp = as.factor(comp),
+         pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)))
 noext.cent.t.test.df
 ```
 
 compare results
 ```{r}
-noext.cent.t.test.df_reduced <- noext.cent.t.test.df %>%
-  mutate(full_df = 0) %>%
-  dplyr::select(comp, prop, n_sig_regions, full_df)
-cent.t.test.df_reduced <- cent.t.test.df %>%
-  mutate(full_df = 1) %>%
-  dplyr::select(comp, prop, n_sig_regions, full_df)
+noext.cent.t.test.df2 <- noext.cent.t.test.df %>%
+  mutate(full_df = "reduced")
+cent.t.test.df2 <- cent.t.test.df %>%
+  mutate(full_df = "full")
 
-full_join(noext.cent.t.test.df_reduced, cent.t.test.df_reduced) %>%
-  ggplot() +
-  geom_col(aes(x=prop, y=n_sig_regions, fill=as.factor(full_df)), position="dodge") +
-  facet_wrap(~comp) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+comp.df <- full_join(noext.cent.t.test.df2, cent.t.test.df2)
+comp.df %>%
+  dplyr::filter(sig_fdr==TRUE) %>%
+ggplot() +
+  geom_bar(aes(x=prop, fill=bigger_group)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_grid(comp ~ full_df)
+
+comp.df %>%
+  dplyr::filter(sig_fdr==TRUE) %>%
+ggplot() +
+  geom_bar(aes(x=comp, fill=bigger_group)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_wrap( ~ full_df)
 ```
 Test sex-biases in centile errors w/in each feature
 ```{r}
-noext_cent.subj.sex.test.list <- readRDS(paste0(der_path, "/ukb_ratio/no.ext_featurewise_cent_sex_bias_tests.RDS"))
+noext_cent.subj.sex.test.list <- readRDS(paste0(data_path, "/no.ext_featurewise_cent_sex_bias_tests.RDS"))
 noext_cent.subj.sex.test.df <- bind_rows(noext_cent.subj.sex.test.list)
 ```
 
@@ -586,7 +612,6 @@ noext_cent.subj.sex.test.df %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
-
 ## Z-SCORES
 
 Do z score errors change based on combat version?
@@ -594,19 +619,30 @@ Do z score errors change based on combat version?
 compare abs(z errors) w/in features - Tested by `ratio_results.R`, results written to `full_featurewise_z_t_tests.csv`
 
 ```{r}
-z.t.test.df <- fread(paste0(der_path, "/ukb_ratio/full_featurewise_z_t_tests.csv"))
-z.t.test.df <- z.t.test.df %>%
-  mutate(prop = factor(column_label, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
-         comp = as.factor(comp))
+z.feat.t.test <- readRDS(paste0(data_path, "/full_featurewise_z_t_tests_all_out.RDS"))
+
+z.feat.t.test.df <- bind_rows(z.feat.t.test, .id="prop") %>%
+  mutate(pheno = sub(".z", "", pheno)) %>%
+  mutate(prop = factor(prop, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
+                pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)))
+
+z.feat.t.test.df %>%
+  group_by(comp, bigger_group) %>%
+  summarize(n_sig=sum(sig_fdr))
 ```
 
 ```{r}
-z.t.test.df %>%
-  # filter(comp=="cf.gamlss_cf.gam") %>%
-  ggplot() +
-  geom_col(aes(x=prop, y=n_sig_regions, fill=comp), position="dodge") +
-  facet_wrap(~comp) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="none")
+z.feat.t.test.df %>%
+  dplyr::filter(sig_fdr==TRUE) %>%
+ggplot() +
+  geom_bar(aes(x=prop, fill=bigger_group)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_wrap(~comp)
 ```
 
 Plot errors for global phenotypes
@@ -640,7 +676,7 @@ prop.global_z_errs_plot
 Test subj. mean abs errors (mean_cent_abs.diff) using `ratio_subject-wise_results.R`, saved as `subj.abs.mean_sex_bias_z_t_tests.csv`
 
 ```{r}
-z.subj.mean.test.df <- fread(paste0(der_path, "/ukb_ratio/subj.abs.mean_sex_bias_z_t_tests.csv"))
+z.subj.mean.test.df <- fread(paste0(data_path, "/subj.abs.mean_sex_bias_z_t_tests.csv"))
 z.subj.mean.test.df <- z.subj.mean.test.df %>%
   mutate(prop = factor(prop, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
          dataset = as.factor(dataset))
@@ -659,7 +695,7 @@ z.subj.mean.test.df %>%
 Test w/in feature sex-biases in errors (diff_list) using `featurewise_sex_bias_test.R`, saved as `full_featurewise_cent_sex_bias_tests.RDS`
 
 ```{r}
-z.subj.sex.test.list <- readRDS(paste0(der_path, "/ukb_ratio/full_featurewise_z_sex_bias_tests.RDS"))
+z.subj.sex.test.list <- readRDS(paste0(data_path, "/full_featurewise_z_sex_bias_tests.RDS"))
 z.subj.sex.test.df <- bind_rows(z.subj.sex.test.list)
 ```
 
@@ -681,32 +717,48 @@ Are extreme z-scores (<2 and >2) driving observed results?
 Test differences in abs. magnitude of z errors w/in each feature
 
 ```{r}
-noext.z.t.test.df <- fread(paste0(der_path, "/ukb_ratio/no.ext_featurewise_z_t_tests.csv"))
-noext.z.t.test.df <- noext.z.t.test.df %>%
-  mutate(prop = factor(column_label, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
-         comp = as.factor(comp))
-noext.z.t.test.df
+noext.z.feat.t.test <- readRDS(paste0(data_path, "/no.ext_featurewise_z_t_tests_all_out.RDS"))
+noext.z.feat.t.test.df <- bind_rows(noext.z.feat.t.test, .id="prop") %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)))
+
+noext.z.feat.t.test.df %>%
+  group_by(comp, bigger_group) %>%
+  summarize(n_sig=sum(sig_fdr))
 ```
 
 compare results
 ```{r}
-noext.z.t.test.df_reduced <- noext.z.t.test.df %>%
-  mutate(full_df = 0) %>%
-  dplyr::select(comp, prop, n_sig_regions, full_df)
-z.t.test.df_reduced <- z.t.test.df %>%
-  mutate(full_df = 1) %>%
-  dplyr::select(comp, prop, n_sig_regions, full_df)
+noext.z.t.test.df2 <- noext.z.feat.t.test.df %>%
+  mutate(full_df = "reduced")
+z.feat.t.test.df2 <- z.feat.t.test.df %>%
+  mutate(full_df = "full")
 
-full_join(noext.z.t.test.df_reduced, z.t.test.df_reduced) %>%
-  ggplot() +
-  geom_col(aes(x=prop, y=n_sig_regions, fill=as.factor(full_df)), position="dodge") +
-  facet_wrap(~comp) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+z.comp.df <- full_join(noext.z.t.test.df2, z.feat.t.test.df2)
+z.comp.df %>%
+  dplyr::filter(sig_fdr==TRUE) %>%
+ggplot() +
+  geom_bar(aes(x=prop, fill=bigger_group)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_grid(comp ~ full_df)
+
+z.comp.df %>%
+  dplyr::filter(sig_fdr==TRUE) %>%
+ggplot() +
+  geom_bar(aes(x=comp, fill=bigger_group)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_wrap( ~ full_df)
 ```
+
+
 Test sex-biases in z errors w/in each feature
 
 ```{r}
-noext_z.subj.sex.test.list <- readRDS(paste0(der_path, "/ukb_ratio/no.ext_featurewise_z_sex_bias_tests.RDS"))
+noext_z.subj.sex.test.list <- readRDS(paste0(data_path, "/no.ext_featurewise_z_sex_bias_tests.RDS"))
 noext_z.subj.sex.test.df <- bind_rows(noext_z.subj.sex.test.list)
 ```
 

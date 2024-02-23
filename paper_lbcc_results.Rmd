@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, skimr, gam)
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, skimr, gam, ggeffects)
 #Sys.setenv("MC_CORES"=10L)
 options("mc.cores")
 
@@ -81,7 +81,7 @@ Sample plot
 age.df <- cent_deltas_df %>%
   group_by(study) %>%
   summarize(mean_age = mean(age_years)) %>%
-  arrange(mean_age)
+  arrange(-mean_age)
 
 sample_boxplot <- cent_deltas_df %>%
   mutate(study = factor(study, levels=c(age.df$study), ordered=TRUE)) %>%
@@ -244,146 +244,6 @@ delta_sum.df_merged %>%
   geom_point() +
   geom_smooth(method="lm")
 ```
-
-##Feature-wise
-do deltas differ by feature?
-```{r}
-cent_deltas_df_long2 <- cent_deltas_df_long %>%
-   mutate(pheno_cat = as.factor(case_when(
-      pheno %in% vol_list_global ~ "Global Volume",
-      pheno %in% vol_list_regions ~ "Regional Volume",
-      pheno %in% sa_list ~ "Regional SA",
-      pheno %in% ct_list ~ "Regional CT",
-      TRUE ~ NA_character_)))
-
-cent_deltas_df_long2 %>%
-  ggplot() +
-  geom_histogram(aes(x=delta, fill=pheno), position="identity", alpha=0.3) +
-  theme(legend.position="none")
-
-cent_deltas_df_long2 %>%
-  ggplot() +
-  geom_histogram(aes(x=delta*100, fill=pheno_cat, color=pheno_cat), position="identity", alpha=0.7, bins=60)
-
-cent_deltas_df_long2 %>%
-  ggplot() +
-  geom_histogram(aes(x=delta*100, fill=study, color=study), position="identity", alpha=0.3, bins=60) +
-  facet_wrap(~pheno_cat, scales="free") +
-  theme(legend.position="none")
-```
-
-
-#Site-Level Mean Results
-
-delta ~ age
-
-```{r}
-# age
-summary(lm(site_mean_abs.delta ~ site_mean_age_yrs, data=delta_sum.df_merged))
-summary(lm(site_mean_delta ~ site_mean_age_yrs, data=delta_sum.df_merged))
-
-#forward selection for site_mean_abs.delta
-summary(lm(site_mean_abs.delta ~ site_mean_age_yrs + site_n, data=delta_sum.df_merged)) #small effect but remains significant/grows stronger
-summary(lm(site_mean_abs.delta ~ site_mean_age_yrs + site_n + sex_prop_Female, data=delta_sum.df_merged)) #small effect but remains significant/grows stronger
-full.delta.age.fit <- lm((site_mean_abs.delta*100) ~ site_mean_age_yrs + site_n + sex_prop_Female, data=delta_sum.df_merged) #scaling to centile space
-sjPlot::plot_model(full.delta.age.fit, type = "pred", terms = "site_mean_age_yrs")
-```
-
-
-```{r}
-delta_sum.df_merged %>%
-  ggplot(aes(x=site_mean_age_yrs, y=site_mean_abs.delta)) +
-  geom_count(aes(size=site_n)) +
-  geom_smooth(method="lm")
-
-age_effects.plt <- delta_sum.df_merged %>%
-  ggplot(aes(x=site_mean_age_yrs, y=(site_mean_abs.delta*100))) +
-  geom_count(aes(size=site_n, color=sex_prop_Female)) +
-  paletteer::scale_color_paletteer_c("ggthemes::Blue", name = "Proportion \nFemale") +
-  geom_smooth(method="lm", color="#2A5783FF") +
-  theme_linedraw(base_size = 11) +
-  labs(size="site N", x = "Mean Age (Years)", y = "Mean Absolute Difference in Centile Scores")
-
-# skim(delta_sum.df_piv) #some missing data! check on this!
-```
-
-are studies w older subjects changing more because there are fewer of them?
-check for association between study size and age
-```{r}
-summary(lm(site_mean_age_yrs ~ site_n, data=delta_sum.df_merged)) #study size is associated with age, but assoc. remains when controlling for size
-```
-
-```{r}
-cent_deltas_df %>%
-  ggplot() +
-  geom_histogram(aes(x=age_days))
-```
-
-delta ~ % female
-
-```{r}
-# %female
-summary(lm(site_mean_abs.delta ~ sex_prop_Female, data=delta_sum.df_merged))
-summary(lm(site_mean_delta ~ sex_prop_Female, data=delta_sum.df_merged))
-summary(lm(site_mean_delta ~ sex_prop_Female + site_n, data=delta_sum.df_merged)) #add site size covariate
-summary(lm(site_mean_delta ~ sex_prop_Female + site_n + site_mean_age, data=delta_sum.df_merged)) #add site size & age covariates
-full.delta.sex.fit <- lm((100*site_mean_delta) ~ sex_prop_Female + site_n + site_mean_age, data=delta_sum.df_merged) #scaling for plot
-
-sjPlot::plot_model(full.delta.sex.fit, type = "pred", terms = "sex_prop_Female") 
-```
-
-```{r}
-delta_sum.by.sex.df %>%
-  ggplot(aes(x=sex, y=(mean_delta*100), color=as.factor(majority), fill=as.factor(majority))) +
-  geom_count(aes(shape=as.factor(majority), size=sex_prop), alpha=0.5) +
-  geom_line(aes(group=site))
-
-sex_effects.plt <- delta_sum.df_merged %>%
-  ggplot(aes(x=sex_prop_Female, y=(site_mean_delta*100))) +
-  geom_count(aes(size=site_n, color=site_mean_age_yrs)) +
-  geom_smooth(method="lm", color="#24693DFF") +
-  paletteer::scale_color_paletteer_c("ggthemes::Green", name = "Mean Age \n(Years)") +
-  theme_linedraw(base_size = 11) +
-  labs(size="site N", x = "Proportion Female", y = "Mean Difference in Centile Scores")
-
-delta_sum.by.sex.df %>%
-  ggplot(aes(x=sex, y=(mean_delta*100))) +
-  geom_boxplot()
-```
-
-```{r}
-# age*%female
-summary(lm(site_mean_abs.delta ~ site_mean_age_yrs*sex_prop_Female, data=delta_sum.df_merged))
-summary(lm(site_mean_delta ~ site_mean_age_yrs*sex_prop_Female, data=delta_sum.df_merged))
-```
-
-## Plots
-
-```{r}
-cent_deltas_df %>%
-  ggplot(aes(x=age_days, y=(delta.GMV*100))) +
-  geom_point(alpha=0.4) +
-  geom_smooth(method="lm")
-
-cent_deltas_df %>%
-  ggplot(aes(x=delta.lh_SA_fusiform*100, color=sex, fill=sex)) +
-  geom_histogram(aes(y=after_stat(c(
-      count[group==1]/sum(count[group==1]),
-      count[group==2]/sum(count[group==2])
-    )*100)), alpha=0.4, position="identity", bins=60) +
-  ylab("Percentage")
-
-cent_deltas_df %>%
-  ggplot(aes(x=age_days, y=delta.rh_Vol_supramarginal*100, color=sex, fill=sex)) +
-  geom_point(alpha=0.3) +
-  geom_smooth(method="lm")
-
-cent_deltas_df %>%
-  ggplot(aes(x=age_days, y=delta.rh_Vol_temporalpole*100, color=sex, fill=sex)) +
-  geom_point(alpha=0.4) +
-  geom_smooth(method="lm")
-```
-
 #Site Effects
 
 Test to see if centile score is associated with site in either ComBatLS or ComBat-GAM harmonized data.
@@ -709,8 +569,215 @@ summary(lm(mean_z ~ study, data=gamlss_z_df.mean))
 summary(aov(mean_z ~ study, data=gamlss_z_df.mean))
 ```
 
+#Site-Level Mean Results
 
-#FIGURE 4
+##Age
+
+delta ~ age
+
+```{r}
+# age
+summary(lm(site_mean_abs.delta ~ site_mean_age_yrs, data=delta_sum.df_merged))
+summary(lm(site_mean_delta ~ site_mean_age_yrs, data=delta_sum.df_merged))
+
+#forward selection for site_mean_abs.delta
+summary(lm(site_mean_abs.delta ~ site_mean_age_yrs + site_n, data=delta_sum.df_merged)) #small effect but remains significant/grows stronger
+summary(lm(site_mean_abs.delta ~ site_mean_age_yrs + site_n + sex_prop_Female, data=delta_sum.df_merged)) #small effect but remains significant/grows stronger
+full.delta.age.fit <- lm(site_mean_abs.delta ~ site_mean_age_yrs + site_n + sex_prop_Female, data=delta_sum.df_merged) #scaling to centile space
+
+full.delta.age.fit2 <- lm(site_mean_delta ~ site_mean_age_yrs + site_n + sex_prop_Female, data=delta_sum.df_merged) #scaling to centile space
+summary(full.delta.age.fit2)
+```
+
+
+```{r}
+delta_sum.df_merged %>%
+  ggplot(aes(x=site_mean_age_yrs, y=site_mean_delta)) +
+  geom_count(aes(size=site_n)) +
+  geom_smooth(method="lm")
+delta_sum.df_merged %>%
+  ggplot(aes(x=site_mean_age_yrs, y=site_mean_abs.delta)) +
+  geom_count(aes(size=site_n)) +
+  geom_smooth(method="lm")
+
+age_effects.plt.p <- summary(lm((site_mean_abs.delta*100) ~ sex_prop_Female + site_n + site_mean_age_yrs, data=delta_sum.df_merged))$coef["site_mean_age_yrs", "Pr(>|t|)"]
+age_effects.plt.slope <- summary(lm((site_mean_abs.delta*100) ~ sex_prop_Female + site_n + site_mean_age_yrs, data=delta_sum.df_merged))$coef["site_mean_age_yrs", "Estimate"]
+
+age_effects.plt <- delta_sum.df_merged %>%
+  ggplot(aes(x=site_mean_age_yrs, y=(site_mean_abs.delta*100))) +
+  geom_count(aes(size=site_n, color=sex_prop_Female)) +
+  paletteer::scale_color_paletteer_c("ggthemes::Blue", name = "Proportion \nFemale") +
+  geom_smooth(method="lm", color="#2A5783FF") +
+  theme_linedraw(base_size = 11) +
+  annotate("text", x=60, y=4, label=paste("Mean Age \nEstimate =", round(age_effects.plt.slope, 4), "\np =", round(age_effects.plt.p, 4)), size=3) +
+  labs(size="site N", x = "Mean Age (Years)", y = "Mean Absolute Difference in Centile Scores") +
+  theme(axis.title.x=element_b)
+
+age_effects.plt.p <- summary(lm((site_mean_delta*100) ~ sex_prop_Female + site_n + site_mean_age_yrs, data=delta_sum.df_merged))$coef["site_mean_age_yrs", "Pr(>|t|)"]
+age_effects.plt.slope <- summary(lm((site_mean_delta*100) ~ sex_prop_Female + site_n + site_mean_age_yrs, data=delta_sum.df_merged))$coef["site_mean_age_yrs", "Estimate"]
+
+age_effects.plt.null <- delta_sum.df_merged %>%
+  ggplot(aes(x=site_mean_age_yrs, y=(site_mean_delta*100))) +
+  geom_count(aes(size=site_n, color=sex_prop_Female)) +
+  paletteer::scale_color_paletteer_c("ggthemes::Blue", name = "Proportion \nFemale") +
+  geom_smooth(method="lm", color="#2A5783FF") +
+  theme_linedraw(base_size = 11) +
+  annotate("text", x=60, y=-0.3, label=paste("Mean Age \nEstimate =", round(age_effects.plt.slope, 4), "\np =", round(age_effects.plt.p, 4)), size=3) +
+  labs(size="site N", x = "Mean Age (Years)", y = "Mean Difference in Centile Scores")
+
+#add prediction to df
+delta_sum.df_merged$abs.delta_pred <- predict(full.delta.age.fit)
+
+full.delta.age.fit.df <- data.frame(x=ggeffects::ggemmeans(full.delta.age.fit, terms="site_mean_age_yrs")$x,
+                                    predicted=ggeffects::ggemmeans(full.delta.age.fit, terms="site_mean_age_yrs")$predicted,
+                                    conf.low=ggeffects::ggemmeans(full.delta.age.fit, terms="site_mean_age_yrs")$conf.low,
+                                    conf.high=ggeffects::ggemmeans(full.delta.age.fit, terms="site_mean_age_yrs")$conf.high)
+full.delta.age.fit.df <- full.delta.age.fit.df %>%
+  mutate(predicted = predicted*100,
+         conf.low=conf.low*100,
+         conf.high=conf.high*100)
+
+marg.age_effects.plt <- ggplot() +
+  geom_count(data=delta_sum.df_merged, aes(x=site_mean_age_yrs, y=(abs.delta_pred*100), size=site_n, color=sex_prop_Female)) +
+  paletteer::scale_color_paletteer_c("ggthemes::Blue", name = "Proportion \nFemale") +
+  geom_line(aes(x=full.delta.age.fit.df$x, y = full.delta.age.fit.df$predicted), size = 0.7, color="#2A5783FF") +
+  geom_ribbon(aes(x=full.delta.age.fit.df$x,y= NULL, ymin= full.delta.age.fit.df$conf.low, ymax= full.delta.age.fit.df$conf.high), alpha=0.1, fill="#2A5783FF") +
+  theme_linedraw(base_size = 11) +
+  labs(size="site N", x = "Mean Age (Years)", y = "Predicted Mean Absolute Difference in Centile Scores")
+```
+
+are studies w older subjects changing more because there are fewer of them?
+check for association between study size and age
+```{r}
+summary(lm(site_mean_age_yrs ~ site_n, data=delta_sum.df_merged)) #study size is associated with age, but assoc. remains when controlling for size
+```
+
+```{r}
+cent_deltas_df %>%
+  ggplot() +
+  geom_histogram(aes(x=age_days))
+```
+
+
+##Prop Female
+
+delta ~ % female
+
+```{r}
+# %female
+summary(lm(site_mean_abs.delta ~ sex_prop_Female, data=delta_sum.df_merged))
+summary(lm(site_mean_delta ~ sex_prop_Female, data=delta_sum.df_merged))
+summary(lm(site_mean_delta ~ sex_prop_Female + site_n, data=delta_sum.df_merged)) #add site size covariate
+summary(lm(site_mean_delta ~ sex_prop_Female + site_n + site_mean_age, data=delta_sum.df_merged)) #add site size & age covariates
+full.delta.sex.fit <- lm(site_mean_delta ~ sex_prop_Female + site_n + site_mean_age, data=delta_sum.df_merged) #scaling for plot
+
+sjPlot::plot_model(full.delta.sex.fit, type = "pred", terms = "sex_prop_Female") 
+```
+
+```{r}
+delta_sum.by.sex.df %>%
+  ggplot(aes(x=sex, y=(mean_delta*100), color=as.factor(majority), fill=as.factor(majority))) +
+  geom_count(aes(shape=as.factor(majority), size=sex_prop), alpha=0.5) +
+  geom_line(aes(group=site))
+```
+
+```{r}
+delta_sum.df_merged %>%
+  ggplot(aes(x=sex_prop_Female, y=site_mean_delta)) +
+  geom_count(aes(size=site_n)) +
+  geom_smooth(method="lm")
+delta_sum.df_merged %>%
+  ggplot(aes(x=sex_prop_Female, y=site_mean_abs.delta)) +
+  geom_count(aes(size=site_n)) +
+  geom_smooth(method="gam")
+
+sex_effects.plt.p <- summary(lm((site_mean_delta*100) ~ sex_prop_Female + site_n + site_mean_age, data=delta_sum.df_merged))$coef["sex_prop_Female", "Pr(>|t|)"]
+sex_effects.plt.slope <- summary(lm((site_mean_delta*100) ~ sex_prop_Female + site_n + site_mean_age, data=delta_sum.df_merged))$coef["sex_prop_Female", "Estimate"]
+
+sex_effects.plt <- delta_sum.df_merged %>%
+  mutate(site_mean_delta=site_mean_delta*100) %>%
+  ggplot(aes(x=sex_prop_Female, y=site_mean_delta)) +
+  geom_count(aes(size=site_n, color=site_mean_age_yrs)) +
+  geom_smooth(method="lm",
+              color="#24693DFF") +
+  paletteer::scale_color_paletteer_c("ggthemes::Green", name = "Mean Age \n(Years)") +
+  theme_linedraw(base_size = 11) +
+  labs(size="site N", x = "Proportion Female", y = "Mean Difference in Centile Scores") +
+  theme(axis.title.y=element_blank()) +
+  annotate("text", x=0.25, y=-0.3, label=paste("Proportion Female \nEstimate =", round(sex_effects.plt.slope, 4), "\np =", round(sex_effects.plt.p, 4)), size=3) +
+  guides(size = "none")
+
+sex_effects.plt.p <- summary(lm((site_mean_abs.delta*100) ~ sex_prop_Female + site_n + site_mean_age, data=delta_sum.df_merged))$coef["sex_prop_Female", "Pr(>|t|)"]
+sex_effects.plt.slope <- summary(lm((site_mean_abs.delta*100) ~ sex_prop_Female + site_n + site_mean_age, data=delta_sum.df_merged))$coef["sex_prop_Female", "Estimate"]
+
+sex_effects.plt.null <- delta_sum.df_merged %>%
+  ggplot(aes(x=sex_prop_Female, y=(site_mean_abs.delta*100))) +
+  geom_count(aes(size=site_n, color=site_mean_age_yrs)) +
+  geom_smooth(method="lm", color="#24693DFF") +
+  paletteer::scale_color_paletteer_c("ggthemes::Green", name = "Mean Age \n(Years)") +
+  theme_linedraw(base_size = 11) +
+  labs(size="site N") +
+    annotate("text", x=0.25, y=4, label=paste("Proportion Female \nEstimate =", round(sex_effects.plt.slope, 4), "\np =", round(sex_effects.plt.p, 4)), size=3) +
+  theme(axis.title=element_blank()) +
+  guides(size = "none")
+
+#add prediction to df
+delta_sum.df_merged$delta_pred <- predict(full.delta.sex.fit)
+
+full.delta.sex.fit.df <- data.frame(x=ggeffects::ggemmeans(full.delta.sex.fit, terms="sex_prop_Female")$x,
+                                    predicted=ggeffects::ggemmeans(full.delta.sex.fit, terms="sex_prop_Female")$predicted,
+                                    conf.low=ggeffects::ggemmeans(full.delta.sex.fit, terms="sex_prop_Female")$conf.low,
+                                    conf.high=ggeffects::ggemmeans(full.delta.sex.fit, terms="sex_prop_Female")$conf.high)
+full.delta.sex.fit.df <- full.delta.sex.fit.df %>%
+  mutate(predicted = predicted*100,
+         conf.low=conf.low*100,
+         conf.high=conf.high*100)
+
+marg.sex_effects.plt <- ggplot() +
+  geom_count(data=delta_sum.df_merged, aes(x=sex_prop_Female, y=(delta_pred*100), size=site_n, color=site_mean_age_yrs)) +
+  geom_line(aes(x=full.delta.sex.fit.df$x, y = full.delta.sex.fit.df$predicted), size = 0.7, color="#24693DFF") +
+  geom_ribbon(aes(x=full.delta.sex.fit.df$x,y= NULL, ymin= full.delta.sex.fit.df$conf.low, ymax= full.delta.sex.fit.df$conf.high), alpha=0.1, fill="#24693DFF") +
+  paletteer::scale_color_paletteer_c("ggthemes::Green", name = "Mean Age \n(Years)") +
+  theme_linedraw(base_size = 11) +
+  labs(size="site N", x = "Proportion Female", y = "Predicted Mean Difference in Centile Scores")
+
+delta_sum.by.sex.df %>%
+  ggplot(aes(x=sex, y=(mean_delta*100))) +
+  geom_boxplot()
+```
+
+```{r}
+# age*%female
+summary(lm(site_mean_abs.delta ~ site_mean_age_yrs*sex_prop_Female, data=delta_sum.df_merged))
+summary(lm(site_mean_delta ~ site_mean_age_yrs*sex_prop_Female, data=delta_sum.df_merged))
+```
+
+```{r}
+cent_deltas_df %>%
+  ggplot(aes(x=age_days, y=(delta.GMV*100))) +
+  geom_point(alpha=0.4) +
+  geom_smooth(method="lm")
+
+cent_deltas_df %>%
+  ggplot(aes(x=delta.lh_SA_fusiform*100, color=sex, fill=sex)) +
+  geom_histogram(aes(y=after_stat(c(
+      count[group==1]/sum(count[group==1]),
+      count[group==2]/sum(count[group==2])
+    )*100)), alpha=0.4, position="identity", bins=60) +
+  ylab("Percentage")
+
+cent_deltas_df %>%
+  ggplot(aes(x=age_days, y=delta.rh_Vol_supramarginal*100, color=sex, fill=sex)) +
+  geom_point(alpha=0.3) +
+  geom_smooth(method="lm")
+
+cent_deltas_df %>%
+  ggplot(aes(x=age_days, y=delta.rh_Vol_temporalpole*100, color=sex, fill=sex)) +
+  geom_point(alpha=0.4) +
+  geom_smooth(method="lm")
+```
+
+#FIGURE 5
 
 ```{r}
 # study demographics
@@ -724,18 +791,51 @@ ggarrange(sample_boxplot, sample_barplot,
           widths=c(2, 1),
           heights=c(14, 1)),
 # mean effects
-ggarrange(age_effects.plt,
-sex_effects.plt,
+ggarrange(marg.age_effects.plt,
+marg.sex_effects.plt,
 nrow=2, ncol=1,
 align="hv",
 labels=c("B", "C")),
 common.legend=FALSE,
 nrow=1, ncol=2,
 labels=c("A", NA),
-widths=c(1, 1.3)
+widths=c(1, 1.4)
 )
 
 fig5_annotate <- annotate_figure(fig5, top = text_grob("Figure 5. Differences in centile scores of lifespan consortium data when harmonized with ComBat-GAM and ComBatLS", color = "black", hjust = 0, x = 0))
 fig5_annotate
 ggsave("figs/figure_5.jpeg", fig5_annotate, width=12, height=10, units="in")
+```
+
+```{r}
+# study demographics
+fig5.optB <- ggarrange(
+ggarrange(sample_boxplot, sample_barplot,
+          full_boxplot, full_barplot,
+          nrow=2, ncol=2, 
+          # align = "hv", 
+          common.legend = TRUE,
+          legend = "bottom",
+          widths=c(2, 1.3),
+          heights=c(14, 1)),
+# mean effects
+ggarrange(
+ggarrange(age_effects.plt, age_effects.plt.null,
+          nrow=2, ncol=1, common.legend=TRUE, legend="bottom",
+          align = "hv"),
+ggarrange(sex_effects.plt.null, sex_effects.plt,
+          nrow=2, ncol=1, common.legend=TRUE, legend="bottom",
+          align = "hv"),
+# align="hv",
+# labels=c("B", "C")),
+common.legend=FALSE,
+nrow=1, ncol=2),
+labels=c("A", "B"),
+widths=c(1, 2.2),
+nrow=1, ncol=2
+)
+
+fig5.optB_annotate <- annotate_figure(fig5.optB, top = text_grob("Figure 5. Differences in centile scores of lifespan consortium data when harmonized with ComBat-GAM and ComBatLS", color = "black", hjust = 0, x = 0))
+fig5.optB_annotate
+ggsave("figs/figure_5_option2.jpeg", fig5.optB_annotate, width=13, height=10, units="in")
 ```
