@@ -735,6 +735,33 @@ sex_t_tests_in_feat.df %>%
 ```
 
 ```{r}
+#get range
+sex_t_tests_in_feat.df %>%
+  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+                              TRUE ~ median_sex_diff*100)) %>%
+  group_by(dataset) %>%
+  summarize(min_sex_diff = min(median_sex_diff, na.rm=TRUE),
+            max_sex_diff = max(median_sex_diff, na.rm=TRUE))
+
+#look by feature type
+sex_t_tests_in_feat.df %>%
+  # dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+                              TRUE ~ median_sex_diff*100),
+         pheno_cat = factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_))) %>%
+ggplot() +
+  geom_histogram(aes(x=median_sex_diff, color=dataset, fill=dataset),alpha=0.5, position="identity") +
+  geom_vline(xintercept = 0, linetype="dashed") +
+  facet_grid(pheno_cat~dataset, scales="free")
+
+```
+
+```{r}
 plt.df <- diffs.df %>%
   dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("diff_", pheno_list)) %>% #select centile errors only
   dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels

@@ -220,6 +220,19 @@ ggplot() +
   geom_bar(aes(x=prop, fill=bigger_group)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   facet_wrap(~comp)
+
+cent.t.test.df %>%
+  dplyr::filter(sig_fdr==TRUE) %>%
+  mutate(pheno_cat = factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_))) %>%
+ggplot() +
+  geom_bar(aes(x=prop, fill=bigger_group)) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  facet_grid(pheno_cat~comp, scales="free_y")
 ```
 
 Plot errors for global phenotypes
@@ -353,14 +366,14 @@ cent.subj.mean.test.df %>%
 Test w/in feature sex-biases in errors (diff_list) using `featurewise_sex_bias_test.R`, saved as `full_featurewise_cent_sex_bias_tests.RDS`
 
 ```{r}
-cent.subj.sex.test.list <- readRDS(paste0(data_path, "/full_featurewise_cent_sex_bias_tests.RDS"))
-cent.subj.sex.test.df <- bind_rows(cent.subj.sex.test.list)
+cent.feat.sex.test.list <- readRDS(paste0(data_path, "/full_featurewise_cent_sex_bias_tests.RDS"))
+cent.feat.sex.test.df <- bind_rows(cent.feat.sex.test.list)
 ```
 
 simple bar-plot to count regions w sigificant sex-biases
 
 ```{r}
-cent.subj.sex.test.df %>%
+cent.feat.sex.test.df %>%
   ggplot() +
   geom_bar(aes(x=prop, fill=sig_fdr)) +
   facet_wrap(~dataset) +
@@ -370,16 +383,23 @@ cent.subj.sex.test.df %>%
 
 visualize magnitude of significant sex-biases
 
-```{r, eval=FALSE}
-cent.subj.sex.test.df %>%
+```{r}
+cent.feat.sex.test.df %>%
   mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
-                              TRUE ~ median_sex_diff*100)) %>%
+                              TRUE ~ median_sex_diff*100),
+         pheno_cat = factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_))) %>%
   ggplot() +
-  geom_histogram(aes(x=median_sex_diff, fill= dataset, color=dataset), alpha=0.4, position = "identity") +
-  facet_wrap(~prop)
+  geom_histogram(aes(x=median_sex_diff, fill= pheno_cat, color=pheno_cat), alpha=0.4, position = "identity") +
+  geom_vline(xintercept = 0, linetype="dashed") +
+  facet_grid(prop~dataset, scales="free")
 
 #zoom in on combat-GAM vs combat-LS
-cent.subj.sex.test.df %>%
+cent.feat.sex.test.df %>%
   dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
   mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
                               TRUE ~ median_sex_diff*100)) %>%
@@ -389,7 +409,7 @@ cent.subj.sex.test.df %>%
   facet_wrap(~prop, labeller = as_labeller(percent_f)) +
   theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
-cent.subj.sex.test.df %>%
+cent.feat.sex.test.df %>%
   group_by(dataset, prop) %>%
   summarize(min_diff = min(median_sex_diff)*100, max_diff=max(median_sex_diff)*100)
 ```
@@ -398,7 +418,7 @@ visualize actual (not ABSOLUTE) errors for global phenos by sex
 
 ```{r}
 #trying to add stats test
-global_sex_diffs <- cent.subj.sex.test.df %>%
+global_sex_diffs <- cent.feat.sex.test.df %>%
   dplyr::filter(pheno %in% vol_list_global & dataset %in% c("cf.gam", "cf.gamlss")) %>%
   mutate(pheno_prop = paste(pheno, prop, sep="&"))
 
@@ -452,7 +472,7 @@ sex_err_ratio.plt
 look at just cf.gam & cf.gamlss
 
 ```{r, eval=FALSE}
-cent.subj.sex.test.df %>%
+cent.feat.sex.test.df %>%
   dplyr::filter(dataset == "cf.gamlss") %>%
   dplyr::select(pheno, prop, sig_fdr) %>%
   arrange(pheno, prop)
@@ -462,7 +482,7 @@ Plot on brains for 60% F imbalance:
 ```{r, eval=FALSE}
 aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
 
-cent.subj.sex.test.df2 <- cent.subj.sex.test.df %>%
+cent.feat.sex.test.df2 <- cent.feat.sex.test.df %>%
   dplyr::filter(prop == "prop-04") %>%
   mutate(pheno_cat = as.factor(case_when(
     pheno %in% vol_list_global ~ "Global Volume",
@@ -471,7 +491,7 @@ cent.subj.sex.test.df2 <- cent.subj.sex.test.df %>%
     pheno %in% ct_list ~ "Regional CT",
     TRUE ~ NA_character_)),
     label = sub("_[^_]*_", "_", pheno)) #for plotting
-sex_t_tests_to_plot <- left_join(cent.subj.sex.test.df2, dk.parc, by="label")
+sex_t_tests_to_plot <- left_join(cent.feat.sex.test.df2, dk.parc, by="label")
 
 # max(sex_t_tests_to_plot$median_sex_diff)*100
 # min(sex_t_tests_to_plot$median_sex_diff)*100
@@ -598,13 +618,13 @@ ggplot() +
 Test sex-biases in centile errors w/in each feature
 ```{r}
 noext_cent.subj.sex.test.list <- readRDS(paste0(data_path, "/no.ext_featurewise_cent_sex_bias_tests.RDS"))
-noext_cent.subj.sex.test.df <- bind_rows(noext_cent.subj.sex.test.list)
+noext_cent.feat.sex.test.df <- bind_rows(noext_cent.subj.sex.test.list)
 ```
 
 simple bar-plot to count regions w sigificant sex-biases
 
 ```{r}
-noext_cent.subj.sex.test.df %>%
+noext_cent.feat.sex.test.df %>%
   ggplot() +
   geom_bar(aes(x=prop, fill=sig_fdr)) +
   facet_wrap(~dataset) +

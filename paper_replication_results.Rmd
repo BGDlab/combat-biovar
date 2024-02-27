@@ -242,6 +242,33 @@ cent.subj.sex.test.df %>%
   scale_fill_manual(values = c("lightblue", "red"))
 ```
 
+```{r}
+#get range
+cent.subj.sex.test.df %>%
+  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+                              TRUE ~ median_sex_diff*100)) %>%
+  group_by(dataset) %>%
+  summarize(min_sex_diff = min(median_sex_diff, na.rm=TRUE),
+            max_sex_diff = max(median_sex_diff, na.rm=TRUE))
+
+#look by feature type
+cent.subj.sex.test.df %>%
+  # dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+                              TRUE ~ median_sex_diff*100),
+         pheno_cat = factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_))) %>%
+ggplot() +
+  geom_histogram(aes(x=median_sex_diff, color=perm, fill=perm),alpha=0.5, position="identity") +
+  geom_vline(xintercept = 0, linetype="dashed") +
+  facet_grid(pheno_cat~dataset, scales="free")
+
+```
+
 ### Without Extremes
 
 Test differences in abs. magnitude of centile errors w/in each feature
