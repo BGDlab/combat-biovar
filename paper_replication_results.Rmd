@@ -115,20 +115,29 @@ cent.feat.t.test.df <- bind_rows(cent.feat.t.test, .id="perm") %>%
       pheno %in% vol_list_regions ~ "Regional Volume",
       pheno %in% sa_list ~ "Regional SA",
       pheno %in% ct_list ~ "Regional CT",
-      TRUE ~ NA_character_)))
+      TRUE ~ NA_character_))) %>%
+  separate_wider_delim(cols=comp, delim="_", names=c("group1", "group2"), cols_remove=FALSE) %>%
+  mutate(smaller_group=ifelse(bigger_group==group1, group2, group1))
 
 cent.feat.t.test.df %>%
-  group_by(comp, bigger_group) %>%
+  group_by(comp, smaller_group) %>%
   summarize(n_sig=sum(sig_fdr))
 ```
 
 ```{r}
-cent.feat.t.test.df %>%
+comp_names <- c(cf.gam_cf = "ComBat-GAM v. ComBat w/o Covar", cf.gamlss_cf = "ComBatLS v. ComBat w/o Covar", cf.gamlss_cf.gam = "ComBatLS v. ComBat-GAM", cf.lm_cf.gam ="ComBat-GAM v. linear ComBat", cf.lm_cf.gamlss = "ComBatLS v. linear ComBat", cf.lm_cf = "linear ComBat v. ComBat w/o Covar")
+
+cent.test.comp.plt <- cent.feat.t.test.df %>%
   dplyr::filter(sig_fdr==TRUE) %>%
+  mutate(smaller_group=factor(smaller_group, levels=c("cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered=TRUE)) %>%
 ggplot() +
-  geom_bar(aes(x=perm, fill=bigger_group)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  facet_wrap(~comp)
+  geom_bar(aes(x=perm, fill=smaller_group)) +
+  theme_linedraw()+
+  theme(axis.text.x = element_blank()) +
+  facet_grid(pheno_cat~comp, scales="free_y", labeller = labeller(comp = as_labeller(comp_names))) +
+  scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "Better ComBat \nConfiguration", labels=dataset_names) +
+  labs(x="Sampling Permutation", y="Feature Count")
+ggsave(paste0(base_path, "/figs/perm_cent_test_barplt.jpg"), plot=cent.test.comp.plt, width=15.5, height=6, units="in")
 ```
 
 look at combatGAM vs combatLS
@@ -155,7 +164,7 @@ ct.t.tests <- cent.feat.t.test.df %>%
 
 ct.t.tests_to_plt <- left_join(ct.t.tests, dk.parc)
 
-ct.t.tests_to_plt %>%
+ct.brain.plt <- ct.t.tests_to_plt %>%
   ggplot() +
   theme_linedraw(base_size=12) +
   ggseg::geom_brain(atlas = dk_nomed, 
@@ -163,8 +172,26 @@ ct.t.tests_to_plt %>%
             aes(fill=better_fit)) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank(),
         legend.position="top") +
-  scale_fill_manual(values = c(NS= "darkgray", cf.gam = "#3D75C2", cf.gamlss ="#CFB023FF"), name = "Better ComBat Method") +
+  scale_fill_manual(values = c(NS= "darkgray", cf.gam = "#3D75C2", cf.gamlss ="#CFB023FF"), name = "Better ComBat Method", labels=dataset_names) +
   facet_wrap(~perm, nrow=2)
+
+ct.t.tests_to_plt.sum <- ct.t.tests_to_plt %>%
+  group_by(hemi, region, label, bigger_group) %>%
+  summarise(n_worse = sum(sig_fdr)) %>%
+  pivot_wider(id_cols=c(hemi, label, region), names_from = bigger_group, values_from=n_worse) %>%
+  mutate(cf.gamlss=ifelse(is.na(cf.gamlss), 0, cf.gamlss)) %>%
+  mutate(cf.gamlss_minus_cf.gam_better=as.integer(cf.gam-cf.gamlss),
+         percent_cf.gamlss_better=(cf.gam/10)*100) %>%
+  ungroup()
+
+ct.brain.sum.plt <- ct.t.tests_to_plt.sum %>%
+  ggplot() +
+  theme_linedraw(base_size=12) +
+  ggseg::geom_brain(atlas = dk_nomed, 
+             position = position_brain(hemi ~ side),
+            aes(fill=percent_cf.gamlss_better))  +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
+  scale_fill_gradient(low="#605210", high= "#e6d16d",  name = "% Replications where ComBatLS is Better")
 ```
 
 W/in subj average plots
@@ -253,21 +280,123 @@ cent.subj.sex.test.df %>%
 
 #look by feature type
 cent.subj.sex.test.df %>%
-  # dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
-  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
-                              TRUE ~ median_sex_diff*100),
-         pheno_cat = factor(case_when(
+  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss" | dataset == "cf.lm") %>%
+  mutate(dataset = factor(dataset, levels = c("cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+  mutate(pheno_cat = factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_)),
+    perm = as.factor(sub("perm-0", "", perm))) %>%
+ggplot() +
+  geom_histogram(aes(x=median_sex_diff, color=perm, fill=perm), alpha=0.5, position="identity") +
+  geom_vline(xintercept = 0, linetype="dashed") +
+  facet_grid(pheno_cat~dataset, scales="free", labeller = labeller(dataset = as_labeller(dataset_names))) +
+  theme_linedraw(base_size=12) +
+  labs(fill='Sampling \nPermutation', color='Sampling \nPermutation', x="Male - Female Median Centile Errors", y="Number of Features") 
+```
+
+Distribution of error medians w/in each pheno category
+```{r}
+cent.sex.test.med <- cent.subj.sex.test.df %>%
+   mutate(pheno_cat = factor(case_when(
     pheno %in% vol_list_global ~ "Global Volume",
     pheno %in% vol_list_regions ~ "Regional Volume",
     pheno %in% sa_list ~ "Regional SA",
     pheno %in% ct_list ~ "Regional CT",
     TRUE ~ NA_character_))) %>%
-ggplot() +
-  geom_histogram(aes(x=median_sex_diff, color=perm, fill=perm),alpha=0.5, position="identity") +
-  geom_vline(xintercept = 0, linetype="dashed") +
-  facet_grid(pheno_cat~dataset, scales="free")
+  group_by(dataset, perm, pheno_cat) %>%
+  summarise(median_of_median_sex_diff = median(median_sex_diff))
 
+cent.sex.test.med %>%
+  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  ggplot() +
+  geom_density(aes(x=median_of_median_sex_diff, fill=dataset, color=dataset), alpha=0.6, position = "identity") +
+  geom_vline(xintercept = 0, linetype="dashed") +
+  facet_wrap(~pheno_cat, scales="free")
 ```
+
+plot subj. with averages in extremes - try w/ averages w/in pheno categories
+```{r}
+#recalc subject's true mean centiles
+raw_mean_cent <- perm_subj.df %>%
+  dplyr::filter(dataset=="cf") %>%
+  mutate(mean_centile = mean_centile - mean_cent_diff,
+         mean_z = mean_z - mean_z_diff) %>%
+  dplyr::select(!c(Source_File, contains("diff"))) %>%
+  mutate(dataset="raw")
+
+perm_subj.df2 <- full_join(perm_subj.df, raw_mean_cent)
+
+high_cent.sum <- perm_subj.df2 %>%
+  dplyr::filter(mean_centile > 0.75) %>%
+  group_by(dataset, perm) %>%
+  summarise(
+    male_ratio = sum(sex == "Male") / n(),
+    female_ratio = sum(sex == "Female") / n()
+  )
+
+high_cent.sum %>%
+  dplyr::filter(dataset != "raw") %>%
+  ggplot(aes(x=dataset, y=male_ratio)) +
+  geom_boxplot() +
+  geom_dotplot(binaxis = "y", stackdir="center") +
+  geom_hline(yintercept= high_cent.sum[high_cent.sum$dataset == "raw" & high_cent.sum$perm=="perm-001",][["male_ratio"]], linetype="dashed")
+
+low_cent.sum <- perm_subj.df2 %>%
+  dplyr::filter(mean_centile < 0.25) %>%
+  group_by(dataset, perm) %>%
+  summarise(
+    male_ratio = sum(sex == "Male") / n(),
+    female_ratio = sum(sex == "Female") / n()
+  )
+
+low_cent.sum %>%
+  dplyr::filter(dataset != "raw") %>%
+  ggplot(aes(x=dataset, y=male_ratio)) +
+  geom_boxplot() +
+  geom_dotplot(binaxis = "y", stackdir="center")  +
+  geom_hline(yintercept= low_cent.sum[low_cent.sum$dataset == "raw" & low_cent.sum$perm=="perm-001",][["male_ratio"]], linetype="dashed")
+
+perm_subj.df %>%
+  # dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  ggplot() +
+  geom_histogram(aes(x=mean_cent_diff, fill=sex, color=sex), position="identity", alpha=0.6, bins=60) +
+  geom_vline(xintercept = 0, linetype="dashed") +
+  facet_wrap(~dataset, scales="free")
+
+# wilcox.test(mean_cent_diff ~ sex, data=perm_subj.df[dataset=="cf.gamlss",])
+# wilcox.test(mean_cent_diff ~ sex, data=perm_subj.df[dataset=="cf.gam",])
+# wilcox.test(mean_cent_diff ~ sex, data=perm_subj.df[dataset=="cf.lm",])
+
+# perm_subj.df %>%
+#   mutate(centile_raw = mean_centile - mean_cent_diff)
+#   arrange(participant)
+```
+
+```{r}
+#one-sample tests against raw vals
+
+one_samp_wilcox <- function(cf_method, df){
+  df2 <- df %>%
+    dplyr::filter(dataset == cf_method)
+  raw_val <- df[df$dataset == "raw" & df$perm=="perm-001",][["male_ratio"]]
+  wilcox.test(df2$male_ratio, mu=raw_val)
+}
+
+cf_test_list <- unique(perm_subj.df$dataset)
+
+high_test <- lapply(cf_test_list, one_samp_wilcox, df=high_cent.sum)
+names(high_test) <- cf_test_list
+
+low_test <- lapply(cf_test_list, one_samp_wilcox, df=low_cent.sum)
+names(low_test) <- cf_test_list
+
+high_test
+low_test
+```
+
 
 ### Without Extremes
 
@@ -473,4 +602,14 @@ noext.subj.sex.test.z.df %>%
   facet_wrap(~dataset) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   scale_fill_manual(values = c("lightblue", "red"))
+```
+
+
+## Supplemental Fig
+```{r}
+sfig <- ggarrange(cent.test.comp.plt, ct.brain.sum.plt,
+                  ncol=1, nrow=2, heights = c(2, 1))
+sfig
+ggsave(paste0(base_path, "/figs/combat_abs_errs_supp_plt.jpg"), plot=sfig, width=11, height=7, units="in")
+
 ```
