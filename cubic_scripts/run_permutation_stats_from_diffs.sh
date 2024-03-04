@@ -38,7 +38,6 @@ fi
 cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
 # Remove outputs from prior runs
-rm -rf $csv_path/subject-wise/*_subj_pred.csv
 rm -rf $csv_path/*_featurewise_cent_t_tests.csv
 rm -rf $csv_path/*_featurewise_cent_z_tests.csv
 rm -rf $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv
@@ -81,7 +80,7 @@ touch $bash_script
 
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'full' 'perm' " > $bash_script
 ## qsub bash script
-qsub -N perm_cent_tests -o $bash_dir/cent_test_out.txt -e $bash_dir/cent_test_err.txt -l h_vmem=180G,s_vmem=180G $bash_script
+qsub -N perm_cent_tests -o $bash_dir/cent_test_out.txt -e $bash_dir/cent_test_err.txt -l h_vmem=240G,s_vmem=240G $bash_script
 
 # sex-bias test of subj-means
 r_script=$r_base/ratio_subject-wise_results.R
@@ -90,7 +89,7 @@ touch $bash_script
 
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'perm'" > $bash_script
 ## qsub bash script
-qsub -N perm_sub-wide_sex_tests -o $bash_dir/sub-wide_sex_test_out.txt -e $bash_dir/sub-wide_sex_test_err.txt -l h_vmem=180G,s_vmem=180G $bash_script
+qsub -N perm_sub-wide_sex_tests -o $bash_dir/sub-wide_sex_test_out.txt -e $bash_dir/sub-wide_sex_test_err.txt -l h_vmem=240G,s_vmem=240G $bash_script
 
 # featurewise sex bias tests
 ## based on `qsub_sex_bias_test.sh`
@@ -100,7 +99,7 @@ touch $bash_script
 	
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'full' 'perm'" > $bash_script
 ## qsub bash script
-qsub -N perm_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=180G,s_vmem=180G $bash_script
+qsub -N perm_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=240G,s_vmem=240G $bash_script
 
 #######################################################
 # RM EXTREMES
@@ -117,7 +116,7 @@ do
 	echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path "perm" $n_perm" > $bash_script
 
 	#qsub bash script
-	qsub -N perm-${n_perm}_rm_ext -o $bash_dir/perm-${n_perm}_rm_ext_out.txt -e $bash_dir/perm-${n_perm}_rm_ext_err.txt -l h_vmem=180G,s_vmem=180G $bash_script
+	qsub -N perm-${n_perm}_rm_ext -o $bash_dir/perm-${n_perm}_rm_ext_out.txt -e $bash_dir/perm-${n_perm}_rm_ext_err.txt -l h_vmem=240G,s_vmem=240G $bash_script
 done
 #######################################################
 ## CHECK FOR OUTPUTS
@@ -154,7 +153,7 @@ touch $bash_script
 
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext' 'perm'" > $bash_script
 ## qsub bash script
-qsub -N perm_cent_tests_noext -o $bash_dir/cent_test_noext_out.txt -e $bash_dir/cent_test_noext_err.txt -l h_vmem=180G,s_vmem=180G $bash_script
+qsub -N perm_cent_tests_noext -o $bash_dir/cent_test_noext_out.txt -e $bash_dir/cent_test_noext_err.txt -l h_vmem=240G,s_vmem=240G $bash_script
 
 # featurewise sex bias tests
 ## based on `qsub_sex_bias_test.sh`
@@ -164,7 +163,7 @@ touch $bash_script
 
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext' 'perm'" > $bash_script
 ## qsub bash script
-qsub -N perm_sex-bias_noext -o $bash_dir/sex_bias_test_noext_out.txt -e $bash_dir/sex_bias_test_noext_err.txt -l h_vmem=180G,s_vmem=180G $bash_script
+qsub -N perm_sex-bias_noext -o $bash_dir/sex_bias_test_noext_out.txt -e $bash_dir/sex_bias_test_noext_err.txt -l h_vmem=240G,s_vmem=240G $bash_script
 
 #######################################################
 # CHECK FOR OUTPUTS
