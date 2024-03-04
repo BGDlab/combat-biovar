@@ -14,7 +14,7 @@ n_prop_list <- c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F",
 #get args
 args <- commandArgs(trailingOnly = TRUE)
 data_path <- args[1] #path to csvs
-names_str <- args[2]
+name_str <- args[2]
 
 ## LOAD DATA
 raw_files <- list.files(path = paste0(data_path,"/subject-wise"), pattern = "_subj_pred.csv", full.names = TRUE)
