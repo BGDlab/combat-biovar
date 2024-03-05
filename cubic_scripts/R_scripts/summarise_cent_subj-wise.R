@@ -90,12 +90,18 @@ fwrite(pred_err, file=f1)
 
 #CALC SUBJECT-WISE MEANS
 subj_mean_preds <- means.by.subj(pred_err, pheno_list=pheno.list)
+print("dimensions subject-mean df:")
+print(dim(subj_mean_preds))
 
 #ALSO CALC MEANS W/IN EACH PHENO
 subj_mean_preds_by_cat <- means.by.subj.by.cat(pred_err, list_of_pheno_lists=list_of_feature_lists)
+print("dimensions w/in pheno_cat subject-mean df:")
+print(dim(subj_mean_preds_by_cat))
 
 subj_mean_preds_all <- full_join(subj_mean_preds, subj_mean_preds_by_cat)
-  
+print("dimensions final subject-mean df:")
+print(dim(subj_mean_preds_all))
+
 #SAVE RESULTS
 f2 <- paste0(path_to_csvs, "/subject-wise/", str, "_subj_pred.csv")
 print(paste("writing results to", f2))

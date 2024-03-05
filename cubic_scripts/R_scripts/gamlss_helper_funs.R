@@ -688,6 +688,7 @@ means.by.subj.by.cat <- function(df, list_of_pheno_lists){
   for (cat_list in list_of_pheno_lists) {
     #name of pheno cat
     name_str <- list_of_pheno_lists[ct]
+    print(paste("summarizing across", name_str))
     
     #vals to average over
     cat_list.z <- paste0(cat_list, ".z")
