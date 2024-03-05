@@ -674,3 +674,47 @@ means.by.subj <- function(df, pheno_list){
   return(mean.diffs.subj)
 }
 
+### GET W/IN SUBJ MEAN SCORES AND ERRS FOR EACH PHENO CAT
+#requires named list of pheno lists
+means.by.subj.by.cat <- function(df, list_of_pheno_lists){
+  #def. columns to average across
+  pheno_list <- do.call(c, list_of_pheno_lists)
+  ct <- 1
+  
+  #df to merge back into
+  df.results <- df %>%
+    dplyr::select(-matches(paste(pheno_list, collapse = "|")))
+  
+  for (cat_list in list_of_pheno_lists) {
+    #name of pheno cat
+    name_str <- list_of_pheno_lists[ct]
+    
+    #vals to average over
+    cat_list.z <- paste0(cat_list, ".z")
+    cat_list.diff <- paste0("diff_", cat_list)
+    cat_list.diff.z <- paste0("diff_", cat_list, ".z")
+    cat_list.abs.diff <- paste0("abs.diff_", cat_list)
+    cat_list.abs.diff.z <- paste0("abs.diff_", cat_list, ".z")
+  
+  mean.diffs.subj <- df %>%
+    mutate(dataset = factor(dataset, levels = c("cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+    group_by(dataset) %>%
+    rowwise() %>%
+    #averages
+    dplyr::mutate(mean_z_abs.diff = mean(c_across(cat_list.abs.diff.z)),
+                  mean_centile = mean(c_across(cat_list)),
+                  mean_z = mean(c_across(cat_list.z)),
+                  mean_cent_diff = mean(c_across(cat_list.diff)),
+                  mean_z_diff = mean(c_across(cat_list.diff.z)),
+                  mean_cent_abs.diff = mean(c_across(cat_list.abs.diff))) %>%
+    #drop unnecessary cols
+    dplyr::select(-matches(paste(pheno_list, collapse = "|"))) %>%
+    rename_with(~ gsub("mean", paste(name_str, "mean", sep = "_"), .), starts_with("mean")) #rename
+  
+  df.results <- full_join(df.results, mean.diffs.subj) #save results to df
+  
+  ct <- ct + 1 #next loop
+  }
+  return(df.results)
+  
+}
