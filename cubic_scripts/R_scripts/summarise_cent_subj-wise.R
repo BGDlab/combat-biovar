@@ -25,6 +25,10 @@ sa_list <- readRDS(file="R_scripts/SA_list.rds")
 ct_list <- readRDS(file="R_scripts/CT_list.rds")
 pheno.list <- readRDS(file="R_scripts/pheno_list.rds")
 
+#list of lists
+list_of_feature_lists <- list(vol_list_global, vol_list_regions, sa_list, ct_list)
+names(list_of_feature_lists) <- c("VolGlob", "VolReg", "SA", "CT")
+
 #get args
 args <- commandArgs(trailingOnly = TRUE)
 
@@ -86,9 +90,14 @@ fwrite(pred_err, file=f1)
 
 #CALC SUBJECT-WISE MEANS
 subj_mean_preds <- means.by.subj(pred_err, pheno_list=pheno.list)
+
+#ALSO CALC MEANS W/IN EACH PHENO
+subj_mean_preds_by_cat <- means.by.subj.by.cat(pred_err, list_of_pheno_lists=list_of_feature_lists)
+
+subj_mean_preds_all <- full_join(subj_mean_preds, subj_mean_preds_by_cat)
   
 #SAVE RESULTS
 f2 <- paste0(path_to_csvs, "/subject-wise/", str, "_subj_pred.csv")
 print(paste("writing results to", f2))
-fwrite(subj_mean_preds, file=f2)
+fwrite(subj_mean_preds_all, file=f2)
 print("DONE")

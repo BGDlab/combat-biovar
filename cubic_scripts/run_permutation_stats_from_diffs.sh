@@ -44,7 +44,6 @@ rm -rf $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv
 rm -rf $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv
 rm -rf $csv_path/*_featurewise_cent_sex_bias_tests.RDS
 rm -rf $csv_path/*_featurewise_z_sex_bias_tests.RDS
-rm -rf $csv_path/*_no_ext.csv
 
 echo "Old outputs deleted"
 sleep 120 #wait to make sure files are deleted
@@ -102,44 +101,18 @@ echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'full' 
 qsub -N perm_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=240G,s_vmem=240G $bash_script
 
 #######################################################
-# RM EXTREMES
-## based on `qsub_rm_extremes.sh`
-r_script=$r_base/remove_extremes_single.R
-# sub jobs
-for n_perm in $(seq -f "%03g" 1 $1) #10 sims
-do
-	echo "Prepping perm-$n_perm"
-	#write bash script
-	bash_script=$bash_dir/perm-${n_perm}_rm_ext.sh
-	touch $bash_script
-	
-	echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path "perm" $n_perm" > $bash_script
-
-	#qsub bash script
-	qsub -N perm-${n_perm}_rm_ext -o $bash_dir/perm-${n_perm}_rm_ext_out.txt -e $bash_dir/perm-${n_perm}_rm_ext_err.txt -l h_vmem=240G,s_vmem=240G $bash_script
-done
-#######################################################
-## CHECK FOR OUTPUTS
+## CHECK FOR OUTPUTS - make sure extremes already removed
 ### expect 'remove_extremes_single.R' to write out 1 csv per n_perm loop
-SECONDS=0
+count_file=$(find $csv_path -type f -name '*_no_ext.csv' | wc -l)
 
-while :    # while TRUE
-do
-    count_file=$(find $csv_path -type f -name '*_no_ext.csv' | wc -l)
-    # detect the expected output from 1st job
-    if [ $count_file -eq $1 ] 
-	then    # 1st job successfully finished
-        echo "${count_file} no-ext files found"
-        break
-    elif [ $SECONDS -gt 86400 ] #kill if taking more than 1 day
-	then
-	echo "taking too long, abort!"
+if [ $count_file -eq $1 ] 
+then    # 1st job successfully finished
+    echo "${count_file} diff files w/o extremes found"
+    break
+else
+	echo "no diff csvs w/o extremes, use run_permutation_pipeline.sh"
 	exit 2
-    fi
-    echo "count ${count_file} files"
-    #echo $(find $save_data_path -type f -name '*.csv')
-    sleep 60    # wait for 1min before detecting again
-done
+fi
 
 echo "launching stats tests on data w extremes removed"
 
