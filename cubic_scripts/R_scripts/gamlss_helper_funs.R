@@ -687,7 +687,7 @@ means.by.subj.by.cat <- function(df, list_of_pheno_lists){
   
   for (cat_list in list_of_pheno_lists) {
     #name of pheno cat
-    name_str <- list_of_pheno_lists[ct]
+    name_str <- names(list_of_pheno_lists)[[ct]]
     print(paste("summarizing across", name_str))
     
     #vals to average over
@@ -698,7 +698,7 @@ means.by.subj.by.cat <- function(df, list_of_pheno_lists){
     cat_list.abs.diff.z <- paste0("abs.diff_", cat_list, ".z")
   
   mean.diffs.subj <- df %>%
-    mutate(dataset = factor(dataset, levels = c("cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+    mutate(dataset = factor(dataset, levels = c("cf", "cf.lm", "cf.gam", "cf.gamlss"))) %>%
     group_by(dataset) %>%
     rowwise() %>%
     #averages
