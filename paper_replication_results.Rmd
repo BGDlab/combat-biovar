@@ -53,27 +53,6 @@ dk_nomed$data <- dk_nomed$data %>%
 
 ## Load Data
 
-Read in centile/z-score errors (pulled centile/z error calcs from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_permute/perm_centile_csvs/*_diffs.csv' .`)
-
-```{r, eval=FALSE}
-raw_files <- list.files(path = data_path, pattern = "_diffs.csv", full.names = TRUE) %>% unlist()
-
-df_list <- list() #new empty list
-for (file in raw_files) {
-  # Read each CSV file
-    data <- fread(file)
-
-    data <- data %>%
-      mutate(dataset = gsub("_data|_data_predictions.csv|prop-|[0-9]|perm|-", "", Source_File))
-
-    # Bind the data to the combined dataframe
-    df_list <- c(df_list, list(data))
-    assign("diffs_perm.list", df_list)
-}
-length(diffs_perm.list)
-diffs_perm.df <- bind_rows(diffs_perm.list)
-```
-
 Read in subject-wise summary stats (pulled within-subj summaries from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_permute/perm_centile_csvs/subject-wise/*.csv' .`)
 
 ```{r}
@@ -204,14 +183,14 @@ dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat
 cent.diffs.v.plot <- perm_subj.df %>%
   mutate(mean_cent_abs.diff = mean_cent_abs.diff*100) %>% #for visuals
   ggplot() +
-  geom_violin(aes(x=dataset, y=mean_cent_abs.diff, fill=perm), scale="count") +
+  geom_violin(aes(x=dataset, y=mean_cent_abs.diff, color=perm), scale="count") +
   labs(y= "Mean Magnitude Centile Error", x = "ComBat Configurations") +
   scale_x_discrete(labels=c(dataset_names)) +
-  guides(fill=guide_legend(title="Sampling \nPermutation")) + 
-  ggtitle("Within-subject mean magnitude of error in centile scores across ComBat \nconfigurations replicated 100x") +
+  # guides(fill=guide_legend(title="Sampling \nPermutation")) + 
+  ggtitle("Within-subject mean magnitude of error in centile scores across ComBat configurations replicated 100x") +
   theme(legend.position="none")
 cent.diffs.v.plot
-# ggsave(filename="figs/centile_violin.png", cent.diffs.v.plot)
+ggsave(filename="figs/centile_violin.png", cent.diffs.v.plot, width=11, height=4.5, units="in")
 ```
 
 Plot raw values from random permutation
@@ -332,64 +311,81 @@ t.test.cent.sex.test.med %>%
   geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
 ```
 
-plot subj. with averages in extremes - **try also using averages w/in pheno categories**
+plot subj. with averages in extremes 
 ```{r}
 #recalc subject's true mean centiles
 raw_mean_cent <- perm_subj.df %>%
   dplyr::filter(dataset=="cf") %>%
   mutate(mean_centile = mean_centile - mean_cent_diff,
-         mean_z = mean_z - mean_z_diff) %>%
+        VolGlob_mean_centile = VolGlob_mean_centile - VolGlob_mean_cent_diff,
+        VolReg_mean_centile = VolReg_mean_centile - VolReg_mean_cent_diff,
+        CT_mean_centile = CT_mean_centile - CT_mean_cent_diff,
+        SA_mean_centile = SA_mean_centile - SA_mean_cent_diff) %>%
   dplyr::select(!c(Source_File, contains("diff"))) %>%
   mutate(dataset="raw")
 
+# raw_mean_cent %>%
+#   dplyr::filter(perm=="perm-001") %>%
+#   dplyr::filter(VolReg_mean_centile > .85) %>% nrow()
+
 perm_subj.df2 <- full_join(perm_subj.df, raw_mean_cent)
 
-high_cent.sum <- perm_subj.df2 %>%
-  dplyr::filter(mean_centile > 0.75) %>%
-  group_by(dataset, perm) %>%
+perm_subj.df2_long <- perm_subj.df2 %>%
+  rename(allpheno_mean_centile = mean_centile) %>%
+  pivot_longer(cols=contains("mean_centile"), names_to="pheno_cat", values_to="mean_centile") %>%
+  mutate(pheno_cat = gsub("_mean_centile", "", pheno_cat))
+
+high_cent.sum <- perm_subj.df2_long %>%
+  dplyr::filter(mean_centile > 0.80) %>%
+  group_by(dataset, perm, pheno_cat) %>%
   summarise(
     male_ratio = sum(sex == "Male") / n(),
     female_ratio = sum(sex == "Female") / n()
   )
 
 high_cent.sum %>%
-  dplyr::filter(dataset != "raw") %>%
-  ggplot(aes(x=dataset, y=male_ratio)) +
+  #dplyr::filter(dataset != "raw") %>%
+  ggplot(aes(x=dataset, y=female_ratio)) +
   geom_boxplot() +
   # geom_dotplot(binaxis = "y", stackdir="center") +
-  geom_hline(yintercept= high_cent.sum[high_cent.sum$dataset == "raw" & high_cent.sum$perm=="perm-001",][["male_ratio"]], linetype="dashed")
+  facet_wrap(~pheno_cat, scales="free_y") +
+  #geom_hline(yintercept=high_cent.sum[high_cent.sum$dataset == "raw" & high_cent.sum$perm=="perm-001",][["female_ratio"]], linetype="dashed")+
+  labs(title="subjects with high average centiles")
 
-low_cent.sum <- perm_subj.df2 %>%
-  dplyr::filter(mean_centile < 0.25) %>%
-  group_by(dataset, perm) %>%
+low_cent.sum <- perm_subj.df2_long %>%
+  dplyr::filter(mean_centile < 0.20) %>%
+  group_by(dataset, perm, pheno_cat) %>%
   summarise(
     male_ratio = sum(sex == "Male") / n(),
     female_ratio = sum(sex == "Female") / n()
   )
 
 low_cent.sum %>%
-  dplyr::filter(dataset != "raw") %>%
+  #dplyr::filter(dataset != "raw") %>%
   ggplot(aes(x=dataset, y=female_ratio)) +
   geom_boxplot() +
+  facet_wrap(~pheno_cat, scales="free_y") +
   # geom_dotplot(binaxis = "y", stackdir="center")  +
-  geom_hline(yintercept= low_cent.sum[low_cent.sum$dataset == "raw" & low_cent.sum$perm=="perm-001",][["female_ratio"]], linetype="dashed") +
+  #geom_hline(yintercept= low_cent.sum[low_cent.sum$dataset == "raw" & low_cent.sum$perm=="perm-001",][["female_ratio"]], linetype="dashed") +
   labs(title="subjects with low average centiles")
 
 
-ext_cent.sum <- perm_subj.df2 %>%
-  dplyr::filter(mean_centile < 0.25 | mean_centile > 0.75) %>%
-  group_by(dataset, perm) %>%
+ext_cent.sum <- perm_subj.df2_long %>%
+  dplyr::filter(mean_centile < 0.20 | mean_centile > 0.80) %>%
+  group_by(dataset, perm, pheno_cat) %>%
   summarise(
     male_ratio = sum(sex == "Male") / n(),
     female_ratio = sum(sex == "Female") / n()
   )
 
 ext_cent.sum %>%
-  dplyr::filter(dataset != "raw") %>%
-  ggplot(aes(x=dataset, y=male_ratio)) +
+  #dplyr::filter(dataset != "raw") %>%
+  ggplot(aes(x=dataset, y=female_ratio)) +
   geom_boxplot() +
   # geom_dotplot(binaxis = "y", stackdir="center")  +
-  geom_hline(yintercept= ext_cent.sum[ext_cent.sum$dataset == "raw" & ext_cent.sum$perm=="perm-001",][["male_ratio"]], linetype="dashed")
+  #geom_hline(yintercept= ext_cent.sum[ext_cent.sum$dataset == "raw" & ext_cent.sum$perm=="perm-001",][["female_ratio"]], linetype="dashed")+
+  facet_wrap(~pheno_cat, scales="free_y") +
+  labs(title="subjects with extreme average centiles")
 
 perm_subj.df %>%
   # dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
@@ -399,9 +395,11 @@ perm_subj.df %>%
   facet_wrap(~dataset, scales="free")
 ```
 
-too many males in high centiles, too few males in low centiles (combat-GAM trends opposite to this pattern)
+linear ComBat -> too few women with high centiles (avg. across phenos, pattern varies), too many women with low centiles; ~ balances out overall (except regional volume)
 
-overall - too few men relative to women in extreme centiles
+ComBat-GAM -> too many women with high centiles (small but pretty consistent pattern), too many women with low centiles (patter varies a bit across phenos); OVERALL TOO MANY WOMEN W EXTREME CENTILES 
+
+ComBatLS -> pretty close to raw!
 
 ```{r}
 #one-sample tests against raw vals
@@ -428,6 +426,49 @@ names(ext_test) <- cf_test_list
 ext_test
 ```
 
+by site
+```{r}
+perm_subj.df2.by.site <- perm_subj.df2 %>%
+  group_by(perm, dataset, sim.site) %>%
+  summarise(across(contains("mean"), list(site = mean)))
+
+perm_subj.df2.by.site %>%
+  ggplot() +
+  geom_boxplot(aes(x=sim.site, y=mean_cent_abs.diff_site, fill=dataset)) +
+  facet_wrap(~ dataset, scales="free")
+
+perm_subj.df2.by.site %>%
+    mutate(sim.site = factor(sim.site, levels=c("Site_B", "Site_A", "Site_C"), ordered=TRUE)) %>%
+  ggplot() +
+  geom_boxplot(aes(x=sim.site, y=mean_cent_abs.diff_site, fill=dataset)) +
+  facet_wrap(~ dataset, scales="free")
+
+perm_subj.df2.by.site %>%
+  mutate(sim.site = factor(sim.site, levels=c("Site_B", "Site_A", "Site_C"), ordered=TRUE)) %>%
+  ggplot() +
+  geom_boxplot(aes(x=sim.site, y=mean_cent_diff_site, fill=dataset)) +
+  facet_wrap(~ dataset, scales="free")
+
+perm_subj.df2.by.site %>%
+  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  mutate(sim.site = factor(sim.site, levels=c("Site_B", "Site_A", "Site_C"), ordered=TRUE)) %>%
+  ggplot() +
+  geom_boxplot(aes(x=sim.site, y=mean_cent_diff_site, fill=dataset))
+
+perm_subj.df2.by.site %>%
+  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  mutate(sim.site = factor(sim.site, levels=c("Site_B", "Site_A", "Site_C"), ordered=TRUE)) %>%
+  ggplot() +
+  geom_boxplot(aes(x=sim.site, y=mean_centile_site, fill=dataset))
+
+perm_subj.df2.by.site %>%
+  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  pivot_wider(id_cols=c(perm, sim.site), names_from=dataset, values_from=mean_centile_site, names_prefix="site_mean_cent_") %>%
+  mutate(delta_mean = site_mean_cent_cf.gam - site_mean_cent_cf.gamlss) %>%
+  mutate(sim.site = factor(sim.site, levels=c("Site_B", "Site_A", "Site_C"), ordered=TRUE)) %>%
+  ggplot() +
+  geom_boxplot(aes(x=sim.site, y=delta_mean))
+```
 
 ### Without Extremes
 
