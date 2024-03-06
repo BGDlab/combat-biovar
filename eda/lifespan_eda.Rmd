@@ -245,11 +245,32 @@ cn.df.imp <- cn.df.eulerfilt2 %>%
   mutate(site = gsub(" ", "_", ifelse(is.na(site), study, paste(study, site, sep="_")))) %>%
   na.omit()
 
-unique(cn.df.imp$site)
-table(cn.df.imp$site, cn.df.imp$study)
-sum(is.na(cn.df.imp$site))
+# unique(cn.df.imp$site)
+# table(cn.df.imp$site, cn.df.imp$study)
+# sum(is.na(cn.df.imp$site))
+```
+
+Demographics
+
+```{r}
+#sample size, sex
+length(unique(cn.df.imp$participant))
+nrow(cn.df.imp)
+
+table(cn.df.imp$sex)
+
+#studies, sites
+length(unique(cn.df.imp$study))
+length(unique(cn.df.imp$site))
+
+#age
+min(cn.df.imp$age_days)/365.25
 max(cn.df.imp$age_days)/365.25
 mean(cn.df.imp$age_days)/365.25
+
+abcd <- cn.df.imp %>%
+  dplyr::filter(study=="ABCD")
+length(unique(abcd$site))
 ```
 
 ```{r}
@@ -343,5 +364,3 @@ neg_ventricle_plots <- ggarrange(ven_raw, ven_gam, ven_gamlss, ven_raw.imp, ven_
 
 ## Combat Troubleshooting
 having some issues with combat on cubic, trying locally.
-
-

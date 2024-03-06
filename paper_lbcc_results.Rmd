@@ -661,6 +661,12 @@ cent_deltas_df %>%
 
 ##Prop Female
 
+ComBatLS mean centile ~ % female
+
+```{r}
+
+```
+
 delta ~ % female
 
 ```{r}

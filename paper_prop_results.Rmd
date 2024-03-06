@@ -414,6 +414,29 @@ cent.feat.sex.test.df %>%
   summarize(min_diff = min(median_sex_diff)*100, max_diff=max(median_sex_diff)*100)
 ```
 
+Look at differences in M:F for subjects w very high or very low mean centiles
+```{r}
+feat_exts <- ratio.df %>%
+  dplyr::select(-contains(c("diff", ".z"))) %>%
+  mutate(across(pheno_list, ~ case_when(. < 0.25 ~ "low",
+                                        . > 0.75 ~ "high", 
+                                        TRUE ~ "mid")))
+  
+feat_exts_long <- feat_exts %>%
+  pivot_longer(cols=c(pheno_list), names_to="pheno", values_to="centile_cat") %>%
+   mutate(pheno_cat = as.factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_)))
+
+feat_exts_long %>%
+  ggplot() +
+  geom_col(aes(x=centile_cat, y=pheno_cat, fill=sex, color=sex)) +
+  facet_grid(dataset ~ prop)
+```
+
 visualize actual (not ABSOLUTE) errors for global phenos by sex
 
 ```{r}

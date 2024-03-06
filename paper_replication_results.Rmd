@@ -24,6 +24,7 @@ single script to parse outputs & get results (condensed from `ukb_sim.site_analy
 
 ```{r}
 data_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives/ukb_perm"
+base_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar"
 
 pheno_list <- readRDS(file="cubic_scripts/R_scripts/pheno_list.rds")
 vol_list_global <- readRDS(file="cubic_scripts/R_scripts/vol_list_global.rds")
@@ -127,6 +128,8 @@ cent.feat.t.test.df %>%
 ```{r}
 comp_names <- c(cf.gam_cf = "ComBat-GAM v. ComBat w/o Covar", cf.gamlss_cf = "ComBatLS v. ComBat w/o Covar", cf.gamlss_cf.gam = "ComBatLS v. ComBat-GAM", cf.lm_cf.gam ="ComBat-GAM v. linear ComBat", cf.lm_cf.gamlss = "ComBatLS v. linear ComBat", cf.lm_cf = "linear ComBat v. ComBat w/o Covar")
 
+dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+
 cent.test.comp.plt <- cent.feat.t.test.df %>%
   dplyr::filter(sig_fdr==TRUE) %>%
   mutate(smaller_group=factor(smaller_group, levels=c("cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered=TRUE)) %>%
@@ -181,7 +184,7 @@ ct.t.tests_to_plt.sum <- ct.t.tests_to_plt %>%
   pivot_wider(id_cols=c(hemi, label, region), names_from = bigger_group, values_from=n_worse) %>%
   mutate(cf.gamlss=ifelse(is.na(cf.gamlss), 0, cf.gamlss)) %>%
   mutate(cf.gamlss_minus_cf.gam_better=as.integer(cf.gam-cf.gamlss),
-         percent_cf.gamlss_better=(cf.gam/10)*100) %>%
+         percent_cf.gamlss_better=(cf.gam/100)*100) %>%
   ungroup()
 
 ct.brain.sum.plt <- ct.t.tests_to_plt.sum %>%
@@ -205,7 +208,8 @@ cent.diffs.v.plot <- perm_subj.df %>%
   labs(y= "Mean Magnitude Centile Error", x = "ComBat Configurations") +
   scale_x_discrete(labels=c(dataset_names)) +
   guides(fill=guide_legend(title="Sampling \nPermutation")) + 
-  ggtitle("Within-subject mean magnitude of error in centile scores across ComBat \nconfigurations replicated 10x")
+  ggtitle("Within-subject mean magnitude of error in centile scores across ComBat \nconfigurations replicated 100x") +
+  theme(legend.position="none")
 cent.diffs.v.plot
 # ggsave(filename="figs/centile_violin.png", cent.diffs.v.plot)
 ```
@@ -290,11 +294,12 @@ cent.subj.sex.test.df %>%
     TRUE ~ NA_character_)),
     perm = as.factor(sub("perm-0", "", perm))) %>%
 ggplot() +
-  geom_histogram(aes(x=median_sex_diff, color=perm, fill=perm), alpha=0.5, position="identity") +
+  geom_histogram(aes(x=median_sex_diff, color=perm, fill=perm), alpha=0.3, position="identity") +
   geom_vline(xintercept = 0, linetype="dashed") +
   facet_grid(pheno_cat~dataset, scales="free", labeller = labeller(dataset = as_labeller(dataset_names))) +
   theme_linedraw(base_size=12) +
-  labs(fill='Sampling \nPermutation', color='Sampling \nPermutation', x="Male - Female Median Centile Errors", y="Number of Features") 
+  theme(legend.position = "none") +
+  labs(x="Male - Female Median Centile Errors", y="Number of Features") 
 ```
 
 Distribution of error medians w/in each pheno category
@@ -310,14 +315,24 @@ cent.sex.test.med <- cent.subj.sex.test.df %>%
   summarise(median_of_median_sex_diff = median(median_sex_diff))
 
 cent.sex.test.med %>%
-  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  # dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
   ggplot() +
   geom_density(aes(x=median_of_median_sex_diff, fill=dataset, color=dataset), alpha=0.6, position = "identity") +
   geom_vline(xintercept = 0, linetype="dashed") +
   facet_wrap(~pheno_cat, scales="free")
+
+t.test.cent.sex.test.med <- cent.sex.test.med %>%
+  group_by(dataset, pheno_cat) %>%
+  summarise(t.test.p = tidy(t.test(median_of_median_sex_diff))$p.value) %>%
+  mutate(p.val_fdr = p.adjust(t.test.p, method="fdr", n = nrow(cent.sex.test.med)),
+                  sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
+                                      p.val_fdr >= 0.05 ~ FALSE))
+t.test.cent.sex.test.med %>%
+  ggplot() +
+  geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
 ```
 
-plot subj. with averages in extremes - try w/ averages w/in pheno categories
+plot subj. with averages in extremes - **try also using averages w/in pheno categories**
 ```{r}
 #recalc subject's true mean centiles
 raw_mean_cent <- perm_subj.df %>%
@@ -341,7 +356,7 @@ high_cent.sum %>%
   dplyr::filter(dataset != "raw") %>%
   ggplot(aes(x=dataset, y=male_ratio)) +
   geom_boxplot() +
-  geom_dotplot(binaxis = "y", stackdir="center") +
+  # geom_dotplot(binaxis = "y", stackdir="center") +
   geom_hline(yintercept= high_cent.sum[high_cent.sum$dataset == "raw" & high_cent.sum$perm=="perm-001",][["male_ratio"]], linetype="dashed")
 
 low_cent.sum <- perm_subj.df2 %>%
@@ -354,10 +369,27 @@ low_cent.sum <- perm_subj.df2 %>%
 
 low_cent.sum %>%
   dplyr::filter(dataset != "raw") %>%
+  ggplot(aes(x=dataset, y=female_ratio)) +
+  geom_boxplot() +
+  # geom_dotplot(binaxis = "y", stackdir="center")  +
+  geom_hline(yintercept= low_cent.sum[low_cent.sum$dataset == "raw" & low_cent.sum$perm=="perm-001",][["female_ratio"]], linetype="dashed") +
+  labs(title="subjects with low average centiles")
+
+
+ext_cent.sum <- perm_subj.df2 %>%
+  dplyr::filter(mean_centile < 0.25 | mean_centile > 0.75) %>%
+  group_by(dataset, perm) %>%
+  summarise(
+    male_ratio = sum(sex == "Male") / n(),
+    female_ratio = sum(sex == "Female") / n()
+  )
+
+ext_cent.sum %>%
+  dplyr::filter(dataset != "raw") %>%
   ggplot(aes(x=dataset, y=male_ratio)) +
   geom_boxplot() +
-  geom_dotplot(binaxis = "y", stackdir="center")  +
-  geom_hline(yintercept= low_cent.sum[low_cent.sum$dataset == "raw" & low_cent.sum$perm=="perm-001",][["male_ratio"]], linetype="dashed")
+  # geom_dotplot(binaxis = "y", stackdir="center")  +
+  geom_hline(yintercept= ext_cent.sum[ext_cent.sum$dataset == "raw" & ext_cent.sum$perm=="perm-001",][["male_ratio"]], linetype="dashed")
 
 perm_subj.df %>%
   # dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
@@ -365,15 +397,11 @@ perm_subj.df %>%
   geom_histogram(aes(x=mean_cent_diff, fill=sex, color=sex), position="identity", alpha=0.6, bins=60) +
   geom_vline(xintercept = 0, linetype="dashed") +
   facet_wrap(~dataset, scales="free")
-
-# wilcox.test(mean_cent_diff ~ sex, data=perm_subj.df[dataset=="cf.gamlss",])
-# wilcox.test(mean_cent_diff ~ sex, data=perm_subj.df[dataset=="cf.gam",])
-# wilcox.test(mean_cent_diff ~ sex, data=perm_subj.df[dataset=="cf.lm",])
-
-# perm_subj.df %>%
-#   mutate(centile_raw = mean_centile - mean_cent_diff)
-#   arrange(participant)
 ```
+
+too many males in high centiles, too few males in low centiles (combat-GAM trends opposite to this pattern)
+
+overall - too few men relative to women in extreme centiles
 
 ```{r}
 #one-sample tests against raw vals
@@ -389,12 +417,15 @@ cf_test_list <- unique(perm_subj.df$dataset)
 
 high_test <- lapply(cf_test_list, one_samp_wilcox, df=high_cent.sum)
 names(high_test) <- cf_test_list
+high_test
 
 low_test <- lapply(cf_test_list, one_samp_wilcox, df=low_cent.sum)
 names(low_test) <- cf_test_list
-
-high_test
 low_test
+
+ext_test <- lapply(cf_test_list, one_samp_wilcox, df=ext_cent.sum)
+names(ext_test) <- cf_test_list
+ext_test
 ```
 
 
