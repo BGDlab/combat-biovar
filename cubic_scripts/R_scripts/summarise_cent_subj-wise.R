@@ -98,6 +98,10 @@ subj_mean_preds_by_cat <- means.by.subj.by.cat(pred_err, list_of_pheno_lists=lis
 print("dimensions w/in pheno_cat subject-mean df:")
 print(dim(subj_mean_preds_by_cat))
 
+#mutate dataset type to match
+subj_mean_preds_by_cat <- subj_mean_preds_by_cat %>%
+  mutate(dataset = factor(dataset, levels = c("cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE))
+
 subj_mean_preds_all <- full_join(subj_mean_preds, subj_mean_preds_by_cat)
 print("dimensions final subject-mean df:")
 print(dim(subj_mean_preds_all))
