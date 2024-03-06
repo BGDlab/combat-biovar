@@ -54,8 +54,10 @@ ratio.df <- bind_rows(ratio_list)
 
 if (is.na(name_str)) {
   names_list <- c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F")
+  fdr_across <- length(ratio_list) #correct across permuted M:F ratios
 } else {
   names_list <- c(paste(name_str, seq(1:length(ratio_list)), sep="-"))
+  fdr_across <- 1 #don't correct across replications
 }
 
 ############################################
@@ -63,14 +65,14 @@ if (is.na(name_str)) {
 ############################################
 
 ##### Within each M:F proportion simulated, is the magnitude of subjects' mean centile errors within each feature differ significantly by combat configuration?
-prop_abs.cent_t.tests <- lapply(ratio_list, centile.t.tests, feature_list=pheno_abs.diff.list, comp_multiplier=length(ratio_list)) #FDR correction across 11 M:F permutations
+prop_abs.cent_t.tests <- lapply(ratio_list, centile.t.tests, feature_list=pheno_abs.diff.list, comp_multiplier=fdr_across) #FDR correction across 11 M:F permutations
 names(prop_abs.cent_t.tests) <- names_list
 prop_abs.cent_t.tests_df <- bind_rows(prop_abs.cent_t.tests, .id = "column_label")
 ### save results
 fwrite(prop_abs.cent_t.tests_df, file=paste0(data_path, "/", d.type, "_featurewise_cent_t_tests.csv"))
 
 #write out full results as list for plotting
-prop_abs.cent_t.tests_all <- lapply(ratio_list, centile.t.tests.full_result, feature_list=pheno_abs.diff.list, comp_multiplier=length(ratio_list)) #FDR correction across 11 M:F permutations
+prop_abs.cent_t.tests_all <- lapply(ratio_list, centile.t.tests.full_result, feature_list=pheno_abs.diff.list, comp_multiplier=fdr_across) #FDR correction across 11 M:F permutations
 names(prop_abs.cent_t.tests_all) <- names_list
 
 ### save results
@@ -80,7 +82,7 @@ saveRDS(prop_abs.cent_t.tests_all, file=paste0(data_path, "/", d.type, "_feature
 ## Z-SCORE ERROR TESTS ###
 ############################################
 ##### Within each M:F proportion simulated, is the magnitude of subjects' mean centile errors within each feature differ significantly by combat configuration?
-prop_abs.z_t.tests <- lapply(ratio_list, centile.t.tests, feature_list=z.pheno_abs.diff.list, comp_multiplier=length(ratio_list)) #FDR correction across 11 M:F permutations
+prop_abs.z_t.tests <- lapply(ratio_list, centile.t.tests, feature_list=z.pheno_abs.diff.list, comp_multiplier=fdr_across) #FDR correction across 11 M:F permutations
 names(prop_abs.z_t.tests) <- names_list
 prop_abs.z_t.tests <- bind_rows(prop_abs.z_t.tests, .id = "column_label")
 ### save results
@@ -88,7 +90,7 @@ fwrite(prop_abs.z_t.tests, file=paste0(data_path, "/", d.type, "_featurewise_z_t
 
 
 #write out full results as list for plotting
-prop_abs.z_t.tests_all <- lapply(ratio_list, centile.t.tests.full_result, feature_list=z.pheno_abs.diff.list, comp_multiplier=length(ratio_list)) #FDR correction across 11 M:F permutations
+prop_abs.z_t.tests_all <- lapply(ratio_list, centile.t.tests.full_result, feature_list=z.pheno_abs.diff.list, comp_multiplier=fdr_across) #FDR correction across 11 M:F permutations
 names(prop_abs.z_t.tests_all) <- names_list
 
 ### save results

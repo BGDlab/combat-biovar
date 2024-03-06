@@ -42,23 +42,25 @@ for (file in raw_files) {
   assign("diffs_perm.list", df_list)
 }
 
-print(paste(length(diffs_perm.list), "dataframes loaded"))
-#print(ID_col)
+print(paste(length(diffs_perm.list), ID_col, "dataframes loaded"))
 
-#print(names(diffs_perm.list[[1]]))
-
-#print("dataframes ID'd as:")
-#lapply(diffs_perm.list, function(x){print(unique(x[[ID_col]]))})
-
+#fdr correct across varying M:F props but not replications
+if(ID_col == "prop") {
+  fdr_across <- length(diffs_perm.list) #correct across permuted M:F ratios
+} else if (ID_col == "perm") {
+  fdr_across <- 1
+} else {
+  stop("Error: indicate 'prop' or 'perm'")
+}
 
 #centile t-tests
-cent.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=diff_list, ID_col=ID_col)
+cent.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=fdr_across, feature_list=diff_list, ID_col=ID_col)
 
 #save
 saveRDS(cent.sex_t_tests_in_feat.df, file=paste0(data_path, "/", d.type, "_featurewise_cent_sex_bias_tests.RDS"))
 
 #z-score t-tests
-z.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=length(diffs_perm.list), feature_list=paste0(diff_list,".z"), ID_col=ID_col)
+z.sex_t_tests_in_feat.df <- lapply(diffs_perm.list, sex.bias.feat.t.tests, comp_multiplier=fdr_across, feature_list=paste0(diff_list,".z"), ID_col=ID_col)
 
 #save
 saveRDS(z.sex_t_tests_in_feat.df, file=paste0(data_path, "/", d.type, "_featurewise_z_sex_bias_tests.RDS"))
