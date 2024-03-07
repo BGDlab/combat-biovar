@@ -173,11 +173,14 @@ ukb_df_age.filt <- ukb_df_totals %>%
   dplyr::filter(age_yrs >= 50 & age_yrs <= 80)
 #write data
 fwrite(ukb_df_age.filt, file=paste0(base_path,"data/ukb_CN_data_agefilt.csv"))
+
+nrow(ukb_df_totals) - nrow(ukb_df_age.filt)
 ```
 
 ## EDA
 
 ```{r}
+nrow(ukb_df_age.filt)
 #percent female
 r <- table(ukb_df_age.filt$sex)
 
