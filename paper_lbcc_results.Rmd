@@ -167,7 +167,27 @@ delta_summary.df <- cent_deltas_df_long %>%
             site_mean_age=mean(age_days),
             site_mean_age_yrs=mean(age_days)/365.25,
             site_max_abs.delta=max(abs.delta),
-            site_n=n())
+            site_n=n()) %>%
+  mutate(pheno_cat="all")
+
+# #get w/in cat stats
+# delta_summary.cat.df <- cent_deltas_df_long %>%
+#   mutate(abs.delta = abs(delta),
+#          pheno_cat = case_when(
+#     pheno %in% vol_list_global ~ "Global Volume",
+#     pheno %in% vol_list_regions ~ "Regional Volume",
+#     pheno %in% sa_list ~ "Regional SA",
+#     pheno %in% ct_list ~ "Regional CT",
+#     TRUE ~ NA_character_)) %>%
+#   group_by(study, site, pheno_cat) %>%
+#   summarise(site_mean_abs.delta=mean(abs.delta),
+#             site_mean_delta=mean(delta),
+#             site_mean_age=mean(age_days),
+#             site_mean_age_yrs=mean(age_days)/365.25,
+#             site_max_abs.delta=max(abs.delta),
+#             site_n=n())
+# 
+# delta_summary.df <- full_join(delta_summary.df, delta_summary.cat.df)
 
 delta_n.sex %>%
   dplyr::filter(site=="abide2_BNI_1")
@@ -281,6 +301,10 @@ df_gam_feat_aov.study <- df_gam_feat_aov %>%
 df_gam_feat_aov.study %>%
   ggplot() +
   geom_bar(aes(y=sig_fdr))
+
+df_gam_feat_aov.study %>%
+  dplyr::filter(sig_fdr == TRUE) %>%
+  nrow()
 ```
 
 Test single pheno
@@ -452,7 +476,8 @@ df_gamlss_feat_aov.study %>%
   geom_bar(aes(y=sig_fdr))
 
 df_gamlss_feat_aov.study %>%
-  dplyr::filter(sig_fdr==TRUE)
+  dplyr::filter(sig_fdr==TRUE) %>%
+  nrow()
 ```
 average w/in subject
 
@@ -574,35 +599,38 @@ summary(aov(mean_z ~ study, data=gamlss_z_df.mean))
 ComBatGAM mean centile ~ age
 
 ```{r}
-gam_centile_site.mean.df <- gam_centile_df.clean %>%
-  pivot_longer(cols=any_of(pheno_list), names_to="pheno", values_to = "centile") %>%
-  group_by(site) %>%
-  summarize(mean_gam_cent=mean(centile))
+gam_centile_df.clean_long <- gam_centile_df.clean %>%
+  pivot_longer(cols=any_of(pheno_list), names_to="pheno", values_to = "centile")
+
+#overall means
+gam_centile_site.mean.df <- gam_centile_df.clean_long %>%
+  group_by(study, site) %>%
+  summarize(mean_gam_cent=mean(centile)) %>%
+  mutate(pheno_cat = "all")
 
 gam_centile_site.mean.df2 <- left_join(gam_centile_site.mean.df, delta_sum.df_merged)
 
-gam.age.test <- lm(mean_gam_cent ~ site_mean_age, data=gam_centile_site.mean.df2)
-summary(gam.age.test)
-gam.age.test2 <- lm(mean_gam_cent ~ sex_prop_Female + site_n + site_mean_age, data=gam_centile_site.mean.df2)
-summary(gam.age.test2)
+summary(lm(mean_gam_cent ~ site_mean_age, data=gam_centile_site.mean.df2))
+summary(lm(mean_gam_cent ~ site_mean_age + sex_prop_Female + site_n, data=gam_centile_site.mean.df2))
 ```
 
 NS
 
 ComBatLS mean centile ~ age
-
 ```{r}
-gamlss_centile_site.mean.df <- gamlss_centile_df.clean %>%
-  pivot_longer(cols=any_of(pheno_list), names_to="pheno", values_to = "centile") %>%
-  group_by(site) %>%
-  summarize(mean_gamlss_cent=mean(centile))
+gamlss_centile_df.clean_long <- gamlss_centile_df.clean %>%
+  pivot_longer(cols=any_of(pheno_list), names_to="pheno", values_to = "centile")
+
+#overall means
+gamlss_centile_site.mean.df <- gamlss_centile_df.clean_long %>%
+  group_by(study, site) %>%
+  summarize(mean_gamlss_cent=mean(centile)) %>%
+  mutate(pheno_cat = "all")
 
 gamlss_centile_site.mean.df2 <- left_join(gamlss_centile_site.mean.df, delta_sum.df_merged)
 
-gamlss.age.test <- lm(mean_gamlss_cent ~ site_mean_age, data=gamlss_centile_site.mean.df2)
-summary(gamlss.age.test)
-gamlss.age.test2 <- lm(mean_gamlss_cent ~ sex_prop_Female + site_n + site_mean_age, data=gamlss_centile_site.mean.df2)
-summary(gamlss.age.test2)
+summary(lm(mean_gamlss_cent ~ site_mean_age, data=gamlss_centile_site.mean.df2))
+summary(lm(mean_gamlss_cent ~ site_mean_age + sex_prop_Female + site_n, data=gamlss_centile_site.mean.df2))
 ```
 
 NS
