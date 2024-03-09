@@ -872,7 +872,7 @@ sex.var.plot <- ggplot(sex.var.plot.df) +
   facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
   paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nCentile Error", limits = c(-6, 6)) #
-sex.var.plot
+saveRDS(sex.var.plot, file="figs/sex_var_plot.RDS")
 ```
 
 ```{r}
@@ -907,6 +907,9 @@ sex.var.plot.global <- ggplot(sex.var.plot.global.df) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
   paletteer::scale_fill_paletteer_c("grDevices::Cork",  limits = c(-6, 6), name = "Male - Female Median \nCentile Error") #,
 # sex.var.plot.global
+
+#save RDS
+saveRDS(sex.var.plot.global, file="figs/sex_var_plot_global.RDS")
 ```
 
 Combine plots - need to keep playing around to make the spacing pretty when it saves out
@@ -1575,7 +1578,7 @@ adding jitter to age (x-axis) because otherwise frankly it's hard to look at
 centiles = c(0.01, 0.05, 0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99)
 
 ```{r}
-dataset_names <- c('ukb-CN-simsites' = "Raw Data", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+dataset_names <- c('ukb-CN-simsites' = "True Data", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
 
 tmp_labels <- wmv.df %>%
   dplyr::filter(age_days == max(age_days) & dataset=="ukb-CN-simsites") %>%
@@ -1791,6 +1794,7 @@ ggplot(ls_data_combined, aes(x = x, y = y, color = Curve)) +
 toy brain chart for figs, diagram portion done in canva
 
 ```{r}
+dataset_names <- c('ukb-CN-simsites' = "True Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
 ven.df %>%
   dplyr::filter(sex=="Female") %>%
   mutate(dataset = factor(dataset, levels = c("ukb-CN-simsites", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
@@ -1861,43 +1865,8 @@ fig_2 <- ggarrange(
   # align = "hv"
   )
 
-fig_2_annotate <- annotate_figure(fig_2, top = text_grob("Figure 2. Choice of ComBat configuration can induce errors in brain feature centile scores",
-               color = "black", hjust = 0, x = 0))
-fig_2_annotate
-ggsave("figs/figure_2.jpeg", fig_2_annotate, width=11, height=7, units="in")
+fig_2
+
+ggsave("figs/figure_2.jpeg", fig_2, width=11, height=7, units="in")
 ```
 
-
-## FIGURE 3
-
-```{r}
-blank <- ggplot() + theme_void()
-
-fig_3 <- ggarrange(
-  ggarrange(blank, 
-            annotate_figure(
-              ggarrange(sex.var.plot.global, sex.var.plot,
-  ncol=2, nrow=1, 
-  widths = c(1, 3.25),
-  hjust=0.01,
-  align = "hv",
-  common.legend = TRUE, legend = "right"
-  )),
-  blank,
-  ncol=3, nrow=1,
-  widths=c(.5, 1, .5)),
-  big_violin_plt,
-  ncol=1, nrow=2, 
-  #labels=c("A", "B"),
-  #hjust=0.01,
-  # align = "hv",
-  heights=c(1, 1.8),
-  common.legend = FALSE,
-  labels=c("A", "B")
-  )
-# fig_2
-
-fig_3_annotate <- annotate_figure(fig_3, top = text_grob("Figure 3. Sex-biases in centile score errors across ComBat configurations", color = "black", hjust = 0, x = 0))
-fig_3_annotate
-ggsave("figs/figure_3.jpeg", fig_3_annotate, width=11.5, height=10, units="in")
-```

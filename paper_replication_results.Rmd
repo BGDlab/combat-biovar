@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain)
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, gdata)
 #Sys.setenv("MC_CORES"=10L)
 options("mc.cores")
 
@@ -293,22 +293,49 @@ cent.sex.test.med <- cent.subj.sex.test.df %>%
   group_by(dataset, perm, pheno_cat) %>%
   summarise(median_of_median_sex_diff = median(median_sex_diff))
 
-cent.sex.test.med %>%
-  # dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
-  ggplot() +
-  geom_density(aes(x=median_of_median_sex_diff, fill=dataset, color=dataset), alpha=0.6, position = "identity") +
-  geom_vline(xintercept = 0, linetype="dashed") +
-  facet_wrap(~pheno_cat, scales="free")
-
 t.test.cent.sex.test.med <- cent.sex.test.med %>%
   group_by(dataset, pheno_cat) %>%
-  summarise(t.test.p = tidy(t.test(median_of_median_sex_diff))$p.value) %>%
-  mutate(p.val_fdr = p.adjust(t.test.p, method="fdr", n = nrow(cent.sex.test.med)),
-                  sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
-                                      p.val_fdr >= 0.05 ~ FALSE))
+  summarise(t.test.p = tidy(t.test(median_of_median_sex_diff))$p.value,
+            t.test.est = tidy(t.test(median_of_median_sex_diff))$estimate,
+            x_pos = median(median_of_median_sex_diff)) %>% #test median of each distribution against 0
+  mutate(p.val_fdr = p.adjust(t.test.p, method="fdr", n = length(unique(cent.sex.test.med$dataset))*length(unique(cent.sex.test.med$pheno_cat))),
+                  sig_fdr = case_when(p.val_fdr < 0.001 ~ "***",
+                               p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
+                               p.val_fdr >= 0.01 & p.val_fdr < 0.05 ~ "*",
+                               p.val_fdr >= 0.05 ~ "")) %>%
+  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss")
+
 t.test.cent.sex.test.med %>%
   ggplot() +
   geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
+
+sex_bias_density_plt <- cent.sex.test.med %>%
+  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  ggplot() +
+  geom_density(aes(x=median_of_median_sex_diff*100, fill=dataset, color=dataset), alpha=0.6, position = "identity") +
+  geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
+  facet_wrap(~pheno_cat) +
+  theme_linedraw() +
+  geom_text(aes(label = sig_fdr, x= x_pos*100, y=ifelse(t.test.cent.sex.test.med$dataset == "cf.gam", 10.2, 5.5)),
+              data = t.test.cent.sex.test.med) +
+  scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  theme(legend.position = "bottom")+
+  labs(x="Medians of Sex-Differences in Centile Errors", y="Density Across 100 Replications")
+
+cent.sex.test.med %>%
+  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss" | dataset == "cf.lm") %>%
+  ggplot() +
+  geom_boxplot(aes(y=median_of_median_sex_diff*100, x=dataset, color=dataset)) +
+  geom_hline(yintercept = 0, linetype="dashed", color="#3F3F3F") +
+  facet_wrap(~pheno_cat, scales="free") +
+  theme_linedraw() +
+  geom_text(aes(label = sig_fdr, x= x_pos*100, y=10.2),
+              data = t.test.cent.sex.test.med) +
+  scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  theme(legend.position = "bottom")+
+  labs(x="Medians of Sex-Differences in Centile Errors Within Brain Feature Types", y="Density Across 100 Replications")
 ```
 
 plot subj. with averages in extremes 
@@ -324,18 +351,24 @@ raw_mean_cent <- perm_subj.df %>%
   dplyr::select(!c(Source_File, contains("diff"))) %>%
   mutate(dataset="raw")
 
-# raw_mean_cent %>%
-#   dplyr::filter(perm=="perm-001") %>%
-#   dplyr::filter(VolReg_mean_centile > .85) %>% nrow()
+raw_mean_cent %>%
+  dplyr::filter(perm=="perm-001") %>%
+  dplyr::filter(SA_mean_centile < .2) %>% 
+  nrow()
 
 perm_subj.df2 <- full_join(perm_subj.df, raw_mean_cent)
 
 perm_subj.df2_long <- perm_subj.df2 %>%
   rename(allpheno_mean_centile = mean_centile) %>%
   pivot_longer(cols=contains("mean_centile"), names_to="pheno_cat", values_to="mean_centile") %>%
-  mutate(pheno_cat = gsub("_mean_centile", "", pheno_cat))
+  mutate(pheno_cat = gsub("_mean_centile", "", pheno_cat)) %>%
+  mutate(pheno_cat = case_when(pheno_cat == "VolGlob" ~ "Global Volume",
+                               pheno_cat == "VolReg" ~ "Regional Volume",
+                               pheno_cat == "CT" ~ "Regional CT",
+                               pheno_cat == "SA" ~ "Regional SA"))
 
 high_cent.sum <- perm_subj.df2_long %>%
+  dplyr::filter(pheno_cat != "allpheno") %>%
   dplyr::filter(mean_centile > 0.80) %>%
   group_by(dataset, perm, pheno_cat) %>%
   summarise(
@@ -343,16 +376,8 @@ high_cent.sum <- perm_subj.df2_long %>%
     female_ratio = sum(sex == "Female") / n()
   )
 
-high_cent.sum %>%
-  #dplyr::filter(dataset != "raw") %>%
-  ggplot(aes(x=dataset, y=female_ratio)) +
-  geom_boxplot() +
-  # geom_dotplot(binaxis = "y", stackdir="center") +
-  facet_wrap(~pheno_cat, scales="free_y") +
-  #geom_hline(yintercept=high_cent.sum[high_cent.sum$dataset == "raw" & high_cent.sum$perm=="perm-001",][["female_ratio"]], linetype="dashed")+
-  labs(title="subjects with high average centiles")
-
 low_cent.sum <- perm_subj.df2_long %>%
+  dplyr::filter(pheno_cat != "allpheno") %>%
   dplyr::filter(mean_centile < 0.20) %>%
   group_by(dataset, perm, pheno_cat) %>%
   summarise(
@@ -360,82 +385,176 @@ low_cent.sum <- perm_subj.df2_long %>%
     female_ratio = sum(sex == "Female") / n()
   )
 
-low_cent.sum %>%
-  #dplyr::filter(dataset != "raw") %>%
-  ggplot(aes(x=dataset, y=female_ratio)) +
-  geom_boxplot() +
-  facet_wrap(~pheno_cat, scales="free_y") +
-  # geom_dotplot(binaxis = "y", stackdir="center")  +
-  #geom_hline(yintercept= low_cent.sum[low_cent.sum$dataset == "raw" & low_cent.sum$perm=="perm-001",][["female_ratio"]], linetype="dashed") +
-  labs(title="subjects with low average centiles")
-
-
 ext_cent.sum <- perm_subj.df2_long %>%
+  dplyr::filter(pheno_cat != "allpheno") %>%
   dplyr::filter(mean_centile < 0.20 | mean_centile > 0.80) %>%
   group_by(dataset, perm, pheno_cat) %>%
   summarise(
     male_ratio = sum(sex == "Male") / n(),
     female_ratio = sum(sex == "Female") / n()
   )
-
-ext_cent.sum %>%
-  #dplyr::filter(dataset != "raw") %>%
-  ggplot(aes(x=dataset, y=female_ratio)) +
-  geom_boxplot() +
-  # geom_dotplot(binaxis = "y", stackdir="center")  +
-  #geom_hline(yintercept= ext_cent.sum[ext_cent.sum$dataset == "raw" & ext_cent.sum$perm=="perm-001",][["female_ratio"]], linetype="dashed")+
-  facet_wrap(~pheno_cat, scales="free_y") +
-  labs(title="subjects with extreme average centiles")
-
-perm_subj.df %>%
-  # dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
-  ggplot() +
-  geom_histogram(aes(x=mean_cent_diff, fill=sex, color=sex), position="identity", alpha=0.6, bins=60) +
-  geom_vline(xintercept = 0, linetype="dashed") +
-  facet_wrap(~dataset, scales="free")
 ```
-
-linear ComBat -> too few women with high centiles (avg. across phenos, pattern varies), too many women with low centiles; ~ balances out overall (except regional volume)
-
-ComBat-GAM -> too many women with high centiles (small but pretty consistent pattern), too many women with low centiles (patter varies a bit across phenos); OVERALL TOO MANY WOMEN W EXTREME CENTILES 
-
-ComBatLS -> pretty close to raw!
 
 ```{r}
-#one-sample tests against raw vals
+#get raw vals for horizontal lines
+high_cent.sum_raw <- high_cent.sum %>%
+  dplyr::filter(dataset == "raw" & perm=="perm-001")
 
-one_samp_wilcox <- function(cf_method, df){
-  df2 <- df %>%
-    dplyr::filter(dataset == cf_method)
-  raw_val <- df[df$dataset == "raw" & df$perm=="perm-001",][["male_ratio"]]
-  wilcox.test(df2$male_ratio, mu=raw_val)
+low_cent.sum_raw <- low_cent.sum %>%
+  dplyr::filter(dataset == "raw" & perm=="perm-001")
+
+ext_cent.sum_raw <- ext_cent.sum %>%
+  dplyr::filter(dataset == "raw" & perm=="perm-001")
+
+#test significance
+get_t_tests <- function(df, raw_df){
+  #df <- df_list[[cat]]
+  cat <- unique(df$pheno_cat)
+  #print(cat)
+  mu <- raw_df$female_ratio[which(raw_df$pheno_cat == cat)]
+  #print(mu)
+  out <- df %>%
+    dplyr::filter(dataset != "raw") %>%
+    group_by(dataset) %>%
+    summarise(p_val = t.test(female_ratio, mu=mu)$p.val,
+              pheno_cat = cat,
+              max_val = max(female_ratio),
+              mu=mu) %>%
+    mutate(p.val_fdr = p.adjust(p_val, method="fdr", n = (4*4*3)), #adjusting for 4 methods * 4 pheno classes * 3 centile categories
+           sig_fdr = case_when(p.val_fdr < 0.001 ~ "***",
+                               p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
+                               p.val_fdr >= 0.01 & p.val_fdr < 0.05 ~ "*",
+                               p.val_fdr >= 0.05 ~ "NS"))
+  return(out)
 }
 
-cf_test_list <- unique(perm_subj.df$dataset)
+high_t_test.df <- lapply(split(high_cent.sum, high_cent.sum$pheno_cat), get_t_tests, raw_df=high_cent.sum_raw) %>% bind_rows()
+low_t_test.df <- lapply(split(low_cent.sum, low_cent.sum$pheno_cat), get_t_tests, raw_df=low_cent.sum_raw) %>% bind_rows()
+ext_t_test.df <- lapply(split(ext_cent.sum, ext_cent.sum$pheno_cat), get_t_tests, raw_df=ext_cent.sum_raw) %>% bind_rows()
 
-high_test <- lapply(cf_test_list, one_samp_wilcox, df=high_cent.sum)
-names(high_test) <- cf_test_list
-high_test
+#merge dfs
+all_cent_sum.df <- gdata::combine(high_cent.sum, low_cent.sum, ext_cent.sum) %>%
+  mutate(source = gsub("_cent.sum", "", source))
+all_cent.sum_raw <- all_cent_sum.df %>%
+  dplyr::filter(dataset == "raw" & perm=="perm-001")
 
-low_test <- lapply(cf_test_list, one_samp_wilcox, df=low_cent.sum)
-names(low_test) <- cf_test_list
-low_test
+all_t_test.df <- gdata::combine(high_t_test.df, low_t_test.df, ext_t_test.df) %>%
+  mutate(source = gsub("_t_test.df", "", source))
 
-ext_test <- lapply(cf_test_list, one_samp_wilcox, df=ext_cent.sum)
-names(ext_test) <- cf_test_list
-ext_test
+#scale by raw value
+all_cent_sum.df_scaled <- all_cent_sum.df %>%
+  mutate(dataset = factor(dataset, levels=c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered=TRUE)) %>%
+  arrange(dataset) %>%
+  group_by(source, pheno_cat) %>%
+  mutate(female_ratio_sc = female_ratio/first(female_ratio),
+         female_ratio_diff = female_ratio - first(female_ratio))
+
+#plots!
+all_cent_sum.df %>%
+  dplyr::filter(dataset != "raw") %>%
+  ggplot(aes(x=dataset, y=female_ratio)) +
+  geom_boxplot(aes(color=dataset)) +
+  # geom_dotplot(binaxis = "y", stackdir="center") +
+  facet_grid(pheno_cat~source, scales="free_y") +
+  geom_hline(data=all_cent.sum_raw, aes(yintercept=female_ratio), linetype="dashed")+
+  geom_text(aes(label = sig_fdr, y = max_val + 0.01),
+              data = all_t_test.df) +
+  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"),  name = "ComBat Configuration", labels=dataset_names) + 
+  theme_linedraw()
+
+cent_ext_list <- c(ext = ">80% and <20%", high = ">80%", low = "<20%")
+
+all_cent_sum_boxplt <- all_cent_sum.df %>%
+  dplyr::filter(dataset != "raw" & dataset != "cf") %>%
+  mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
+  ggplot(aes(x=dataset, y=female_ratio)) +
+  geom_boxplot(aes(color=dataset)) +
+  # geom_dotplot(binaxis = "y", stackdir="center") +
+  facet_grid(pheno_cat~source, scales="free_y", labeller = labeller(source=cent_ext_list)) +
+  geom_hline(data=all_cent.sum_raw, aes(yintercept=female_ratio), linetype="dashed")+
+  # geom_text(aes(label = sig_fdr, y = max_val + 0.01),
+  #             data = all_t_test.df[which(all_t_test.df$dataset != "cf"),]) +
+  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
+  theme_linedraw() +
+  scale_x_discrete(labels=dataset_names) +
+  # scale_y_continuous(labels=function(x)x/all_t_test.df$female_ratio[which(raw_df$pheno_cat == pheno_cat)]) + 
+  theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(y="Proportion Female", x = "Dataset")
+
+all_cent_sum.df_scaled %>%
+  dplyr::filter(dataset != "raw" & dataset != "cf") %>%
+  mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
+  ggplot(aes(x=dataset, y=female_ratio_sc)) +
+  geom_boxplot(aes(color=dataset)) +
+  # geom_dotplot(binaxis = "y", stackdir="center") +
+  facet_grid(pheno_cat~source, scales="free_y", labeller = labeller(source=cent_ext_list)) +
+  geom_hline(yintercept=1, linetype="dashed")+
+  # geom_text(aes(label = sig_fdr, y = max_val + 0.01),
+  #             data = all_t_test.df[which(all_t_test.df$dataset != "cf"),]) +
+  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
+  theme_linedraw() +
+  scale_x_discrete(labels=dataset_names) +
+  # scale_y_continuous(labels=function(x)x/all_t_test.df$female_ratio[which(raw_df$pheno_cat == pheno_cat)]) + 
+  theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(y="Female Bias", x = "Dataset")
+
+all_cent_sum_boxplt.diff <- all_cent_sum.df_scaled %>%
+  dplyr::filter(dataset != "raw" & dataset != "cf") %>%
+  mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
+  ggplot(aes(x=dataset, y=female_ratio_diff)) +
+  geom_boxplot(aes(color=dataset)) +
+  # geom_dotplot(binaxis = "y", stackdir="center") +
+  facet_grid(pheno_cat~source, scales="free_y", labeller = labeller(source=cent_ext_list)) +
+  geom_hline(yintercept=0, linetype="dashed")+
+  # geom_text(aes(label = sig_fdr, y = max_val + 0.01),
+  #             data = all_t_test.df[which(all_t_test.df$dataset != "cf"),]) +
+  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
+  theme_linedraw() +
+  scale_x_discrete(labels=dataset_names) +
+  # scale_y_continuous(labels=function(x)x/all_t_test.df$female_ratio[which(raw_df$pheno_cat == pheno_cat)]) + 
+  theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(y="Female Bias", x = "Dataset")
+
+all_cent_sum_boxplt_wtest <- all_cent_sum.df %>%
+  dplyr::filter(dataset != "raw") %>%
+  mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
+  ggplot(aes(x=dataset, y=female_ratio)) +
+  geom_boxplot(aes(color=dataset)) +
+  # geom_dotplot(binaxis = "y", stackdir="center") +
+  facet_grid(pheno_cat~source, scales="free_y", labeller = labeller(source=cent_ext_list)) +
+  geom_hline(data=all_cent.sum_raw, aes(yintercept=female_ratio), linetype="dashed")+
+  geom_text(aes(label = sig_fdr, y = max_val + 0.01),
+              data = all_t_test.df) +
+  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
+  theme_linedraw() +
+  scale_x_discrete(labels=dataset_names) +
+  theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(y="Proportion Female", x = "Dataset")
+
+all_cent_sum.df %>%
+  ggplot(aes(x=dataset, y=female_ratio)) +
+  geom_boxplot(aes(color=dataset)) +
+  # geom_dotplot(binaxis = "y", stackdir="center") +
+  facet_wrap(~source, scales="free_y") +
+  #geom_hline(data=all_cent.sum_raw, aes(yintercept=female_ratio), linetype="dashed")+
+  # geom_text(aes(label = sig_fdr, y = max_val + 0.01),
+  #             data = all_t_test.df) +
+  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"),  name = "ComBat Configuration", labels=dataset_names) + 
+  theme_linedraw()
 ```
+
+
+linear ComBat ~ too few women with high centiles, too many women with low centiles; ~ balances out overall
+
+ComBat-GAM -> variable pattern, pretty close to raw
+
+ComBatLS -> pretty close to raw!
 
 by site
 ```{r}
 perm_subj.df2.by.site <- perm_subj.df2 %>%
   group_by(perm, dataset, sim.site) %>%
   summarise(across(contains("mean"), list(site = mean)))
-
-perm_subj.df2.by.site %>%
-  ggplot() +
-  geom_boxplot(aes(x=sim.site, y=mean_cent_abs.diff_site, fill=dataset)) +
-  facet_wrap(~ dataset, scales="free")
 
 perm_subj.df2.by.site %>%
     mutate(sim.site = factor(sim.site, levels=c("Site_B", "Site_A", "Site_C"), ordered=TRUE)) %>%
@@ -676,6 +795,38 @@ noext.subj.sex.test.z.df %>%
   scale_fill_manual(values = c("lightblue", "red"))
 ```
 
+## FIGURE 3
+```{r}
+blank <- ggplot() + theme_void()
+sex.var.plot.global <- readRDS("figs/sex_var_plot_global.RDS")
+sex.var.plot <- readRDS("figs/sex_var_plot.RDS")
+
+fig_3 <- ggarrange(
+  ggarrange(
+  ggarrange(blank, sex.var.plot.global, sex.var.plot,
+  ncol=3, nrow=1, 
+  widths = c(.1, .8, 3.1),
+  hjust=0.01,
+  align = "hv",
+  common.legend = TRUE, legend = "bottom"
+  ),
+  sex_bias_density_plt,
+  nrow=2, ncol=1,
+  labels=c("A", "B")
+  ),
+  all_cent_sum_boxplt.diff,
+  ncol=2, nrow=1,
+  labels=c(NA, "C"),
+  widths = c(1, 1)
+  # #align = "hv",
+  # heights=c(1, 1.8),
+  # common.legend = FALSE,
+  # #labels=c("A", "B")
+  )
+
+fig_3
+ggsave("figs/figure_3.jpeg", fig_3, width=15, height=10, units="in")
+```
 
 ## Supplemental Fig
 ```{r}
@@ -684,4 +835,37 @@ sfig <- ggarrange(cent.test.comp.plt, ct.brain.sum.plt,
 sfig
 ggsave(paste0(base_path, "/figs/combat_abs_errs_supp_plt.jpg"), plot=sfig, width=11, height=7, units="in")
 
+```
+
+Figure 3 but with sig. tests for boxplots
+
+```{r}
+sex.var.plot.global <- readRDS("figs/sex_var_plot_global.RDS")
+sex.var.plot <- readRDS("figs/sex_var_plot.RDS")
+
+fig_3_wtest <- ggarrange(
+  ggarrange(
+  ggarrange(sex.var.plot.global, sex.var.plot,
+  ncol=2, nrow=1, 
+  widths = c(1, 3.25),
+  hjust=0.01,
+  align = "hv",
+  common.legend = TRUE, legend = "bottom"
+  ),
+  sex_bias_density_plt,
+  nrow=2, ncol=1,
+  labels=c("A", "B")
+  ),
+  all_cent_sum_boxplt_wtest,
+  ncol=2, nrow=1,
+  labels=c(NA, "C"),
+  widths = c(1, 1.8)
+  # #align = "hv",
+  # heights=c(1, 1.8),
+  # common.legend = FALSE,
+  # #labels=c("A", "B")
+  )
+
+fig_3_wtest
+ggsave("figs/figure_3_wtest.jpeg", fig_3, width=15, height=10, units="in")
 ```

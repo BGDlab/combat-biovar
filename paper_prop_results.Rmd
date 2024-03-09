@@ -51,7 +51,7 @@ dk.parc <- dk$data %>%
 
 
 ```{r}
-dataset_names <- c('ukb-CN-simsites' = "Raw Data", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+dataset_names <- c('ukb-CN-simsites' = "Raw Data",  cf = "ComBat w/o cov", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
 n_prop_list <- c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F")
 ```
 
@@ -182,7 +182,7 @@ sampling.plt <- ratio.df %>%
 ggplot() +
   geom_bar(aes(x=sim.site, fill=sex)) +
   theme_linedraw() +
-  theme(axis.ticks.x = element_blank(), axis.text.x=element_blank(), panel.spacing.x = unit(.1, "lines")) +
+  theme(axis.ticks.x = element_blank(), axis.text.x=element_blank(), panel.spacing.x = unit(.1, "lines"), legend.position = "bottom") +
   xlab("Simulated Site") +
   ylab("Subjects") +
   labs(fill="Sex") +
@@ -312,7 +312,7 @@ prop.global_cent_errs_plot <- prop.global_abs.diffs %>%
   scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   labs(y="Absolute Centile Error", x = "% Females in Imbalanced Site") +
-  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom") +
   scale_x_discrete(labels=percent_f) +
   stat_pvalue_manual(mean_comp_tbl3, label = "p.adj.signif", label.size = 2, tip.length = 0) +
   # ggsignif::geom_signif(data=mean_comp_tbl2) +
@@ -335,7 +335,7 @@ prop.global_cent_errs_plot_bysex <- prop.global_abs.diffs %>%
   scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   labs(y="Magnitude Centile Error", x = "% Females in Imbalanced Site") +
-  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom") +
   scale_x_discrete(labels=percent_f) +
   facet_grid(sex ~ pheno) +
   ggtitle("Magnitude errors in centile scores of global features across \nComBat pipelines")
@@ -381,32 +381,77 @@ cent.feat.sex.test.df %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
-visualize magnitude of significant sex-biases
+visualize magnitude of sex-biases
 
 ```{r}
-cent.feat.sex.test.df %>%
-  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
-                              TRUE ~ median_sex_diff*100),
-         pheno_cat = factor(case_when(
+cent.feat.sex.test.df <- cent.feat.sex.test.df %>%
+  mutate(pheno_cat = factor(case_when(
     pheno %in% vol_list_global ~ "Global Volume",
     pheno %in% vol_list_regions ~ "Regional Volume",
     pheno %in% sa_list ~ "Regional SA",
     pheno %in% ct_list ~ "Regional CT",
-    TRUE ~ NA_character_))) %>%
+    TRUE ~ NA_character_)))
+
+cent.feat.sex.test.df %>%
+  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+                              TRUE ~ median_sex_diff*100)) %>%
   ggplot() +
   geom_histogram(aes(x=median_sex_diff, fill= pheno_cat, color=pheno_cat), alpha=0.4, position = "identity") +
   geom_vline(xintercept = 0, linetype="dashed") +
   facet_grid(prop~dataset, scales="free")
 
+t.test.cent.sex.diff <- cent.feat.sex.test.df %>%
+  dplyr::filter(pheno_cat != "Global Volume") %>%
+  group_by(dataset, pheno_cat, prop) %>%
+  summarise(t.test.p = tidy(t.test(median_sex_diff, mu=0))$p.value,
+            max_val = max(median_sex_diff)) %>% #test median of each distribution against 0
+  mutate(p.val_fdr = p.adjust(t.test.p, method="fdr", n = (3*4*11)), #not testing global vols, too few data points
+                  sig_fdr_tf = case_when(p.val_fdr < 0.05 ~ TRUE,
+                                      p.val_fdr >= 0.05 ~ FALSE),
+         sig_fdr = case_when(
+           # p.val_fdr < 0.001 ~ "***",
+           #                     p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
+           #                     p.val_fdr >= 0.01 & 
+                               p.val_fdr < 0.05 ~ "*",
+                               p.val_fdr >= 0.05 ~ ""),
+         y_pos = ifelse(max_val < 0, ((max_val*100)*0.5), (max_val*100)+0.8))
+
+cortical_cent_sex_diff.plt <- cent.feat.sex.test.df %>%
+  dplyr::filter(pheno_cat != "Global Volume" & dataset != "cf") %>%
+  mutate(median_sex_diff = median_sex_diff*100) %>%
+  ggplot(aes(x=prop, y=median_sex_diff)) +
+  geom_boxplot(aes(color=dataset)) +
+    facet_grid(dataset~pheno_cat, labeller=labeller(dataset=dataset_names)) + 
+  geom_text(aes(label = sig_fdr, y = y_pos),
+              data = t.test.cent.sex.diff[which(t.test.cent.sex.diff$dataset != "cf"),]) +
+  theme_linedraw() +
+  scale_color_manual(values=c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
+  theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(y="Median Male - Female Centile Error", x = "% Females in Imbalanced Site") +
+  scale_x_discrete(labels=percent_f)
+
+cent.feat.sex.test.df %>%
+  mutate(median_sex_diff = median_sex_diff*100) %>%
+  dplyr::filter(pheno_cat == "Global Volume") %>%
+  ggplot() +
+  geom_dotplot(aes(x=prop, y=median_sex_diff, color=dataset, fill=dataset), binaxis = "y", stackdir="center") +
+    facet_grid(pheno_cat~dataset, scales="free_y", labeller=labeller(dataset=dataset_names)) +
+  theme_linedraw() +
+  scale_color_manual(values=c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
+  scale_fill_manual(values=c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
+  theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(y="Median Male - Female Centile Error", x = "% Females in Imbalanced Site") +
+  scale_x_discrete(labels=percent_f)
+
 #zoom in on combat-GAM vs combat-LS
 cent.feat.sex.test.df %>%
   dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
-  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
-                              TRUE ~ median_sex_diff*100)) %>%
+  #mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+                              #TRUE ~ median_sex_diff*100)) %>%
   ggplot() +
   geom_histogram(aes(x=median_sex_diff, fill= dataset, color=dataset), alpha=0.4, position = "identity") +
   geom_vline(xintercept = 0, linetype="dashed") +
-  facet_wrap(~prop, labeller = as_labeller(percent_f)) +
+  facet_wrap(~prop, labeller = as_labeller(percent_f), scales="free") +
   theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 cent.feat.sex.test.df %>%
@@ -414,27 +459,31 @@ cent.feat.sex.test.df %>%
   summarize(min_diff = min(median_sex_diff)*100, max_diff=max(median_sex_diff)*100)
 ```
 
-Look at differences in M:F for subjects w very high or very low mean centiles
+Look at differences in M:F for subjects w very high or very low centiles
 ```{r}
-feat_exts <- ratio.df %>%
+feat_exts_long <- ratio.df %>%
   dplyr::select(-contains(c("diff", ".z"))) %>%
-  mutate(across(pheno_list, ~ case_when(. < 0.25 ~ "low",
-                                        . > 0.75 ~ "high", 
-                                        TRUE ~ "mid")))
-  
-feat_exts_long <- feat_exts %>%
   pivot_longer(cols=c(pheno_list), names_to="pheno", values_to="centile_cat") %>%
    mutate(pheno_cat = as.factor(case_when(
     pheno %in% vol_list_global ~ "Global Volume",
     pheno %in% vol_list_regions ~ "Regional Volume",
     pheno %in% sa_list ~ "Regional SA",
     pheno %in% ct_list ~ "Regional CT",
-    TRUE ~ NA_character_)))
+    TRUE ~ NA_character_))) %>%
+  mutate(centile_cat = case_when(. < 0.2 ~ "low",
+                                        . > 0.8 ~ "high", 
+                                        TRUE ~ "mid"))
+feat_exts_long %>%
+  dplyr::filter(centile_cat == "low") %>%
+  ggplot() +
+  geom_bar(aes(x=pheno_cat, fill=sex, color=sex)) +
+  facet_grid(prop ~ dataset)
 
 feat_exts_long %>%
+  dplyr::filter(centile_cat == "high") %>%
   ggplot() +
-  geom_col(aes(x=centile_cat, y=pheno_cat, fill=sex, color=sex)) +
-  facet_grid(dataset ~ prop)
+  geom_bar(aes(x=pheno_cat, fill=sex, color=sex)) +
+  facet_grid(prop ~ dataset)
 ```
 
 visualize actual (not ABSOLUTE) errors for global phenos by sex
@@ -818,17 +867,16 @@ noext_z.subj.sex.test.df %>%
 
 ## FIGURE 4
 ```{r}
-fig_4 <- ggarrange(ggarrange(sampling.plt, prop.global_cent_errs_plot, 
+fig_4 <- ggarrange(ggarrange(sampling.plt, cortical_cent_sex_diff.plt, 
                              nrow = 2, labels = c("A", "C"),
                              heights=c(1,2)), #nest 1st col
-          sex_err_ratio.plt,
+          prop.global_cent_errs_plot,
           ncol = 2,
-          widths=c(1.1, 1),
+          widths=c(1, 1.3),
           labels = c(NA, "B")                                    
 ) 
 
-fig_4_annotate <- annotate_figure(fig_4, top = text_grob("Figure 4. Varying M:F ratios across site simulations", color = "black", hjust = 0, x = 0))
-fig_4_annotate
-ggsave("figs/figure_4.jpeg", fig_4_annotate, width=33, height=20, units="cm")
+fig_4
+ggsave("figs/figure_4.jpeg", fig_4, width=33, height=20, units="cm")
 ```
 

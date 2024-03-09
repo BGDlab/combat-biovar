@@ -957,8 +957,8 @@ ggarrange(sample_boxplot, sample_barplot,
           widths=c(2, 1),
           heights=c(14, 1)),
 # mean effects
-ggarrange(marg.age_effects.plt,
-marg.sex_effects.plt,
+ggarrange(age_effects.plt,
+sex_effects.plt,
 nrow=2, ncol=1,
 align="hv",
 labels=c("B", "C")),
@@ -968,40 +968,5 @@ labels=c("A", NA),
 widths=c(1, 1.4)
 )
 
-fig5_annotate <- annotate_figure(fig5, top = text_grob("Figure 5. Differences in centile scores of lifespan consortium data when harmonized with ComBat-GAM and ComBatLS", color = "black", hjust = 0, x = 0))
-fig5_annotate
-ggsave("figs/figure_5.jpeg", fig5_annotate, width=12, height=10, units="in")
-```
-
-```{r}
-# study demographics
-fig5.optB <- ggarrange(
-ggarrange(sample_boxplot, sample_barplot,
-          full_boxplot, full_barplot,
-          nrow=2, ncol=2, 
-          # align = "hv", 
-          common.legend = TRUE,
-          legend = "bottom",
-          widths=c(2, 1.3),
-          heights=c(14, 1)),
-# mean effects
-ggarrange(
-ggarrange(age_effects.plt, age_effects.plt.null,
-          nrow=2, ncol=1, common.legend=TRUE, legend="bottom",
-          align = "hv"),
-ggarrange(sex_effects.plt.null, sex_effects.plt,
-          nrow=2, ncol=1, common.legend=TRUE, legend="bottom",
-          align = "hv"),
-# align="hv",
-# labels=c("B", "C")),
-common.legend=FALSE,
-nrow=1, ncol=2),
-labels=c("A", "B"),
-widths=c(1, 2.2),
-nrow=1, ncol=2
-)
-
-fig5.optB_annotate <- annotate_figure(fig5.optB, top = text_grob("Figure 5. Differences in centile scores of lifespan consortium data when harmonized with ComBat-GAM and ComBatLS", color = "black", hjust = 0, x = 0))
-fig5.optB_annotate
-ggsave("figs/figure_5_option2.jpeg", fig5.optB_annotate, width=13, height=10, units="in")
+ggsave("figs/figure_5.jpeg", fig5, width=12, height=10, units="in")
 ```
