@@ -139,7 +139,7 @@ cf.gam_worse <- cent.feat.t.test.df %>%
   group_by(perm) %>%
   summarise(count = n())
 
-mean(cf.gam_worse$count)
+median(cf.gam_worse$count)
 IQR(cf.gam_worse$count)
 ```
 
