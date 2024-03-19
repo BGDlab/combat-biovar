@@ -123,6 +123,15 @@ left_join(cn.df.eulerfilt, study_mad) %>%
 #   ggplot() +
 #   geom_boxplot(aes(x=study, y=surfholes)) +
 #   geom_point(aes(x=study, y=(study_euler_median+2*study_euler_madconst1)), color="red")
+
+left_join(cn.df.eulerfilt, study_mad) %>%
+  mutate(scan_pass = ifelse(surfholes <= euler_threshold, "yes", "no")) %>%
+  group_by(study) %>%
+  summarise(fail_percent = (sum(scan_pass == "no") / n())*100) %>%
+  summarise(max_fail = max(fail_percent),
+            min_fail=min(fail_percent),
+            mean_fail=mean(fail_percent))
+  
 ```
 
 using default mad() constant, looks better
@@ -239,18 +248,26 @@ Keep studies w missing site info and just treat as single-site
 
 ```{r}
 #clean up site NAs
-cn.df.imp <- cn.df.eulerfilt2 %>%
+cn.df.imp1 <- cn.df.eulerfilt2 %>%
   mutate(site = trimws(as.character(site)),
          study = trimws(study)) %>%
-  mutate(site = gsub(" ", "_", ifelse(is.na(site), study, paste(study, site, sep="_")))) %>%
+  mutate(site = gsub(" ", "_", ifelse(is.na(site), study, paste(study, site, sep="_")))) 
+
+#drop NAs listwise
+cn.df.imp <- cn.df.imp1%>%
+  dplyr::select(!c(INDEX.ID, country)) %>%#drop index ID for filtering
   na.omit()
 
+skim(cn.df.imp)
+
+nrow(cn.df.imp1) - nrow(cn.df.imp)
 # unique(cn.df.imp$site)
 # table(cn.df.imp$site, cn.df.imp$study)
 # sum(is.na(cn.df.imp$site))
 ```
 
 Demographics
+
 
 ```{r}
 #sample size, sex

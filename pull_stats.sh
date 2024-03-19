@@ -48,8 +48,10 @@ then
 		then
 		mkdir $base/ukb_perm
 		fi
-	echo "pulling *_diffs.csv"
-	scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_permute/perm_centile_csvs/*_diffs.csv' $base/ukb_perm
+
+	#not pulling diff csvs - too long and not needed
+	#echo "pulling *_diffs.csv"
+	#scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_permute/perm_centile_csvs/*_diffs.csv' $base/ukb_perm
 
 	echo "pulling *_featurewise_*_sex_bias_tests.RDS" 
 	scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_permute/perm_centile_csvs/*_featurewise_*_sex_bias_tests.RDS' $base/ukb_perm

@@ -231,7 +231,7 @@ do
 	echo "taking too long, abort!"
 	exit 2
     fi
-    echo "count ${count_file} *featurewise_*_sex_bias_tests.csv files"
+    echo "count ${count_file} *featurewise_*_sex_bias_tests.RDS files"
     sleep 60    # wait for 1min before detecting again
 done
 
