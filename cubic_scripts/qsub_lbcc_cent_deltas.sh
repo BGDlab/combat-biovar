@@ -11,7 +11,7 @@ cent_path=$base/lifespan/centile_csvs #path to centile csvs
 bash_dir=$base/lifespan/centile_qsubs
 
 #search string:
-config_list="batch.study batch.site"
+config_list="batch.study" # batch.site"
 #######################################################################################
 cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
