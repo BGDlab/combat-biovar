@@ -153,7 +153,9 @@ cn.df.site <- cn.df.eulerfilt2 %>%
   mutate(study = droplevels(study),
          site = gsub(" ", "_", trimws(site))) %>%
   unite(site, study, site, sep = "_", remove = FALSE) %>% #so sites with the same name don't get combined across studies!
+  dplyr::select(!c(INDEX.ID, country)) %>%#drop index ID for filtering
   na.omit()
+
 n_unique(cn.df.site$participant)
 n_unique(cn.df.site$participant) == nrow(cn.df.site)
 
