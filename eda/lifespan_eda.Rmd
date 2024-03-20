@@ -94,9 +94,21 @@ ggplot(cn.df.unique) +
 
 ## Curate
 
+Remove infants (anyone younger than 3 yrs)
+
+```{r}
+cn.df.noinf <- cn.df.unique %>%
+  dplyr::filter(age_days >= (365.25*3)) %>%
+  mutate(study = droplevels(study),
+         site = droplevels(site))
+nrow(cn.df.unique) - nrow(cn.df.noinf)
+n_unique(cn.df.unique$study) - n_unique(cn.df.noinf$study)
+min(cn.df.noinf$age_days)
+```
+
 Visualizing euler distributions
 ```{r}
-cn.df.unique %>%
+cn.df.noinf %>%
   ggplot() +
   geom_boxplot(aes(x=study, y=surfholes))
 ```
@@ -104,7 +116,7 @@ cn.df.unique %>%
 Removing subjects w/o surfholes, subjects with surfholes values > 2 MADs above study median (same as sensitivity analyses in LBCC)
 
 ```{r}
-cn.df.eulerfilt <- cn.df.unique %>%
+cn.df.eulerfilt <- cn.df.noinf %>%
   dplyr::filter(!is.na(surfholes))
 
 study_mad <- cn.df.eulerfilt %>%
@@ -119,11 +131,6 @@ left_join(cn.df.eulerfilt, study_mad) %>%
   geom_boxplot(aes(x=study, y=surfholes)) +
   geom_point(aes(x=study, y=(study_euler_median+2*study_euler_mad)), color="red")
 
-# left_join(cn.df.eulerfilt, study_mad) %>%
-#   ggplot() +
-#   geom_boxplot(aes(x=study, y=surfholes)) +
-#   geom_point(aes(x=study, y=(study_euler_median+2*study_euler_madconst1)), color="red")
-
 left_join(cn.df.eulerfilt, study_mad) %>%
   mutate(scan_pass = ifelse(surfholes <= euler_threshold, "yes", "no")) %>%
   group_by(study) %>%
@@ -131,7 +138,6 @@ left_join(cn.df.eulerfilt, study_mad) %>%
   summarise(max_fail = max(fail_percent),
             min_fail=min(fail_percent),
             mean_fail=mean(fail_percent))
-  
 ```
 
 using default mad() constant, looks better
@@ -188,12 +194,6 @@ check for sex differences in sites
 
 ```{r}
 ggplot(cn.df.site) +
-  geom_bar(aes(x=site, fill=sex))+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-```
-
-```{r}
-ggplot(cn.df.site) +
   geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=site, fill=sex)) + 
   scale_y_continuous(labels = scales::percent) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
@@ -208,41 +208,6 @@ Write out
 
 ```{r}
 fwrite(cn.df.site, file=paste0(base_path, "/data/lifespan_CN_site-level_euler.csv"))
-```
-write out imagen data for testing
-```{r}
-imagen.df <- cn.df.site %>%
-  dplyr::filter(study=="IMAGEN")
-# skim(imagen.df)
-
-fwrite(imagen.df, file=paste0(base_path, "/data/imagen_CN.csv"))
-```
-
-troubleshooting combat
-
-```{r, eval=FALSE}
-gamlss(formula = rh_Vol_posteriorcingulate ~ pb(age_days) + sexMale + sex.age + site, sigma.formula= ~ pb(age_days) + sexMale + site, data=imagen.df)
-```
-
-looking into whether all global measures should be log-transformed to account for skew (getting neg vals for ventricles with combat-GAM)
-
-```{r}
-global_vols <- cn.df.site %>%
-  dplyr::select(sex, log_age, all_of(vol_list_global)) %>%
-  pivot_longer(cols=c(-sex, -log_age), names_to = "pheno", values_to = "volume") %>%
-  mutate(log_vol = log(volume, base=10)) #test log-transform
-
-ggplot(global_vols) +
-  geom_point(aes(x=log_age, y=volume, color=sex), alpha=0.4) +
-  facet_wrap(~pheno, scales="free_y")
-
-ggplot(global_vols) +
-  geom_histogram(aes(x=volume, fill=pheno), alpha=0.5) +
-  facet_wrap(~pheno, scales="free")
-
-ggplot(global_vols) +
-  geom_histogram(aes(x=log_vol, fill=pheno), alpha=0.5) +
-  facet_wrap(~pheno, scales="free")
 ```
 
 ## Keep Study Level
@@ -263,13 +228,13 @@ cn.df.imp <- cn.df.imp1%>%
 skim(cn.df.imp)
 
 nrow(cn.df.imp1) - nrow(cn.df.imp)
-# unique(cn.df.imp$site)
+n_unique(cn.df.imp$site)
+n_unique(cn.df.imp$study)
 # table(cn.df.imp$site, cn.df.imp$study)
 # sum(is.na(cn.df.imp$site))
 ```
 
 Demographics
-
 
 ```{r}
 #sample size, sex
@@ -306,12 +271,6 @@ check for sex differences in sites
 
 ```{r}
 ggplot(cn.df.imp) +
-  geom_bar(aes(x=site, fill=sex))+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-```
-
-```{r}
-ggplot(cn.df.imp) +
   geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=site, fill=sex)) + 
   scale_y_continuous(labels = scales::percent) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
@@ -322,64 +281,3 @@ Write out
 ```{r}
 fwrite(cn.df.imp, file=paste0(base_path, "/data/lifespan_CN_imp-sites_euler.csv"))
 ```
-
-
-## Visualize Harmonized Data
-
-comparing ventricle vals across harmonization pipelines (neg vals in `lifespan-CN-imp-sites_cf.gam_data.csv`), may need to log-transform
-```{r}
-lifespan_imp_gam.df <- fread(paste0(base_path, "/data/lifespan/lifespan-CN-imp-sites_cf.gam_data.csv"), stringsAsFactors = TRUE)
-lifespan_imp_gamlss.df <- fread(paste0(base_path, "/data/lifespan/lifespan-CN-imp-sites_cf.gamlss_data.csv"), stringsAsFactors = TRUE)
-
-lifespan_gam.df <- fread(paste0(base_path, "/data/lifespan/lifespan-CN-site-level_cf.gam_data.csv"), stringsAsFactors = TRUE)
-lifespan_gamlss.df <- fread(paste0(base_path, "/data/lifespan/lifespan-CN-site-level_cf.gamlss_data.csv"), stringsAsFactors = TRUE)
-```
-
-```{r}
-#mark negative vals
-# cn.df.site <- as.data.frame(cn.df.site)
-neg1 <- cn.df.site %>%
-  dplyr::filter(Ventricles <= 0)
-ven_raw <- ggplot() +
-  geom_point(data=cn.df.site, aes(x=log_age, y=Ventricles, color=sex), alpha =0.3) +
-  geom_point(data=neg1, aes(x = log_age, y=Ventricles), color='red', alpha=0.6) + 
-  ggtitle("Raw Data")
-
-neg2 <- lifespan_gam.df[lifespan_gam.df$Ventricles <=0]
-ven_gam <- ggplot() +
-  geom_point(data=lifespan_gam.df, aes(x=log_age, y=Ventricles, color=sex), alpha =0.3) +
-  geom_point(data=neg2, aes(x = log_age, y=Ventricles), color='red', alpha=0.6) + 
-  ggtitle("ComBat-GAM")
-
-neg3 <- lifespan_gamlss.df[lifespan_gamlss.df$Ventricles <=0]
-ven_gamlss <- ggplot(lifespan_gamlss.df) +
-  geom_point(aes(x=log_age, y=Ventricles, color=sex), alpha =0.3) +
-  geom_point(data=neg3, aes(x = log_age, y=Ventricles), color='red', alpha=0.6) + 
-  ggtitle("ComBatLS")
-
-# cn.df.imp <- as.data.frame(cn.df.imp)
-neg4 <- cn.df.imp %>%
-  dplyr::filter(Ventricles <= 0)
-ven_raw.imp <- ggplot(cn.df.imp) +
-  geom_point(aes(x=log_age, y=Ventricles, color=sex), alpha =0.3) +
-  geom_point(data=neg4, aes(x = log_age, y=Ventricles), color='red', alpha=0.6) + 
-  ggtitle("Raw Data - All Studies")
-
-neg5 <- lifespan_imp_gam.df[lifespan_imp_gam.df$Ventricles <=0]
-ven_gam.imp <- ggplot(lifespan_imp_gam.df) +
-  geom_point(aes(x=log_age, y=Ventricles, color=sex), alpha =0.3) +
-  geom_point(data=neg5, aes(x = log_age, y=Ventricles), color='red', alpha=0.6) + 
-  ggtitle("ComBat-GAM - All Studies")
-
-neg6 <- lifespan_imp_gamlss.df[lifespan_imp_gamlss.df$Ventricles <=0]
-ven_gamlss.imp <- ggplot(lifespan_imp_gamlss.df) +
-  geom_point(aes(x=log_age, y=Ventricles, color=sex), alpha =0.3) +
-  geom_point(data=neg6, aes(x = log_age, y=Ventricles), color='red', alpha=0.6) + 
-  ggtitle("ComBatLS - All Studies")
-
-neg_ventricle_plots <- ggarrange(ven_raw, ven_gam, ven_gamlss, ven_raw.imp, ven_gam.imp, ven_gamlss.imp, common.legend = TRUE)
-#ggsave(paste0(base_path, "figs/lifespan_ventricle_neg.jpg"), plot=neg_ventricle_plots)
-```
-
-## Combat Troubleshooting
-having some issues with combat on cubic, trying locally.
