@@ -80,7 +80,7 @@ csv_fname=$(basename $csv .csv)
 covar_list="age_days,sexMale,sex.age" #age_days
 
 #LIST POSSIBLE CONFIGS
-config_list="cf.gam cf.gamlss" #cf cf.lm cf.lm_refA cf.gam_refA cf.gamlss_refA
+config_list="cf.gamlss" #cf cf.lm cf.lm_refA cf.gam_refA cf.gamlss_refA cf.gam
 #######################################################################################
 for config in $config_list
 do
@@ -117,7 +117,7 @@ do
 	#COMBAT GAMLSS
 	elif [ $config = "cf.gamlss" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + pb(sex.age), sigma.formula = ~ age_days + sexMale + sex.age'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + pb(sex.age), sigma.formula = ~ pb(age_days) + sexMale + sex.age'" > $bash_script
 
 	#COMBAT GAMLSS W/ REF SITE
 	elif [ $config = "cf.gamlss_refA" ]
