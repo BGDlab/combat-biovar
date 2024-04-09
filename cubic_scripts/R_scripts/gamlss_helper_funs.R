@@ -507,11 +507,11 @@ get.og.data.centiles.lbcc <- function(gamlss.rds.file, og.data, get.zscores = FA
   newData <- data.frame(age_days=og.data$age_days,
                         sexMale=og.data$sexMale,
                         sex.age=og.data$sex.age,
-                        fs_version=og.data$fs_version,
-                        TBV=og.data$TBV,
-                        Vol_total=og.data$Vol_total,
-                        SA_total=og.data$SA_total,
-                        CT_total=og.data$CT_total
+                        fs_version=og.data$fs_version
+                        # TBV=og.data$TBV,
+                        # Vol_total=og.data$Vol_total,
+                        # SA_total=og.data$SA_total,
+                        # CT_total=og.data$CT_total
                         )
   
   predModel <- predictAll(gamlss.obj, newdata=newData, data=og.data, type= "response")
