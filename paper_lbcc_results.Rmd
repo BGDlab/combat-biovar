@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, skimr, gam, ggeffects)
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, skimr, gam, ggeffects, effectsize)
 #Sys.setenv("MC_CORES"=10L)
 options("mc.cores")
 
@@ -47,7 +47,7 @@ der_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives/lifespan
 
 #Load
 
-Combat-GAM Centiles - site-level batch correction
+Combat-GAM Centiles - study-level batch correction w/o infants
 
 ```{r}
 gam_centile_df <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study_predictions.csv"))
@@ -66,6 +66,11 @@ gamlss_centile_df <- gamlss_centile_df %>% mutate(study=sub("\\_.*", "", site),
 dim(gamlss_centile_df)
 ```
 
+```{r}
+min(gam_centile_df$age_years) == min(gamlss_centile_df$age_years)
+min(gamlss_centile_df$age_years)
+```
+
 Deltas
 
 ```{r}
@@ -77,6 +82,7 @@ cent_deltas_df <- deltas_df %>%
   dplyr::select(!contains(".z") & !ends_with("_total") & !contains("TBV")) #drop z-scores and non-centiles
 
 tbl.df <- as.data.frame(table(cent_deltas_df$site, cent_deltas_df$study))
+min(gam_centile_df$age_years) == min(cent_deltas_df$age_years)
 ```
 
 #Clean & EDA
@@ -163,7 +169,7 @@ delta_n.sex <- cent_deltas_df_long %>%
   summarise(sex_n = n(),
             mean_abs.delta=mean(abs.delta),
             mean_delta=mean(delta),
-            mean_age_yrs=mean(age_days)/365.25) #get number males and females in each site
+            mean_age_yrs=mean(age_days)/365.25) #get number males and females in each study
 
 #get study-level stats
 delta_summary.df <- cent_deltas_df_long %>%
@@ -227,28 +233,6 @@ delta_sum.by.sex.df_piv %>%
   geom_smooth(method="lm")
 ```
 
-
-look at max abs. delta across sites
-```{r}
-delta_sum.df_merged %>%
-  ggplot() +
-  geom_histogram(aes(x=study_max_abs.delta*100))
-
-delta_sum.df_merged %>%
-  ggplot(aes(y=study_max_abs.delta*100, x=study_n)) +
-  geom_point() +
-  geom_smooth(method="lm")
-
-delta_sum.df_merged %>%
-  ggplot(aes(y=study_max_abs.delta*100, x=study_mean_age_yrs)) +
-  geom_point() +
-  geom_smooth(method="lm")
-
-delta_sum.df_merged %>%
-  ggplot(aes(y=study_max_abs.delta*100, x=sex_prop_Female)) +
-  geom_point() +
-  geom_smooth(method="lm")
-```
 #Batch Effects
 
 Test to see if centile score is associated with study in either ComBatLS or ComBat-GAM harmonized data.
@@ -269,6 +253,7 @@ w/in feature ANOVAs
 
 ```{r}
 gam.feat_to_test <- intersect(pheno_list, names(gam_centile_df.clean))
+length(gam.feat_to_test)
 
 df_gam_feat_aov <- data.frame()
 for(pheno in gam.feat_to_test){
@@ -279,6 +264,9 @@ for(pheno in gam.feat_to_test){
 }
 
 df_gam_feat_aov.study <- df_gam_feat_aov %>%
+  group_by(pheno) %>%
+  mutate(etasq = sumsq / sum(sumsq)) %>%
+  ungroup() %>%
   dplyr::filter(term != "Residuals") %>%
   dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(gam.feat_to_test)), #apply fdr correction across all phenos tested
                   sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
@@ -286,6 +274,10 @@ df_gam_feat_aov.study <- df_gam_feat_aov %>%
 df_gam_feat_aov.study %>%
   ggplot() +
   geom_bar(aes(y=sig_fdr))
+
+df_gam_feat_aov.study %>%
+  ggplot() +
+  geom_histogram(aes(x=etasq, fill=sig_fdr), alpha=0.5)
 
 df_gam_feat_aov.study %>%
   dplyr::filter(sig_fdr == TRUE) %>%
@@ -402,7 +394,14 @@ summary(aov(mean_z ~ study, data=gam_z_df.mean))
 gamlss_centile_df.clean <- gamlss_centile_df %>%
   mutate(study=sub("\\_.*", "", site),
          age_years=age_days/365.25) %>%
-  dplyr::select(!contains(".z") & !ends_with("_total") & !contains("TBV")) #drop z-scores and non-centiles
+  dplyr::select(!contains(".z")) #drop z-scores and non-centiles & !ends_with("_total") & !contains("TBV")
+```
+
+
+```{r}
+ggplot(gamlss_centile_df.clean) +
+  geom_point(aes(x=age_days, y=rh_Vol_insula, color=study), alpha=0.5) +
+  theme(legend.position="none")
 ```
 
 w/in feature ANOVAs
@@ -419,6 +418,9 @@ for(pheno in feat_to_test){
 }
 
 df_gamlss_feat_aov.study <- df_gamlss_feat_aov %>%
+  group_by(pheno) %>%
+  mutate(etasq = sumsq / sum(sumsq)) %>%
+  ungroup() %>%
   dplyr::filter(term != "Residuals") %>%
   dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(feat_to_test)), #apply fdr correction across all phenos tested
                   sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
@@ -428,8 +430,32 @@ df_gamlss_feat_aov.study %>%
   geom_bar(aes(y=sig_fdr))
 
 df_gamlss_feat_aov.study %>%
+  ggplot() +
+  geom_histogram(aes(x=etasq, fill=sig_fdr))
+
+df_gamlss_feat_aov.study %>%
   dplyr::filter(sig_fdr==TRUE) %>%
   nrow()
+```
+
+```{r}
+df_gamlss_feat_aov.study$combat <- "gamlss"
+df_gam_feat_aov.study$combat <- "gam"
+
+feat_aov.df <- full_join(df_gamlss_feat_aov.study, df_gam_feat_aov.study)
+
+feat_aov.df <- feat_aov.df %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)))
+
+feat_aov.df %>%
+  ggplot() +
+  geom_point(aes(x=etasq, y=pheno, color=combat, shape=sig_fdr), alpha=0.6) +
+  facet_wrap(~pheno_cat, scales="free")
 ```
 
 average w/in subject
@@ -450,6 +476,16 @@ nrow(gamlss_centile_df.mean) == n_unique(gamlss_centile_df.mean$participant)
 ```
 
 ```{r}
+ggplot(gamlss_centile_df.mean) +
+  geom_point(aes(x=(age_days/365.25), y=mean_cent, color=study), alpha=0.5) +
+  theme(legend.position="none")
+
+ggplot(gamlss_centile_df.clean) +
+  geom_point(aes(x=age_days, y=lh_Vol_inferiortemporal, color=study), alpha=0.2) +
+  theme(legend.position="none")
+```
+
+```{r}
 gamlss_centile_df.mean %>%
   ggplot() +
   geom_boxplot(aes(x=reorder(study, age_days), y=mean_cent)) + 
@@ -458,15 +494,9 @@ gamlss_centile_df.mean %>%
 
 gamlss_centile_df.mean %>%
   ggplot() +
-  geom_point(aes(x=age_days/365.25, y=mean_cent, color=site), alpha=0.5) +
-  geom_smooth(aes(x=age_days/365.25, y=mean_cent), method="lm") +
-  theme(legend.position = "none") +
-  facet_wrap(~study)
-
-gamlss_centile_df.mean %>%
-  ggplot() +
-  geom_boxplot(aes(x=site, y=mean_cent, fill=study)) + 
-  theme(axis.text.x = element_text(angle=90), legend.position = "none")
+  geom_point(aes(x=age_days/365.25, y=mean_cent, color=study), alpha=0.5) +
+  geom_smooth(aes(x=age_days/365.25, y=mean_cent, color=study), method="lm") +
+  theme(legend.position = "none")
 
 gamlss_centile_df.mean %>%
   dplyr::filter(age_days>365) %>%
@@ -549,16 +579,6 @@ summary(lm(mean_z ~ study, data=gamlss_z_df.mean))
 summary(aov(mean_z ~ study, data=gamlss_z_df.mean))
 ```
 
-#Centile Fans
-Look at brain charts for global vols
-
-```{r}
-gamlss.GMV.mod <- readRDS(paste0(der_path, "/GMV_lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_mod.rds"))
-
-
-```
-
-
 #Study-Level Mean Results
 
 ComBatGAM mean centile ~ age
@@ -597,8 +617,6 @@ gam_centile_site.mean.df.glob2 <- left_join(gam_centile_site.mean.df.glob, delta
 
 summary(lm(mean_gam_cent ~ study_mean_age, data=gam_centile_site.mean.df.glob2))
 ```
-
-NS
 
 ComBatLS mean centile ~ age
 ```{r}
@@ -655,7 +673,7 @@ summary(lm(mean_gamlss_cent ~ study_mean_age, data=gamlss_centile_site.mean.df.g
 summary(lm(mean_gamlss_cent ~ study_mean_age + study_n + sex_prop_Female, data=gamlss_centile_site.mean.df.glob2))
 ```
 
-NS
+
 
 ```{r}
 all_means.df.glob <- full_join(gam_centile_site.mean.df.glob2, gamlss_centile_site.mean.df.glob2)
@@ -678,46 +696,17 @@ delta ~ age
 # age
 summary(lm(study_mean_abs.delta ~ study_mean_age_yrs, data=delta_sum.df_merged))
 summary(lm(study_mean_delta ~ study_mean_age_yrs, data=delta_sum.df_merged))
-
-#forward selection for site_mean_abs.delta
-summary(lm(study_mean_abs.delta ~ study_mean_age_yrs + study_n, data=delta_sum.df_merged)) #small effect but remains significant/grows stronger
-summary(lm(study_mean_abs.delta ~ study_mean_age_yrs + study_n + sex_prop_Female, data=delta_sum.df_merged)) #small effect but remains significant/grows stronger
-full.delta.age.fit <- lm(study_mean_abs.delta*100 ~ study_mean_age_yrs + study_n + sex_prop_Female, data=delta_sum.df_merged) #scaling to centile space
-summary(full.delta.age.fit)
-
-#forward selection for site_mean_delta
-summary(lm(study_mean_delta ~ study_mean_age_yrs + study_n, data=delta_sum.df_merged)) #small effect but remains significant/grows stronger
-summary(lm(study_mean_delta ~ study_mean_age_yrs + study_n + sex_prop_Female, data=delta_sum.df_merged)) #small effect but remains significant/grows stronger
-full.age.fit <- lm(study_mean_delta*100 ~ study_mean_age_yrs + study_n + sex_prop_Female, data=delta_sum.df_merged) #scaling to centile space
-summary(full.age.fit)
 ```
 
 
-test w/o babies < 2
-```{r}
-delta_sum.df_merged_noinf <- delta_sum.df_merged %>%
-  dplyr::filter(study_mean_age_yrs >= 2)
-
-nrow(delta_sum.df_merged) - nrow(delta_sum.df_merged_noinf)
-
-summary(lm(study_mean_abs.delta ~ study_mean_age_yrs, data=delta_sum.df_merged_noinf))
-summary(lm(study_mean_delta ~ study_mean_age_yrs, data=delta_sum.df_merged_noinf))
-
-all_means.df.long %>%
-  dplyr::filter(study_mean_age_yrs >= 2) %>%
-  ggplot(aes(x=study_mean_age_yrs, y=mean_cent, color=combat, size=study_n)) +
-  geom_point() +
-  geom_smooth(method="lm")
-```
-
 ```{r}
 delta_sum.df_merged %>%
-  ggplot(aes(x=site_mean_age_yrs, y=site_mean_delta)) +
-  geom_count(aes(size=site_n)) +
+  ggplot(aes(x=study_mean_age_yrs, y=study_mean_delta)) +
+  geom_count(aes(size=study_n)) +
   geom_smooth(method="lm")
 delta_sum.df_merged %>%
-  ggplot(aes(x=site_mean_age_yrs, y=site_mean_abs.delta)) +
-  geom_count(aes(size=site_n)) +
+  ggplot(aes(x=study_mean_age_yrs, y=study_mean_abs.delta)) +
+  geom_count(aes(size=study_n)) +
   geom_smooth(method="lm")
 
 age_effects.plt.p <- summary(lm((site_mean_abs.delta*100) ~ sex_prop_Female + site_n + site_mean_age_yrs, data=delta_sum.df_merged))$coef["site_mean_age_yrs", "Pr(>|t|)"]
@@ -769,7 +758,7 @@ marg.age_effects.plt <- ggplot() +
 are studies w older subjects changing more because there are fewer of them?
 check for association between study size and age
 ```{r}
-summary(lm(site_mean_age_yrs ~ site_n, data=delta_sum.df_merged)) #study size is associated with age, but assoc. remains when controlling for size
+summary(lm(study_mean_age_yrs ~ study_n, data=delta_sum.df_merged)) #study size is associated with age, but assoc. remains when controlling for size
 ```
 
 ```{r}
@@ -780,8 +769,8 @@ cent_deltas_df %>%
 
 delta_sum.df_merged %>%
   ggplot() +
-  geom_histogram(aes(x=site_mean_age_yrs)) +
-  labs(title="site distribution across age")
+  geom_histogram(aes(x=study_mean_age_yrs)) +
+  labs(title="study distribution across age")
 ```
 
 
@@ -795,18 +784,20 @@ ggplot(delta_sum.df_merged) +
 ComBatGAM mean centile ~ % female
 
 ```{r}
-gam_centile_site.mean.df <- gam_centile_df.clean %>%
+gam_centile_study.mean.df <- gam_centile_df.clean %>%
   pivot_longer(cols=any_of(pheno_list), names_to="pheno", values_to = "centile") %>%
-  group_by(site) %>%
-  summarize(mean_gam_cent=mean(centile))
+  group_by(study) %>%
+  summarize(mean_gam_cent=mean(centile),
+            mean_gam_abs_cent=mean(abs(centile)))
 
-gam_centile_site.mean.df2 <- left_join(gam_centile_site.mean.df, delta_sum.df_merged)
+gam_centile_study.mean.df2 <- left_join(gam_centile_study.mean.df, delta_sum.df_merged)
 
-gam.prop.f.test <- lm(mean_gam_cent ~ sex_prop_Female + site_n + site_mean_age, data=gam_centile_site.mean.df2)
+gam.prop.f.test <- lm(mean_gam_cent ~ sex_prop_Female + study_n + study_mean_age, data=gam_centile_study.mean.df2)
 summary(gam.prop.f.test)
-sjPlot::plot_model(gam.prop.f.test, type = "pred", terms = "sex_prop_Female") 
+gam.prop.f.test2 <- lm(mean_gam_abs_cent ~ sex_prop_Female + study_n + study_mean_age, data=gam_centile_study.mean.df2)
+summary(gam.prop.f.test2)
 
-ggplot(gam_centile_site.mean.df2, aes(x=sex_prop_Female, y=mean_gam_cent)) +
+ggplot(gam_centile_study.mean.df2, aes(x=sex_prop_Female, y=mean_gam_cent)) +
   geom_point() +
   geom_smooth(method="lm")
 ```
@@ -814,18 +805,20 @@ ggplot(gam_centile_site.mean.df2, aes(x=sex_prop_Female, y=mean_gam_cent)) +
 ComBatLS mean centile ~ % female
 
 ```{r}
-gamlss_centile_site.mean.df <- gamlss_centile_df.clean %>%
+gamlss_centile_study.mean.df <- gamlss_centile_df.clean %>%
   pivot_longer(cols=any_of(pheno_list), names_to="pheno", values_to = "centile") %>%
-  group_by(site) %>%
-  summarize(mean_gamlss_cent=mean(centile))
+  group_by(study) %>%
+  summarize(mean_gamlss_cent=mean(centile),
+            mean_gamlss_abs_cent=mean(abs(centile)))
 
-gamlss_centile_site.mean.df2 <- left_join(gamlss_centile_site.mean.df, delta_sum.df_merged)
+gamlss_centile_study.mean.df2 <- left_join(gamlss_centile_study.mean.df, delta_sum.df_merged)
 
-gamlss.prop.f.test <- lm(mean_gamlss_cent ~ sex_prop_Female + site_n + site_mean_age, data=gamlss_centile_site.mean.df2)
+gamlss.prop.f.test <- lm(mean_gamlss_cent ~ sex_prop_Female + study_n + study_mean_age, data=gamlss_centile_study.mean.df2)
 summary(gamlss.prop.f.test)
-sjPlot::plot_model(gamlss.prop.f.test, type = "pred", terms = "sex_prop_Female") 
+gamlss.prop.f.test2 <- lm(mean_gamlss_abs_cent ~ sex_prop_Female + study_n + study_mean_age, data=gamlss_centile_study.mean.df2)
+summary(gamlss.prop.f.test2)
 
-ggplot(gamlss_centile_site.mean.df2, aes(x=sex_prop_Female, y=mean_gamlss_cent)) +
+ggplot(gamlss_centile_study.mean.df2, aes(x=sex_prop_Female, y=mean_gamlss_cent)) +
   geom_point() +
   geom_smooth(method="lm")
 ```
