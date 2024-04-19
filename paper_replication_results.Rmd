@@ -489,6 +489,26 @@ all_cent_sum_boxplt.diff <- all_cent_sum.df_scaled %>%
   theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   labs(y="Female Bias", x = "Dataset")
 
+
+raise <- all_cent_sum.df_scaled %>%
+  dplyr::filter(dataset != "raw" & dataset != "cf" & source != "ext") %>%
+  mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
+  ggplot(aes(x=dataset, y=female_ratio_diff)) +
+  geom_boxplot(aes(color=dataset)) +
+  # geom_dotplot(binaxis = "y", stackdir="center") +
+  facet_grid(pheno_cat~source, scales="free_y", labeller = labeller(source=cent_ext_list)) +
+  geom_hline(yintercept=0, linetype="dashed")+
+  # geom_text(aes(label = sig_fdr, y = max_val + 0.01),
+  #             data = all_t_test.df[which(all_t_test.df$dataset != "cf"),]) +
+  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
+  theme_linedraw() +
+  scale_x_discrete(labels=dataset_names) +
+  # scale_y_continuous(labels=function(x)x/all_t_test.df$female_ratio[which(raw_df$pheno_cat == pheno_cat)]) + 
+  theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(y="Female Bias", x = "Dataset")
+
+ggsave(filename="figs/raise.png", raise)
+
 all_cent_sum_boxplt_wtest <- all_cent_sum.df %>%
   dplyr::filter(dataset != "raw") %>%
   mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
@@ -1061,6 +1081,12 @@ sfig <- ggarrange(cent.test.comp.plt, ct.brain.sum.plt,
                   ncol=1, nrow=2, heights = c(2, 1))
 sfig
 ggsave(paste0(base_path, "/figs/combat_abs_errs_supp_plt.jpg"), plot=sfig, width=11, height=7, units="in")
+
+```
+
+```{r}
+sex.var.plot.global <- readRDS("figs/sex_var_plot_global.RDS")
+sex.var.plot <- readRDS("figs/sex_var_plot.RDS")
 
 ```
 
