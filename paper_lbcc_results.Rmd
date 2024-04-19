@@ -124,7 +124,7 @@ ggplot(aes(y=study, x=age_years)) +
 #overall sample
 full_boxplot <- 
   gamlss_centile_df %>%
-  mutate(ylab = "  Full \n  Sample") %>%
+  mutate(ylab = "   Full Sample") %>%
   ggplot(aes(y=ylab, x=age_years, color=sex)) +
   geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
   theme_linedraw(base_size = 11) +
@@ -140,7 +140,7 @@ sample_barplot <- gamlss_centile_df %>%
   geom_vline(xintercept = .5, color="lightgray", linetype="longdash") +
   theme_linedraw(base_size = 11) +
   theme(axis.ticks.y = element_blank(), axis.text=element_blank(), axis.title=element_blank()) +
-  labs(color="Sex")
+  labs(fill="Sex")
 
 full_barplot <- 
   gamlss_centile_df %>%
@@ -151,7 +151,7 @@ full_barplot <-
   geom_vline(xintercept = .5, color="lightgray", linetype="longdash") +
   theme_linedraw(base_size = 11) +
   theme(axis.ticks.y = element_blank(), axis.text.y=element_blank(), axis.title.y=element_blank()) +
-  labs(color="Sex", x = "Sex")
+  labs(fill="Sex", x = "Sex")
 
 ggarrange(sample_boxplot, sample_barplot,
           full_boxplot, full_barplot,
@@ -673,12 +673,16 @@ df_list.tmp <- list(gamlss_centile_df.mean, gam_centile_df.mean, raw_centile_df.
 #merge all data frames in list
 mean_cents.df <- df_list.tmp %>% reduce(full_join)
 
-mean_cents.df %>%
+dataset_names <- c(gam = "ComBat-GAM", gamlss = "ComBatLS", raw = "Unharmonized")
+
+mean_cents_bxplt <- mean_cents.df %>%
   ggplot() +
-  geom_boxplot(aes(x=reorder(study, age_days), y=mean_cent)) + 
-  #geom_boxplot(aes(x=study, y=mean_cent)) +
-  theme(axis.text.x = element_text(angle=90, hjust=0.5)) +
-  facet_wrap(~combat)
+  geom_boxplot(aes(x=reorder(study, age_days), y=mean_cent, fill=combat)) + 
+  theme_linedraw() +
+  theme(axis.text.x = element_text(angle=90, hjust=0.5), legend.position="none") +
+  scale_fill_manual(values = c(cf= "#440D54", gam = "#3D75C2", cf.lm = "#75C23D", gamlss ="#CFB023FF", raw="darkgray")) +
+  facet_wrap(~combat, labeller = labeller(combat=dataset_names)) +
+  labs(y="Mean Centile", x = "Study")
 ```
 
 #Feature Centile ~ Mean Study Age
@@ -958,105 +962,105 @@ fig5 <- ggarrange(
 ggarrange(sample_boxplot, sample_barplot,
           full_boxplot, full_barplot,
           nrow=2, ncol=2, 
-          # align = "hv", 
+          #align = "h", 
           common.legend = TRUE,
           legend = "bottom",
-          widths=c(2, 1),
-          heights=c(14, 1)),
-# mean effects
-ggarrange(age_effects.plt,
-sex_effects.plt,
-nrow=2, ncol=1,
-align="hv",
-labels=c("B", "C")),
+          widths=c(1.7, 1),
+          heights=c(10, 1)),
+# boxplots
+mean_cents_bxplt,
 common.legend=FALSE,
 nrow=1, ncol=2,
-labels=c("A", NA),
-widths=c(1, 1.4)
+labels="AUTO",
+widths=c(1, 4)
 )
 
-ggsave("figs/figure_5.jpeg", fig5, width=12, height=10, units="in")
+ggsave("figs/figure_5_horizontal.jpeg", fig5, width=18, height=9, units="in")
 ```
-
-#ComBatted Data
+alternative vertical stacking
 
 ```{r}
-gam_data_df <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler_log-cf_cf.gam_batch.study_data.csv"))
-gam_data_df <- gam_data_df %>% mutate(study=sub("\\_.*", "", site),
-         age_years=age_days/365.25)
+blank <- ggplot() + theme_void()
 
-gamlss_data_df <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler_log-cf_cf.gamlss_batch.study_data.csv"))
-gamlss_data_df <- gamlss_data_df %>% mutate(study=sub("\\_.*", "", site),
-         age_years=age_days/365.25)
-```
+sample_boxplot2 <- gamlss_centile_df %>%
+  mutate(study = factor(study, levels=c(age.df$study), ordered=TRUE)) %>%
+ggplot(aes(y=age_years, x=study, color=sex)) +
+  geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
+  theme_linedraw(base_size = 11) +
+  #guides(y = ggh4x::guide_axis_nested(delim = "&")) +
+  theme(axis.title.x=element_blank(), axis.text.x = element_blank()) +
+  labs(color="Sex", y = "Age (Years) \n ")
 
-```{r}
-gam_data_df %>%
+#overall sample
+full_boxplot2 <- 
+  gamlss_centile_df %>%
+  mutate(xlab = "Full Sample") %>%
+  ggplot(aes(x=xlab, y=age_years, color=sex)) +
+  geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
+  theme_linedraw(base_size = 11) +
+  theme(axis.title=element_blank(), axis.text=element_blank(), axis.ticks.y=element_blank()) +
+  # scale_y_discrete(labels=c("1" = "Full Sample")) +
+  labs(color="Sex", x=" ")
+
+sample_barplot2 <- gamlss_centile_df %>%
+  mutate(study = factor(study, levels=c(age.df$study), ordered=TRUE)) %>%
   ggplot() +
-  geom_point(aes(x=age_days, y=rh_CT_medialorbitofrontal, color=study), alpha=0.4) +
-  theme(legend.position="none")
+  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=study, fill=sex)) +
+  scale_y_continuous(labels = scales::percent) +
+  geom_hline(yintercept = .5, color="lightgray", linetype="longdash") +
+  theme_linedraw(base_size = 11) +
+  scale_y_continuous(labels = scales::percent) +
+  #theme(axis.ticks.x = element_blank(), axis.text=element_blank(), axis.title=element_blank()) +
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_text(angle=90, hjust=0.5)) +
+  labs(fill="Sex", x = "Study", y="Sex")
 
-gamlss_data_df %>%
+full_barplot2 <- 
+  gamlss_centile_df %>%
+  mutate(xlab = "       Full Sample ") %>%
   ggplot() +
-  geom_point(aes(x=age_days, y=rh_CT_medialorbitofrontal, color=study), alpha=0.4) +
-  theme(legend.position="none")
-```
+  geom_bar(aes(y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=xlab, fill=sex)) + 
+  geom_hline(yintercept = .5, color="lightgray", linetype="longdash") +
+  theme_linedraw(base_size = 11) +
+  theme(axis.ticks.y = element_blank(), axis.title=element_blank(), axis.text.y=element_blank(), axis.text.x = element_text(angle=90, hjust=0.5)) +
+  labs(color="Sex", y = "Age (Years)", y="")
 
-```{r}
-#get subject-level means
-gam_data_ct_avg <- gam_data_df %>%
-  pivot_longer(cols=any_of(ct_list), names_to="pheno", values_to = "val") %>%
-  group_by(participant) %>%
-  summarize(study = unique(study),
-            site = unique(site),
-            age_days=unique(age_days),
-            sex=unique(sex),
-            mean_ct=mean(val)) #convert units to centiles space
-
-gamlss_data_ct_avg <- gamlss_data_df %>%
-  pivot_longer(cols=any_of(ct_list), names_to="pheno", values_to = "val") %>%
-  group_by(participant) %>%
-  summarize(study = unique(study),
-            site = unique(site),
-            age_days=unique(age_days),
-            sex=unique(sex),
-            mean_ct=mean(val)) #convert units to centiles space
-```
-
-```{r}
-gam_data_ct_avg %>%
-  ggplot() +
-  geom_point(aes(x=age_days, y=mean_ct, color=study), alpha=0.4) +
-  theme(legend.position="none")
-
-gamlss_data_ct_avg %>%
-  ggplot() +
-  geom_point(aes(x=age_days, y=mean_ct, color=study), alpha=0.4) +
-  theme(legend.position="none")
-```
-
-```{r}
-gam_data_ct_avg$combat <- "gam"
-gamlss_data_ct_avg$combat <- "gamlss"
-
-df_list.tmp <- list(gam_data_ct_avg, gamlss_data_ct_avg, study_info)
-ct_avg_data <- df_list.tmp %>% reduce(full_join)
+ggarrange(sample_boxplot2, full_boxplot2,
+          sample_barplot2, full_barplot2,
+          nrow=2, ncol=2, 
+          align = "hv", 
+          common.legend = TRUE,
+          legend = "right",
+          widths=c(10, 1),
+          heights=c(2, 1)
+          )
 ```
 
 ```{r}
-ct_avg_data %>%
-  ggplot() +
-  geom_point(aes(x=age_days, y=mean_ct, color=combat), alpha=0.4)
+# study demographics
+fig5_vert <- ggarrange(
+  ggarrange(blank,
+ggarrange(sample_boxplot2, full_boxplot2,
+          sample_barplot2, full_barplot2,
+          nrow=2, ncol=2, 
+          #align = "v", 
+          common.legend = TRUE,
+          legend = "right",
+          widths=c(18, 1),
+          heights=c(1, 1)
+          ),
+blank,
+nrow=1, ncol=3,
+common.legend = FALSE,
+widths= c(1, 20, 1)),
+# boxplots
+mean_cents_bxplt,
+common.legend=FALSE,
+nrow=2, ncol=1,
+heights=c(1, 1.5),
+labels="AUTO"
+)
 
-ct_avg_data %>%
-  ggplot() +
-  geom_point(aes(x=study_mean_age, y=mean_ct, color=combat), alpha=0.2)
-
-ct_avg_data %>%
-  ggplot() +
-  geom_point(aes(x=study_mean_age, y=mean_ct, color=study), alpha=0.4) +
-  facet_wrap(~combat) +
-  theme(legend.position="none")
-
-
+ggsave("figs/figure_5_vertical.jpeg", fig5_vert, width=15, height=9, units="in")
 ```
+
+
