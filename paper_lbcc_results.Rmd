@@ -17,8 +17,8 @@ pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggp
 #Sys.setenv("MC_CORES"=10L)
 options("mc.cores")
 
-source("./cubic_scripts/R_scripts/gamlss_helper_funs.R")
-source("./cubic_scripts/R_scripts/ranked_welch_tests.R")
+#source("./cubic_scripts/R_scripts/gamlss_helper_funs.R")
+#source("./cubic_scripts/R_scripts/ranked_welch_tests.R")
 
 #ATLAS
 aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
@@ -679,7 +679,7 @@ mean_cents_bxplt <- mean_cents.df %>%
   ggplot() +
   geom_boxplot(aes(x=reorder(study, age_days), y=mean_cent, fill=combat)) + 
   theme_linedraw() +
-  theme(axis.text.x = element_text(angle=90, hjust=0.5), legend.position="none") +
+  theme(axis.text.x = element_text(angle=90, hjust=0.5), legend.position="none", strip.text.x = element_text(size = 12)) +
   scale_fill_manual(values = c(cf= "#440D54", gam = "#3D75C2", cf.lm = "#75C23D", gamlss ="#CFB023FF", raw="darkgray")) +
   facet_wrap(~combat, labeller = labeller(combat=dataset_names)) +
   labs(y="Mean Centile", x = "Study")
@@ -941,9 +941,10 @@ mean_cent_deltas_df_study %>%
   theme(legend.position="none")
 
 mean_cent_deltas_df_study <- mean_cent_deltas_df_study %>%
-  mutate(age_diff = (age_days/365.25) - study_mean_age)
+  mutate(age_diff = (age_days/365.25) - study_mean_age,
+         abs_age_diff = abs(age_diff))
 
-abs_lm2 <- lm(abs_mean_delta_cent ~ study_mean_age + study_n + abs(age_diff), data=mean_cent_deltas_df_study)
+abs_lm2 <- lm(abs_mean_delta_cent ~ study_mean_age + study_n + abs_age_diff, data=mean_cent_deltas_df_study)
 summary(abs_lm2)
 
 mean_cent_deltas_df_study %>%
@@ -952,7 +953,7 @@ mean_cent_deltas_df_study %>%
   geom_smooth(method="lm")
 ```
 
-control for N when looking at deltas b/c UKB will always have low deltas since it's having an outsized effect on setting the distribution that both ComBatGAM and ComBatLS are targeting?
+control for N when looking at deltas b/c UKB will always have low deltas since it's having an outsized effect on setting the distribution that both ComBatGAM and ComBatLS are targeting
 
 #FIGURE 5
 
@@ -1063,4 +1064,67 @@ labels="AUTO"
 ggsave("figs/figure_5_vertical.jpeg", fig5_vert, width=15, height=9, units="in")
 ```
 
+##Supplemental Figs
+
+mean abs delta ~ study mean age
+
+```{r}
+summary(abs_lm)
+
+#predict w CIs
+pdat <- with(mean_cent_deltas_df_study,
+             tibble(study_mean_age = seq(min(study_mean_age),
+                            max(study_mean_age),
+                            length = 200),
+             study_n = rep(median(study_n), length=200)))
+
+pred_abs_lm <- predict(abs_lm, pdat, se.fit=TRUE)
+
+pred_df <- pdat %>% 
+  bind_cols(data.frame(pred_abs_lm))
+
+pred_df <- pred_df %>%
+  mutate(upper = fit + (1.96 * se.fit), #95% CIs
+         lower = fit - (1.96 * se.fit))
+
+mean_cent_deltas_df_study %>%
+  ggplot(aes(x=study_mean_age, y=abs_mean_delta_cent)) +
+  geom_point(aes(color=study), alpha=0.2) +
+  geom_ribbon(aes(ymin = lower, ymax = upper,
+                    x = study_mean_age), data = pred_df,
+                inherit.aes = FALSE, alpha = 0.2) +
+    geom_line(data = pred_df, aes(y = fit, x=study_mean_age))+
+  theme(legend.position="none") +
+  labs(x="Mean Age of Primary Study Sample (Years)", y="Mean Absolute Difference in Centile Scores (Centiles)", title="Subject-wise Mean Distance Between Centiles Calculated From \nComBatLS and ComBat-GAM-harmonized Data")
+```
+
+```{r}
+summary(abs_lm2)
+
+#predict w CIs
+pdat2 <- with(mean_cent_deltas_df_study,
+             tibble(abs_age_diff = seq(min(abs_age_diff),
+                            max(abs_age_diff),
+                            length = 200),
+             study_n = rep(median(study_n), length=200),
+             study_mean_age = rep(median(study_mean_age), length=200)))
+
+
+pred2 <- predict(abs_lm2, pdat2, se.fit = TRUE)
+
+pdat2 <- pdat2 %>%
+  bind_cols(data.frame(pred2)) %>%
+  mutate(upper = fit + (1.96 * se.fit),
+         lower = fit - (1.96 * se.fit))
+
+mean_cent_deltas_df_study %>%
+  ggplot(aes(x=abs_age_diff, y=abs_mean_delta_cent)) +
+  geom_point(alpha=0.05, aes(color=study)) +
+  geom_ribbon(aes(ymin = lower, ymax = upper,
+                    x = abs_age_diff), data = pdat2,
+                inherit.aes = FALSE, alpha = 0.2) +
+    geom_line(data = pdat2, aes(y = fit, x=abs_age_diff)) +
+  theme(legend.position="none") +
+  labs(x="Subject's Offset from Mean Age of Primary Study (Years)", y="Mean Absolute Difference in Centile Scores (Centiles)", title="Subject-wise Mean Distance Between Centiles Calculated From \nComBatLS and ComBat-GAM-harmonized Data")
+```
 
