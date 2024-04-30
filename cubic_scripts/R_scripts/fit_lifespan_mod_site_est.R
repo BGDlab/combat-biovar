@@ -18,7 +18,7 @@ base_model <- gamlss(formula = as.formula(paste0(pheno,"~ pb(age_days) + sexMale
              sigma.formula = as.formula(paste0("~ pb(age_days) + sexMale + pb(sex.age) + fs_version + site")),
              nu.formula = as.formula(paste0("~ pb(age_days) + sexMale + pb(sex.age) + fs_version")),
              control = gamlss.control(n.cyc = 200), 
-             family = BCCG, data=df, trace = FALSE)
+             family = BCCGo, data=df, trace = FALSE)
 
 #SAVE
 csv_name <- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(as.character(args[1])))
