@@ -17,11 +17,6 @@ if(!require('pacman')) {
 }
 pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider)
 
-# #pull plotting functions from github
-# plot.func.url <- "https://raw.githubusercontent.com/BGDlab/GAMLSS/main/plotting_functions.R?token=GHSAT0AAAAAACGAYP4HZWCTHACGUM6KG2PSZIQUPBA"
-# Sys.setenv(GITHUB_PAT = "") #if needed to access private BGDlab GAMLSS repo
-# source_url(plot.func.url) #sometimes doesn't work....?
-
 base_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/"
 
 source("/Users/megardn/Desktop/BGD_Repos/GAMLSS/plotting_functions.R")
