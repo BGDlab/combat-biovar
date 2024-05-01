@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, see)
+pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, see, broom.mixed)
 
 # #pull plotting functions from github
 # plot.func.url <- "https://raw.githubusercontent.com/BGDlab/GAMLSS/main/plotting_functions.R?token=GHSAT0AAAAAACGAYP4HZWCTHACGUM6KG2PSZIQUPBA"
@@ -44,13 +44,6 @@ cn.df.unique <- cn.df %>%
          log_age = log(age_days, base=10))
 
 nrow(cn.df.unique) == n_unique(cn.df.unique$participant)
-```
-Write out data for andrew
-```{r, eval=FALSE}
-andrew.df <- cn.df.unique %>%
-  dplyr::filter(study != "UKB" & age_days >= (365.25*18))
-nrow(andrew.df)
-fwrite(andrew.df, file=paste0(base_path, "/data/lifespan_CN_adult.csv"))
 ```
 
 ```{r}
@@ -117,7 +110,7 @@ Removing subjects w/o surfholes, subjects with surfholes values > 2 MADs above s
 
 ```{r}
 cn.df.eulerfilt <- cn.df.noinf %>%
-  dplyr::filter(!is.na(surfholes))
+  dplyr::filter(!is.na(surfholes)) #drops 2 studies w missing euler data
 
 study_mad <- cn.df.eulerfilt %>%
   group_by(study) %>%
@@ -219,7 +212,10 @@ cn.df.imp1 <- cn.df.eulerfilt2 %>%
   mutate(site = trimws(as.character(site)),
          study = trimws(study)) %>%
   mutate(site = gsub(" ", "_", ifelse(is.na(site), study, paste(study, site, sep="_")))) 
+skim(cn.df.imp1)
+```
 
+```{r}
 #drop NAs listwise
 cn.df.imp <- cn.df.imp1%>%
   dplyr::select(!c(INDEX.ID, country)) %>%#drop index ID for filtering
@@ -280,4 +276,12 @@ Write out
 
 ```{r}
 fwrite(cn.df.imp, file=paste0(base_path, "/data/lifespan_CN_imp-sites_euler.csv"))
+
+#save names with site (since not saved correctly from centile outputs)
+study_site_key <- cn.df.imp %>%
+  dplyr::select(study, site) %>%
+  unique()
+n_unique(study_site_key$study) == n_unique(cn.df.imp$study)
+n_unique(study_site_key$site) == n_unique(cn.df.imp$site)
+fwrite(study_site_key, file=paste0(base_path, "/data/lifespan_study_site_key.csv"))
 ```
