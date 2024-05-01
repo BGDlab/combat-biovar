@@ -235,9 +235,11 @@ Demographics
 ```{r}
 #sample size, sex
 length(unique(cn.df.imp$participant))
-nrow(cn.df.imp)
+nrow(cn.df.imp) == length(unique(cn.df.imp$participant))
 
 table(cn.df.imp$sex)
+
+table(cn.df.imp$sex)["Female"]/nrow(cn.df.imp)
 
 #studies, sites
 length(unique(cn.df.imp$study))

@@ -640,6 +640,25 @@ summary(aov(mean_z ~ study, data=gamlss_z_df.mean))
 
 ##Comparison Plots
 
+Number of models converged in each dataset
+```{r}
+length(raw.feat_to_test)
+length(gam.feat_to_test)
+length(gamlss.feat_to_test)
+
+#missing features
+c(setdiff(pheno_list, gamlss.feat_to_test),
+setdiff(pheno_list, raw.feat_to_test),
+setdiff(pheno_list, gam.feat_to_test)) %>% unique()
+```
+
+
+```{r}
+summary(lm(mean_cent ~ study, data=gamlss_centile_df.mean))
+summary(lm(mean_cent ~ study, data=gam_centile_df.mean))
+summary(lm(mean_cent ~ study, data=raw_centile_df.mean))
+```
+
 compare magnitude of effect size for study (w/in feature anovas) across unharmonized, combat-gam and combatLS centiles
 
 ```{r}
@@ -660,6 +679,10 @@ feat_aov.df <- feat_aov.df %>%
       pheno %in% sa_list ~ "Regional SA",
       pheno %in% ct_list ~ "Regional CT",
       TRUE ~ NA_character_)))
+
+feat_aov.df %>%
+  group_by(combat) %>%
+  summarize(n_sig = sum(sig_fdr))
 
 feat_aov.df %>%
   ggplot() +
