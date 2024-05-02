@@ -36,7 +36,7 @@ do
 	bash_script=$bash_dir/${config}_site_est.sh
 	touch $bash_script
 	
-	echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path $mod_path $save_path $config" > $bash_script
+	echo "singularity run --cleanenv $img Rscript --save $r_script $mod_path $save_path $config" > $bash_script
 
 	#qsub bash script
 	qsub -N $config -o $bash_dir/${config}_site_est_out.txt -e $bash_dir/${config}_site_est_err.txt $bash_script
