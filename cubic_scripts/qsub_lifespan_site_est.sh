@@ -4,7 +4,7 @@
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic) - also path that output csvs will be saved to
-r_script=$base/cubic_scripts/R_scripts/get_lifespan_summaries.R #path to .R script
+r_script=$base/cubic_scripts/R_scripts/get_lifespan_site_eff.R #path to .R script
 csv_path=$base/data/lifespan #path to data csvs
 mod_path=$base/lifespan/gamlss_objs #path to gamlss .rds objs
 #######################################################################################
@@ -27,7 +27,7 @@ if ! [ -d $save_path ]
 sleep 3
 #######################################################################################
 #LIST POSSIBLE CONFIGS TO SEARCH FOR
-config_list="lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_site.est lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_site.est"  
+config_list="lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data"  
 #######################################################################################
 for config in $config_list
 do

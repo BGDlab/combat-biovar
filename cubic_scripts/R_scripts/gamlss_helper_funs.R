@@ -16,6 +16,7 @@ library(broom)
 # get.sigma.nl.df()
 # get.moment.formula()
 # un_log()
+# cohens_f2_local()
 ################
 
 drop1_all <- function(mod_obj, list = c("mu", "sigma"), name = NA, dataset = NA){
@@ -717,5 +718,17 @@ means.by.subj.by.cat <- function(df, list_of_pheno_lists){
   ct <- ct + 1 #next loop
   }
   return(df.results)
-  
 }
+########
+#cohens_f2_local(): cohens f squared calc for effect variable X, calculated from difference in Rsq from null and full nested models
+## see https://www.frontiersin.org/journals/psychology/articles/10.3389/fpsyg.2012.00111/full eq. 2
+
+cohens_f2_local <- function(full_mod, null_mod){
+  full_rsq <- gamlss::Rsq(full_mod)
+  null_rsq <- gamlss::Rsq(null_mod)
+  
+  fsq <- (full_rsq - null_rsq)/(1-full_rsq)
+  return(fsq)
+}
+  
+

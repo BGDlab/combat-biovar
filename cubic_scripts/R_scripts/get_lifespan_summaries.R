@@ -12,13 +12,6 @@ print(getwd())
 
 source("R_scripts/gamlss_helper_funs.R")
 
-#pheno lists
-vol_list_global <- readRDS(file="R_scripts/vol_list_global.rds")
-vol_list_regions <- readRDS(file="R_scripts/Vol_list_regions.rds")
-sa_list <- readRDS(file="R_scripts/SA_list.rds")
-ct_list <- readRDS(file="R_scripts/CT_list.rds")
-pheno_list <- readRDS(file="R_scripts/pheno_list.rds")
-
 #get args
 args <- commandArgs(trailingOnly = TRUE)
 read_path <- as.character(args[1]) #path to gamlss models
@@ -45,14 +38,3 @@ summary.df <- bind_rows(summary.list, .id=pheno)
 
 #write out
 fwrite(summary.df, paste0(save_path, "/", fname_str, "_full_sum.csv"))
-
-#get mean abs. beta for study terms
-site_est.df <- summary.df %>%
-  dplyr::filter(grepl('^study', term)) %>%
-  group_by(parameter) %>%
-  summarise(mod_name=unique(mod_name),
-            pheno=unique(pheno),
-            mean_abs_est = mean(abs(estimate)))
-
-#write out
-fwrite(site_est.df, paste0(save_path, "/", fname_str, "_site_est.csv"))
