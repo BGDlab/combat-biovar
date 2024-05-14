@@ -65,11 +65,13 @@ for (pheno in pheno_list){
   #get full model
   full_mod_name <- site.est_model.files[grep(pheno, site.est_model.files)]
   print(full_mod_name)
-  full_mod <- readRDS(full_mod_name)
   
   #get null model
   null_mod_name <- notbv_model.files[grep(pheno, notbv_model.files)]
   print(null_mod_name)
+  
+  tryCatch({
+  full_mod <- readRDS(full_mod_name)
   null_mod <- readRDS(null_mod_name)
   
   #get cohens f
@@ -77,6 +79,11 @@ for (pheno in pheno_list){
   f2.df <- data.frame("pheno" = as.character(pheno),
                       "fsq" = f2)
   
-  cohensf2.df <- rbind(cohensf2.df, f2.df)
+  cohensf2.df <- rbind(cohensf2.df, f2.df)},
+  
+  error=function(e) {
+    message("Can't load this pheno")
+    print(e)
+  })
 }
 fwrite(cohensf2.df, paste0(save_path, "/", fname_str, "_cohenfsq.csv"))
