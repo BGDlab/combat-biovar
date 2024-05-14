@@ -43,7 +43,7 @@ print(notbv_model.files[1:4])
 # fwrite(notbv_summary.df, paste0(save_path, "/", fname_str, "_notbv_full_sum.csv"))
 
 #site effect models - 'site.est'
-site.est_search <- paste0(fname_str_search, "_no.tbv")
+site.est_search <- paste0(fname_str_search, "_site.est")
 site.est_model.files <- all.model.files[grep(site.est_search, all.model.files)]
 print("selected site.est model files:")
 print(site.est_model.files[1:4])
