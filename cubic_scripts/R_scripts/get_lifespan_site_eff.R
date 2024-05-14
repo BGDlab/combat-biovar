@@ -63,15 +63,13 @@ cohensf2.df <- data.frame("pheno" = character(),
 
 for (pheno in pheno_list){
   #get full model
-  full_mod_name <- site.est_model.files[grep(pheno, site.est_model.files)] %>%
-    unlist() %>%
-    as.character()
+  full_mod_name <- site.est_model.files[grep(pheno, site.est_model.files)]
+  print(full_mod_name)
   full_mod <- readRDS(full_mod_name)
   
   #get null model
-  null_mod_name <- notbv_model.files[grep(pheno, notbv_model.files)] %>%
-    unlist() %>%
-    as.character()
+  null_mod_name <- notbv_model.files[grep(pheno, notbv_model.files)]
+  print(null_mod_name)
   null_mod <- readRDS(null_mod_name)
   
   #get cohens f
