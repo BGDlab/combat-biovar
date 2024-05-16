@@ -81,7 +81,7 @@ do
 	touch $bash_script
 
 	#COMBAT LM
-	elif [ $config = "cf.lm" ]
+	if [ $config = "cf.lm" ]
 	then
 		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_data_path $config $covar_list" > $bash_script
 
@@ -94,7 +94,7 @@ do
 	elif [ $config = "cf.gamlss" ]
 	then
 		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_data_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + sex.age, sigma.formula = ~ pb(age_days, inter=5)  + sexMale'" > $bash_script
-
+	fi
 #qsub bash script
 	qsub -l h_vmem=64G,s_vmem=64G -N ${config}.${batch}.${csv_fname} -o $bash_dir/${config}.${csv_fname}_${batch}_out.txt -e $bash_dir/${config}.${csv_fname}_${batch}_err.txt $bash_script
 done
