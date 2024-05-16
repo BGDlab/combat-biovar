@@ -80,7 +80,7 @@ for config in $config_list
 do
 	echo "Prepping $config"
 	#write bash script
-	bash_script=$bash_dir/${csv_fname}_${config}_combat.sh
+	bash_script=$cf_bash_dir/${csv_fname}_${config}_combat.sh
 	touch $bash_script
 
 	#COMBAT LM
@@ -99,7 +99,7 @@ do
 		echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + sex.age, sigma.formula = ~ pb(age_days, inter=5)  + sexMale'" > $bash_script
 	fi
 #qsub bash script
-	qsub -l h_vmem=64G,s_vmem=64G -N ${config}.${batch}.${csv_fname} -o $bash_dir/${config}.${csv_fname}_${batch}_out.txt -e $bash_dir/${config}.${csv_fname}_${batch}_err.txt $bash_script
+	qsub -l h_vmem=64G,s_vmem=64G -N ${config}.${batch}.${csv_fname} -o $cf_bash_dir/${config}.${csv_fname}_${batch}_out.txt -e $cf_bash_dir/${config}.${csv_fname}_${batch}_err.txt $bash_script
 done
 #######################################################################################
 # CHECK FOR OUTPUTS
@@ -151,12 +151,12 @@ do
 		while read -r pheno
 		do
 			#write bash script
-			bash_script=$bash_dir/${pheno}_${csv_name}_fit.sh
+			bash_script=$gamlss_bash_dir/${pheno}_${csv_name}_fit.sh
 			touch $bash_script
 			echo "singularity run --cleanenv $img Rscript --save $mod_script $csv_file $pheno $gamlss_dir" > $bash_script
 
 			#qsub bash script
-			qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_no.tbv_out.txt -e $bash_dir/${pheno}_${csv_name}_no.tbv_err.txt $bash_script
+			qsub -N ${pheno}.${csv_name} -o $gamlss_bash_dir/${pheno}_${csv_name}_no.tbv_out.txt -e $gamlss_bash_dir/${pheno}_${csv_name}_no.tbv_err.txt $bash_script
 
 		done < $list
 	done
@@ -180,12 +180,12 @@ do
 		while read -r pheno
 		do
 			#write bash script
-			bash_script=$bash_dir/${pheno}_${csv_name}_fit.sh
+			bash_script=$gamlss_bash_dir/${pheno}_${csv_name}_fit.sh
 			touch $bash_script
 			echo "singularity run --cleanenv $img Rscript --save $mod_script_batch $csv_file $pheno $gamlss_dir" > $bash_script
 
 			#qsub bash script
-			qsub -N ${pheno}.${csv_name}.batch.est -o $bash_dir/${pheno}_${csv_name}_batch.est_out.txt -e $bash_dir/${pheno}_${csv_name}_batch.est_err.txt $bash_script
+			qsub -N ${pheno}.${csv_name}.batch.est -o $gamlss_bash_dir/${pheno}_${csv_name}_batch.est_out.txt -e $gamlss_bash_dir/${pheno}_${csv_name}_batch.est_err.txt $bash_script
 
 		done < $list
 	done
