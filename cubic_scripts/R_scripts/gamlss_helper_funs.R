@@ -19,6 +19,20 @@ library(broom)
 # cohens_f2_local()
 ################
 
+### MODE - used to chose which fs_version and study to predict on
+Mode = function(x){
+  ta = table(x)
+  tam = max(ta)
+  if (all(ta == tam))
+    mod = NA
+  else
+    if(is.numeric(x))
+      mod = as.numeric(names(ta)[ta == tam])
+  else
+    mod = names(ta)[ta == tam]
+  return(mod)
+}
+
 drop1_all <- function(mod_obj, list = c("mu", "sigma"), name = NA, dataset = NA){
   if (is.na(name)){
     n <- deparse(substitute(mod_obj))
@@ -194,35 +208,56 @@ get.var.at.mean.age <- function(gamlss.rds.file, og_df) {
              "pheno" = as.character(gamlss.obj$mu.terms[[2]]))
   return(var.df)
 }
-get.var.across.ages.lbcc <- function(gamlss.rds.file, og_df) {
+
+pred.across.ages.lbcc <- function(gamlss.obj, og_df) {
   #sim data for centiles
-  minAge <- min(df$log_age)
-  maxAge <- max(df$log_age)
-  ageRange <- seq(minAge, maxAge, 0.5)
+  minAge <- min(og_df$age_days)
+  maxAge <- max(og_df$age_days)
+  ageRange <- seq(minAge, maxAge, by=(365/2))
   
   #sim data
-  dataToPredictM <- data.frame(log_age=ageRange,
+  dataToPredictM <- data.frame(age_days=ageRange,
                                sexMale=c(rep(1, length(ageRange))),
-                               fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
+                               fs_version=c(rep(Mode(og_df$fs_version), length(ageRange))),
                                sex.age=ageRange)
-  dataToPredictM$TBV <- mean.tb.sim(df, "Male", ageRange, "TBV")
-  dataToPredictM$Vol_total <- mean.tb.sim(df, "Male", ageRange, "Vol_total")
-  dataToPredictM$SA_total <- mean.tb.sim(df, "Male", ageRange, "SA_total")
-  dataToPredictM$CT_total <- mean.tb.sim(df, "Male", ageRange, "CT_total")
   
-  dataToPredictF <- data.frame(log_age=ageRange,
+  dataToPredictF <- data.frame(age_days=ageRange,
                                sexMale=c(rep(0, length(ageRange))),
-                               fs_version=c(rep(Mode(df$fs_version), length(ageRange))),
+                               fs_version=c(rep(Mode(og_df$fs_version), length(ageRange))),
                                sex.age=c(rep(0, length(ageRange))))
-  dataToPredictF$TBV <- mean.tb.sim(df, "Female", ageRange, "TBV")
-  dataToPredictF$Vol_total <- mean.tb.sim(df, "Female", ageRange, "Vol_total")
-  dataToPredictF$SA_total <- mean.tb.sim(df, "Female", ageRange, "SA_total")
-  dataToPredictF$CT_total <- mean.tb.sim(df, "Female", ageRange, "CT_total")
   
   # List of centiles for the fan plot
-  var.df <- data.frame("m.var" = exp(predict(gamlss.obj, what="sigma", data = og_df, newdata=dataToPredictM)),
-                       "f.var" = exp(predict(gamlss.obj, what="sigma", data = og_df, newdata=dataToPredictF)),
-                       "pheno" = as.character(gamlss.obj$mu.terms[[2]]))
+  var.df <- data.frame("m" = predictAll(gamlss.obj, data = og_df, newdata=dataToPredictM, type="response"),
+                       "f" = predictAll(gamlss.obj, data = og_df, newdata=dataToPredictF, type="response"),
+                       "pheno" = as.character(gamlss.obj$mu.terms[[2]]),
+                       "age_days" = ageRange)
+  return(var.df)
+}
+
+pred.across.ages.lbcc.study <- function(gamlss.obj, og_df) {
+  #sim data for centiles
+  minAge <- min(og_df$age_days)
+  maxAge <- max(og_df$age_days)
+  ageRange <- seq(minAge, maxAge, by=(365/2))
+  
+  #sim data
+  dataToPredictM <- data.frame(age_days=ageRange,
+                               sexMale=c(rep(1, length(ageRange))),
+                               fs_version=c(rep(Mode(og_df$fs_version), length(ageRange))),
+                               study=c(rep(Mode(og_df$study), length(ageRange))),
+                               sex.age=ageRange)
+  
+  dataToPredictF <- data.frame(age_days=ageRange,
+                               sexMale=c(rep(0, length(ageRange))),
+                               fs_version=c(rep(Mode(og_df$fs_version), length(ageRange))),
+                               study=c(rep(Mode(og_df$study), length(ageRange))),
+                               sex.age=c(rep(0, length(ageRange))))
+  
+  # List of centiles for the fan plot
+  var.df <- data.frame("m" = predictAll(gamlss.obj, data = og_df, newdata=dataToPredictM, type="response"),
+                       "f" = predictAll(gamlss.obj, data = og_df, newdata=dataToPredictF, type="response"),
+                       "pheno" = as.character(gamlss.obj$mu.terms[[2]]),
+                       "age_days" = ageRange)
   return(var.df)
 }
 
