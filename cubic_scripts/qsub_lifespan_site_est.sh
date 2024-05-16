@@ -27,7 +27,7 @@ if ! [ -d $save_path ]
 sleep 3
 #######################################################################################
 #LIST POSSIBLE CONFIGS TO SEARCH FOR
-config_list="lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data"  
+config_list="lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data lifespan-CN-imp-sites-euler-raw"  
 #######################################################################################
 for config in $config_list
 do
