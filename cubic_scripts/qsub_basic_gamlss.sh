@@ -9,9 +9,9 @@
 # SET PATHS
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
 pheno_path=$base/pheno_lists #path to .txt files listing phenotypes (global & regional)
-mod_script=$base/R_scripts/fit_basic_mod.R #path to .R script
+mod_script=$base/cubic_scripts/R_scripts/fit_basic_mod.R #path to .R script
 
-cd $base #to source functions correctly
+cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
 # GET ARGS
 if [ $# -lt 1 ]
