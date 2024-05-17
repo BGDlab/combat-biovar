@@ -86,7 +86,7 @@ do
 	#COMBAT LM
 	if [ $config = "cf.lm" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'lm, formula = y ~ age_days + sexMale' + sex.age" > $bash_script
 
 	#COMBAT GAM
 	elif [ $config = "cf.gam" ]

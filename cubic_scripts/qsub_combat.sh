@@ -80,7 +80,7 @@ csv_fname=$(basename $csv .csv)
 covar_list="age_days,sexMale,sex.age" #age_days
 
 #LIST POSSIBLE CONFIGS
-config_list="cf.gamlss" #cf cf.lm cf.lm_refA cf.gam_refA cf.gamlss_refA cf.gam
+config_list="cf.gamlss cf cf.lm cf.gam"
 #######################################################################################
 for config in $config_list
 do
@@ -97,32 +97,17 @@ do
 	#COMBAT LM
 	elif [ $config = "cf.lm" ]
 	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list" > $bash_script
-
-	#COMBAT LM W/ REF SITE
-	elif [ $config = "cf.lm_refA" ]
-	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'lm, formula = y ~ age_days + sexMale, ref.batch = \"Site_A\"'" > $bash_script
+		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'lm, formula = y ~ age_days + sexMale'" > $bash_script
 
 	#COMBAT GAM
 	elif [ $config = "cf.gam" ]
 	then
 		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gam, formula = y ~ s(age_days) + sexMale'" > $bash_script
 
-	#COMBAT GAM W/ REF SITE
-	elif [ $config = "cf.gam_refA" ]
-	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gam, formula = y ~ s(age_days) + sexMale, ref.batch = \"Site_A\"'" > $bash_script
-
 	#COMBAT GAMLSS
 	elif [ $config = "cf.gamlss" ]
 	then
 		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale, sigma.formula = ~ age_days + sexMale'" > $bash_script
-
-	#COMBAT GAMLSS W/ REF SITE
-	elif [ $config = "cf.gamlss_refA" ]
-	then
-		echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale, sigma.formula = ~ age_days + sexMale, ref.batch = \"Site_A\"'" > $bash_script
 	fi
 
 #qsub bash script

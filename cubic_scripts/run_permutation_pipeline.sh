@@ -150,7 +150,7 @@ covar_list="age_days,sexMale"
 batch="sim.site"
 
 #LIST POSSIBLE CONFIGS
-config_list="cf cf.lm cf.gam cf.gamlss" #cf.lm_refA cf.gam_refA cf.gamlss_refA
+config_list="cf cf.lm cf.gam cf.gamlss"
 #######################################################################################
 #give permissions
 #chmod -R 755 $save_data_path
@@ -176,7 +176,7 @@ do
 		#COMBAT LM
 		elif [ $config = "cf.lm" ]
 		then
-			echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_data_path $config $covar_list" > $bash_script
+			echo "singularity run --cleanenv $img Rscript --save $cf_script $csv $batch $save_data_path $config $covar_list 'lm, formula = y ~ age_days + sexMale'" > $bash_script
 
 		#COMBAT GAM
 		elif [ $config = "cf.gam" ]

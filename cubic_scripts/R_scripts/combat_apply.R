@@ -52,8 +52,7 @@ if (length(args) < 4){
   print("Warning: No additional combat args provided, proceeding without covariate correction")
   covar.list <- NULL
 } else if(length(args)==5) {
-  print("Applying basic lm covariate correction")
-  covar.list <- as.character(unlist(strsplit(args[5], ",")))
+  stop("Error! Missing args")
 } else if (length(args)==6) {
   print("Applying additional combat args")
   covar.list <- as.character(unlist(strsplit(args[5], ",")))
@@ -101,21 +100,13 @@ for (l in list_of_feature_lists){
   pheno.df <- raw.df %>%
     dplyr::select(all_of(l))
   
-  # #log-transform global vals - added for lifespan data analyses, not sure if i should rerun for ukb analyses
-  # if (names(list_of_feature_lists[i]) = "VolGlob"){
-  #   pheno.df <- pheno.df %>%
-  #     mutate(across(c(l), \(x) log(x, base=10)))
-  # }
-  
   #make sure batch, covars, and pheno dfs are all the same length
   stopifnot(nrow(pheno.df) == length(batch))
   
   #run combat w/ or w/o additional args
   if (length(args) < 5){
     cf.obj <- comfam(pheno.df, batch)
-  } else if (length(args) == 5){
-    cf.obj <- comfam(pheno.df, batch, covar.df)
-  } else if(length(args) == 6) {
+  } else if(length(args) > 5) {
     #check for ref.batch
     if (grepl("ref\\.batch\\s*=\\s*", cf.args)) {
       # Split the string into two parts
@@ -159,23 +150,7 @@ nonpheno.df <- raw.df %>%
   dplyr::select(!any_of(pheno_list)) %>%
   mutate(id = row_number())
 
-cf.merged <- base::merge(cf, nonpheno.df, by = "id")
-
-#recalculate TBV, Vol_total, SA_total, & CT_total on combatted data
-final.df <- cf.merged %>%
-  mutate(TBV=rowSums(dplyr::select(., .dots=all_of(c(vol_list_global)))),
-         Vol_total=rowSums(dplyr::select(., .dots=all_of(c(vol_list_regions)))),
-         SA_total=rowSums(dplyr::select(., .dots=all_of(c(sa_list)))),
-         CT_total=rowSums(dplyr::select(., .dots=all_of(c(ct_list)))))
-
-#old version only added back batch and covars - maybe useful in some instances
-# cf[, "batch"] <- batch
-# 
-# if (!is.null(covar.list)){
-#   covar.df <- covar.df %>%
-#     mutate(id = row_number())
-#   cf <- base::merge(cf, covar.df, by = "id")
-# }
+final.df <- base::merge(cf, nonpheno.df, by = "id")
 
 ##########################################################################
 #WRITE OUT
