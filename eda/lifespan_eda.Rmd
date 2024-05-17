@@ -137,68 +137,7 @@ cn.df.eulerfilt2 <- left_join(cn.df.eulerfilt, study_mad) %>%
 
 Removed `r nrow(cn.df.unique) - nrow(cn.df.eulerfilt2)` subjects, `r nrow(cn.df.eulerfilt2)` remain
 
-## Site-Level Data
 
-look just at data w site info
-
-```{r}
-cn.df.site <- cn.df.eulerfilt2 %>% 
-  dplyr::filter(site != "NA") %>%
-  mutate(study = droplevels(study),
-         site = gsub(" ", "_", trimws(site))) %>%
-  unite(site, study, site, sep = "_", remove = FALSE) %>% #so sites with the same name don't get combined across studies!
-  dplyr::select(!c(INDEX.ID, country)) %>%#drop index ID for filtering
-  na.omit()
-
-n_unique(cn.df.site$participant)
-n_unique(cn.df.site$participant) == nrow(cn.df.site)
-
-max(cn.df.site$age_days)/365.25
-
-grep("scan", colnames(cn.df.site), value = TRUE) #no scanner info
-```
-
-```{r}
-# number studies
-length(levels(cn.df.site$study))
-
-#number sites per study
-cn.df.site %>%
-  group_by(study) %>% 
-  summarise(Result = length(unique(site)))
-```
-
-```{r}
-ggplot(cn.df.site) +
-  geom_boxplot(aes(x=reorder(study, age_days), y=age_days))+
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-
-ggplot(cn.df.site) +
-  geom_violin(aes(x=reorder(site, age_days), y=age_days, fill=study), scale="width") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "none")
-```
-
-check for sex differences in sites
-
-```{r}
-ggplot(cn.df.site) +
-  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=site, fill=sex)) + 
-  scale_y_continuous(labels = scales::percent) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-
-ggplot(cn.df.site) +
-  geom_bar(aes(x=site, fill=sex), position="dodge") + 
-  theme(axis.text.x = element_blank()) +
-  facet_wrap(~study, scales="free")
-```
-
-Write out
-
-```{r}
-fwrite(cn.df.site, file=paste0(base_path, "/data/lifespan_CN_site-level_euler.csv"))
-```
-
-## Keep Study Level
 Keep studies w missing site info and just treat as single-site
 
 ```{r}
