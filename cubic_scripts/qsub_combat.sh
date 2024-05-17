@@ -7,7 +7,7 @@
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
-save_path=$base/data/ukb_basic
+save_path=$base/data/ukb_to_model
 #######################################################################################
 helpFunction()
 {
@@ -50,7 +50,7 @@ cd $base/cubic_scripts #to source functions correctly
 #######################################################################################
 # MAKE DIRECTORIES 
 #study dir
-study_dir=$base/lifespan
+study_dir=$base/ukb_basic
 if ! [ -d $study_dir ]
 	then
 	mkdir $study_dir
@@ -77,7 +77,7 @@ csv_fname=$(basename $csv .csv)
 
 #######################################################################################
 #SET COVAR COLS
-covar_list="age_days,sexMale,sex.age" #age_days
+covar_list="age_days,sexMale"
 
 #LIST POSSIBLE CONFIGS
 config_list="cf.gamlss cf cf.lm cf.gam"
