@@ -5,7 +5,7 @@
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
-og_data=$base/data/lifespan_CN_site-level_euler.csv #path to original data
+og_data=$base/data/lifespan_CN_imp-sites_euler.csv #path to original data
 save_data_path=$base/data/lifespan
 
 # paths to R scripts
