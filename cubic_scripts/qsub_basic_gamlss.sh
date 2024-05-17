@@ -79,6 +79,11 @@ then
 		#see if filename contains 'cf'
 		if [[ $csv_file == *"cf"* ]]
 		then
+			#just take name as is
+			csv_name=$(basename $csv_file .csv)
+			csv_name=${csv_name//_/\-}
+			csv_to_load=$csv_file
+		else
 			#append "_raw" at end
 			new_name="${csv_file/.csv/_raw.csv}"
 
@@ -88,11 +93,6 @@ then
 			csv_name=$(basename $new_name .csv)
 			csv_name=${csv_name//_/\-}
 			csv_to_load=$new_name
-		else
-			#otherwise just take name as is
-			csv_name=$(basename $csv_file .csv)
-			csv_name=${csv_name//_/\-}
-			csv_to_load=$csv_file
 		fi
 		echo "Pulling data from $csv_name"
 		#iterate through measure types (vol, SA, CT, global vols) for correct global corrections
