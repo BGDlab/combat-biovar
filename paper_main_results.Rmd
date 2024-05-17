@@ -4,7 +4,16 @@ output: html_document
 date: '2023-11-12'
 ---
 
-Rmd to show and get feedback on planned for results & figures for the combatLS paper. Currently thinking I'll have centile score results be the focus of the paper and keep z-scores for the supplement.
+Main analyses of ComBatLS paper.
+
+Relies on outputs derived/functions from:
+
+* `./cubic_scripts/R_scripts/stats_tests.R`
+1. `ukb_curation-eda.Rmd`
+2. `qsub_combat.sh` -> `/cubic_scripts/R_scripts/combat_apply.R`
+3. `qsub_basic_gamlss.sh` -> `/cubic_scripts/R_scripts/fit_basic_mod.R`
+4. `qsub_centiles.sh` -> `/cubic_scripts/R_scripts/fit_centiles.R`
+5. `gamlss_parse.sh` -> `/cubic_scripts/R_scripts/gamlss_parser.R`
 
 # Setup
 
@@ -14,12 +23,9 @@ if(!require('pacman')) {
   install.packages('pacman')
 }
 pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, ggh4x)
-#Sys.setenv("MC_CORES"=10L)
-options("mc.cores")
 ```
 ```{r}
 source("./cubic_scripts/R_scripts/stats_tests.R")
-# devtools::source_url("https://raw.githubusercontent.com/BGDlab/combat-biovar/main/cubic_scripts/R_scripts/stats_tests.R")
 ```
 
 
@@ -63,9 +69,8 @@ dk.parc <- dk_nomed$data %>%
   distinct()
 ```
 
-# Main Analyses
 
-## Load Data
+# Load Data
 
 pulled variance from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/*_variance.csv' .`
 
@@ -94,21 +99,23 @@ combined_preds <- combined_preds %>%
   dplyr::filter(!grepl('_refA', dataset)) #drop refA levels
 ```
 
-**QC: find ppts with centiles at 1 or 0**
+QC: check for ppts with centiles ~ 1 or 0 and make sure Z scores exist
 
 ```{r}
 combined_preds %>% 
   filter_at(vars(pheno_list), any_vars(. %in% c(1, 0))) %>%
   dplyr::select(participant) %>%
-  unique()
+  unique() %>%
+  nrow()
 
 combined_preds %>% 
   filter_at(vars(pheno_list.z), any_vars(. %in% c(NA, Inf, -Inf))) %>%
   dplyr::select(participant) %>%
-  unique()
+  unique() %>%
+  nrow()
 ```
 
-saving out csv forces some centile scores to round up to 1, BUT it appears z scores are still being calculated correctly so just going to proceed!
+saving out csv forces some centile scores to round up to 1, but z scores are still being calculated correctly.
 
 Get errors
 - pulled centile/z error calcs from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/*_diffs.csv' .`
@@ -138,182 +145,16 @@ subj_sum.df <- subj_sum.df %>%
   dplyr::filter(!grepl('_refA', dataset)) #drop refA levels
 ```
 
-Get differences in male vs female predicted variances at mean sample age
-
-```{r}
-pred.csvs <- list.files(path = paste0(data_path, "/ukb_basic"), pattern = "_variance.csv", full.names = TRUE)
-combined_var <- data.frame()
-
-for (file in pred.csvs) {
-  # Read each CSV file
-  data <- fread(file)
-  
-  # Add a "Source_File" column with the file name
-  data <- data %>%
-    mutate(Source_File = as.factor(basename(file))) %>%
-    mutate(dataset = sub("_data_variance.csv", "", Source_File),
-           sex_standard = sex_effect/f.var)
-  
-  # Bind the data to the combined dataframe
-  combined_var <- bind_rows(combined_var, data, .id = "File_ID")
-}
-
-#get summary df for p vals, plotting
-sigma.sex.df <- fread("ukb_basic/gamlss_summary.csv", stringsAsFactors = TRUE) %>%
-  dplyr::select(-V1) %>%
-  mutate(dataset = gsub("-data", "", dataset),
-         dataset = gsub("-", "_", dataset),
-         dataset = gsub("_simsites", "", dataset)) %>% #clean up dataset naming
-  mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
-  mutate(dataset = relevel(dataset, ref= "ukb_CN")) %>%
-  dplyr::filter(parameter == "sigma" & term == "sexMale") %>%
-  dplyr::select(mod_name, pheno, dataset, pheno_cat, label, sig.sum_bf.corr)
-
-sigma.sex.df <- left_join(sigma.sex.df, dk.parc, by="label")
-
-plot.info <- sigma.sex.df %>%
-  dplyr::select(mod_name, pheno, dataset, pheno_cat, label, hemi, region, sig.sum_bf.corr) %>%
-  unique() %>%
-  mutate(dataset = gsub("-", "_", dataset),
-         dataset = gsub("_simsites", "", dataset))
-
-combined_var <- inner_join(combined_var, plot.info)
-
-#drop refA sites, not using for these analyses
-combined_var <- combined_var %>%
-  dplyr::filter(!grepl('_refA', dataset)) #drop refA levels
-```
-
-## SCALE EFFECTS OF SEX
-
-```{r}
-dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
-#var plot
-var.plot.df <- combined_var %>%
-  dplyr::filter(sig.sum_bf.corr == TRUE & pheno_cat != "Global Volume") %>%
-  dplyr::filter(!grepl('_refA', dataset)) %>% #drop refA levels
-  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
-  group_by(dataset, pheno_cat)
-
-tp <- unique(var.plot.df[,c('dataset','pheno_cat')]) %>%
-  dplyr::filter(dataset=="ukb_CN")
-tp$sex_standard <- 1
-
-var.plot <- ggplot(var.plot.df) +
-  geom_rect(data = tp, fill="gray", xmin = -Inf,xmax = Inf,
-            ymin = -Inf, ymax = Inf, alpha = 0.4) +
-  ggseg::geom_brain(atlas = dk, 
-             position = position_brain(hemi ~ side),
-             aes(fill = sex_standard)) +
-  #scale_fill_gradient2() +
-  facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
-  theme_linedraw(base_size=12) +
-  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Sex Effect", limits = c(-0.12, 0.12), breaks = c(-0.1, 0,0.1))
-#var.plot
-
-#ggsave("figs/male_variance_ohbm.jpeg", var.plot, width=10, height=10)
-```
-
-```{r}
-#plot global
-var.plot.global.df <- combined_var %>%
-  dplyr::filter(pheno_cat == "Global Volume") %>%
-  dplyr::filter(!grepl('_refA', dataset)) %>% #drop refA levels
-  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
-  dplyr::select(!c(label, region, hemi)) %>% #drop cols corresponding to dk regions
-  mutate(tissue_class = as.factor(case_when(pheno == "GMV" ~ "cGM",
-                                            pheno == "Ventricles" ~ "CSF",
-                                            pheno == "WMV" ~ "WM",
-                                            pheno == "sGMV" ~ "sGM",
-                                            TRUE ~ NA)),
-         sex_standard = ifelse(sig.sum_bf.corr == TRUE, sex_standard, NA)) %>% #drop NS values
-  group_by(dataset)
-
-tp <- unique(var.plot.global.df[,c('dataset','pheno_cat')]) %>%
-  dplyr::filter(dataset=="ukb_CN")
-tp$sex_standard <- 1
-
-var.plot.global <- ggplot(var.plot.global.df) +
-  geom_rect(data = tp, fill="gray", xmin = -Inf,xmax = Inf,
-            ymin = -Inf, ymax = Inf, alpha = 0.4) +
-  ggseg::geom_brain(atlas = aseg_cerebrum, 
-             aes(fill = sex_standard),
-             side = c("coronal")) +
-  #scale_fill_gradient2() +
-  facet_grid(dataset~pheno_cat) + 
-  theme_linedraw(base_size=12) +
-  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Sex Effect", limits = c(-0.12, 0.12), breaks = c(-0.1, 0,0.1))
-#var.plot.global
-```
-
-Combine plots
-```{r}
-p <- ggarrange(
-  var.plot.global, var.plot,
-  ncol=2, nrow=1, 
-  widths = c(1, 3.1),
-  #labels=c("A", "B"),
-  #hjust=0.01,
-  align = "hv",
-  common.legend = TRUE, legend = "bottom"
-  )
-
-p_annotate <- annotate_figure(p, top = text_grob("Figure 1B. Standardized effect of male sex on feature variance", 
-               color = "black", size = 14, hjust=.65))
-p_annotate
-ggsave("figs/male_variance_ohbm_big.jpeg", p_annotate, width=7, height=8)
-```
-Look at relative estimates for sex in sigma across features in raw data
-
-```{r}
-gamlss.sum.df <- fread(paste0(data_path, "/ukb_basic/gamlss_summary.csv"))
-gamlss.sum.df.raw <- gamlss.sum.df %>%
-  dplyr::filter(dataset=="ukb-CN-data-simsites")
-
-gamlss.sum.df.raw.sexsig <- gamlss.sum.df.raw %>%
-  dplyr::filter(parameter =="sigma" & term == "sexMale") %>%
-  mutate(pheno_cat = as.factor(case_when(
-      pheno %in% vol_list_global ~ "Global Volume",
-      pheno %in% vol_list_regions ~ "Regional Volume",
-      pheno %in% sa_list ~ "Regional SA",
-      pheno %in% ct_list ~ "Regional CT",
-      TRUE ~ NA_character_)),
-      est_over_moment = estimate/moment.mean)
-
-gamlss.sum.df.raw.sexsig %>%
-  ggplot(aes(y=estimate, x=pheno_cat, fill=pheno_cat)) +
-  geom_boxplot() +
-  # geom_hline(yintercept = mean(gamlss.sum.df.raw.sexsig$t_stat), linetype = 2) +
-  stat_compare_means(method = "anova", label.y = 0.07)+    
-  stat_compare_means(label = "p.signif", method = "t.test",
-                     ref.group = ".all.")
-
-gamlss.sum.df.raw.sexsig %>%
-  ggplot() +
-  geom_histogram(aes(x=est_over_moment, fill=pheno_cat, color=pheno_cat), alpha=0.5, position="identity")
-
-gamlss.sum.df.raw.sexsig %>%
-  ggplot(aes(y=t_stat, x=pheno_cat, fill=pheno_cat)) +
-  geom_boxplot() +
-  # geom_hline(yintercept = mean(gamlss.sum.df.raw.sexsig$t_stat), linetype = 2) +
-  stat_compare_means(method = "anova", label.y = -7)+    
-  stat_compare_means(label = "p.signif", method = "t.test",
-                     ref.group = ".all.")
-```
-
-
-## CENTILES
+# CENTILES
 
 Do centile scores change based on combat version?
-Foregoing anova based on emails with andrew (anova violates assumtptions of no equal variance but there's no option for kruskall-wallace with paired samples - which these are, since it's the same subjects)
+Foregoing anova based on emails with Andrew (anova violates assumptions of no equal variance but there's no option for kruskall-wallace with paired samples - which these are, since it's the same subjects)
 
 Within each feature (phenotype), iterate paired t test of ranks between each combo of combat dfs (nonparametric per discussion with Andrew). (see Zimmerman & Zumbo, 1993). Using custom functions from `ranked_welch_tests.R`.
 
 ```{r, eval=FALSE}
 full_cent_res <- centile.t.tests.full_result(diffs.df, feature_list=pheno_abs.diff.list)
-saveRDS(full_cent_res, "./derivatives/ukb_basic/featurewise_cent_t_tests_all_out.RDS")
+saveRDS(full_cent_res, "./derivatives/ukb_basic/featurewise_cent_t_tests_all_out.RDS") #running once and saving because it takes a long time
 ```
 
 ```{r}
@@ -333,20 +174,7 @@ full_cent_res %>%
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 ```
 
-```{r, eval=FALSE}
-full_cent_res%>%
-  dplyr::filter(comp =="cf.gamlss_cf" & bigger_group == "cf.gamlss" & sig_fdr ==TRUE)
-
-diffs.df %>%
-  dplyr::filter(dataset=="cf.gamlss" | dataset =="cf") %>%
-  ggplot() +
-  geom_boxplot(aes(y=abs.diff_rh_CT_parstriangularis, fill=dataset))
-
-diffs.df %>%
-  dplyr::filter(dataset=="cf.gamlss" | dataset =="cf") %>%
-  ggplot() +
-  geom_boxplot(aes(y=diff_rh_CT_parstriangularis, fill=dataset))
-```
+bigger group -> relatively worse fit
 
 Little plot
 ```{r}
@@ -395,16 +223,22 @@ get stat results for global phenos:
 ```{r, message=FALSE}
 full_cent_res %>%
   dplyr::filter(pheno %in% vol_list_global) %>%
-  dplyr::filter(!grepl('_refA', comp))
+  dplyr::filter(!grepl('_refA', comp)) %>%
+  summarise(n_sig = sum(sig_fdr),
+            nrow = nrow(.))
 
+#n occurances of combatLS having significantly larger errors
 full_cent_res %>%
   dplyr::filter(bigger_group == "cf.gamlss")%>%
-  dplyr::filter(!grepl('_refA', comp))
+  dplyr::filter(!grepl('_refA', comp)) %>%
+  summarise(n_sig = sum(sig_fdr),
+            nrow = nrow(.))
 ```
 
-all significant
 
 ```{r}
+dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+
 global_abs.diffs <- diffs.df %>%
   dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("abs.diff_", vol_list_global)) %>%
   pivot_longer(cols=starts_with("abs.diff_"), names_to="pheno", names_prefix="abs.diff_", values_to = "abs.diff")
@@ -563,98 +397,16 @@ p_diff <- ggarrange(
 Quick comp of cf.gam and cf.gamlss
 
 ```{r}
-gam.gamlss.diffs <- diffs.df %>%
-  dplyr::filter(dataset=="cf.gam" | dataset=="cf.gamlss")
-
-gam_better <- gam.gamlss.diffs %>%
-  group_by(dataset) %>%
-  summarize_at(pheno_abs.diff.list, median) %>%
-  ungroup() %>%
-  pivot_longer(cols = all_of(pheno_abs.diff.list), names_to="pheno") %>%
-  pivot_wider(names_from = dataset, values_from=value, names_glue = "med_{dataset}") %>%
-  mutate(gam_minus_gamlss = (med_cf.gam - med_cf.gamlss),
-         pheno = sub("abs.diff_", "", pheno)) %>%
-  ungroup() %>%
-  dplyr::filter(gam_minus_gamlss < 0)
-
 ns_gam_gamlss_comp <- full_cent_res %>%
-  dplyr::filter(comp=="cf.gamlss_cf.gam" & sig_fdr == TRUE)
-
-cfgam.better <- intersect(gam_better$pheno, ns_gam_gamlss_comp$pheno)
-```
-```{r, eval=FALSE}
-cfgam.better.ct <- gsub("_CT", "", cfgam.better)
-cfgam.better.ct_plot <- dk.parc %>%
-  dplyr::mutate(gam_better = ifelse(label %in% cfgam.better.ct, 1, 0))
-
-ggplot(cfgam.better.ct_plot) +
-  theme_linedraw(base_size=12) +
-  ggseg::geom_brain(atlas = dk_nomed, 
-             position = position_brain(hemi ~ side),
-            aes(fill=as.factor(gam_better)))
-```
-
-```{r, eval=FALSE}
-for (pheno in pheno_abs.diff.list){
-  p <- ggplot(gam.gamlss.diffs, aes(y = gam.gamlss.diffs[[pheno]], fill= dataset)) +
-      geom_boxplot() +
-    ggtitle(pheno)
-print(p)
-}
+  dplyr::filter(comp=="cf.gamlss_cf.gam" & sig_fdr == TRUE & bigger_group == "cf.gamlss")
+nrow(ns_gam_gamlss_comp)
 ```
 
 **21 regions where ComBat GAM is better than ComBat-LS! All cortical thickness -> 206-21 = 185 regions where ComBat-LS fits better.
 
-### Sex-Biases
+### Sex-Differences
 
-Playing with different ways to visualize each subject's average centile error (i.e., raw data centile - combatted data centile) and magnitude centile error (absolute value)
-
-```{r, eval=FALSE}
-subj_sum.df %>%
-  dplyr::filter(dataset == "cf.gamlss" | dataset == "cf.gam" | dataset == "cf.lm") %>%
-  mutate(mean_cent_abs.diff = mean_cent_abs.diff*100) %>% #for visuals
-  ggplot() +
-  geom_boxplot(aes(x=sex, y=mean_cent_abs.diff, fill=sex)) +
-  labs(y= "Magnitude Centile Error", x = "ComBat Configurations") +
-  facet_wrap(~dataset) +
-  theme(legend.position="none") +
-  ggtitle("Within-subject mean magnitude of error in centile scores across ComBat configurations")
-
-subj_sum.df %>%
-  mutate(mean_cent_diff = mean_cent_diff*100) %>% #for visuals
-  ggplot(aes(x=dataset, y=mean_cent_diff, fill=sex)) +
-  geom_violin(trim=FALSE, scale="width") +
-  labs(y="Centile Error", x = "ComBat Configurations") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  ggtitle("Within-subject mean error in centile scores across ComBat configurations")
-
-subj_sum.df %>%
-  dplyr::filter(dataset == "cf.gamlss" | dataset == "cf.gam" | dataset == "cf.lm") %>%
-  mutate(mean_cent_abs.diff = mean_cent_abs.diff*100) %>% #for visuals
-  ggplot(aes(x=sim.site, y=mean_cent_abs.diff, fill=sex)) +
-  geom_violin(trim=FALSE) +
-  facet_wrap(~dataset) +
-  labs(y="Magnitude Centile Error", x = "Simulated Site") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  ggtitle("Within-subject mean magnitude error in centile scores across \nComBat configurations")
-
-#look at sex distributions of ppts across sites
-subj_sum.df %>%
-  ggplot() +
-  geom_bar(aes(x=sim.site, fill=sex))+
-  ggtitle("Distributions of male and female subjects across simulated sites")
-```
-
-Significance testing (w/in sub. mean abs centile error)  - using wilcox (mann whitney u) since distributions are skewed but variances are ~= across sexes
-
-```{r}
-sex.bias.wilcox.tests(subj_sum.df)
-sex.bias.wilcox.tests(subj_sum.df, to_test="mean_cent_diff")
-```
-
-Keeping these analyses in case I want to use one of the above violin/boxplots that show w/in subject averages (across features). However, while these results I think are good to have from a "be aware of how biological variables are distributed across your study sites" perspective, it doesnt really say anything interesting froma "combat methods" perspective.
-
-Testing for significant M:F differences in centile erros WITHIN each feature!
+Testing for significant M:F differences in centile errors within each feature
 
 check for skew (welch t.test vs ranked welch t test)
 ```{r, eval=FALSE}
@@ -762,77 +514,6 @@ ggplot() +
 ```
 
 ```{r}
-plt.df <- diffs.df %>%
-  dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("diff_", pheno_list)) %>% #select centile errors only
-  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
-  pivot_longer(cols=starts_with("diff_"), names_to="pheno", names_prefix="diff_", values_to = "diff") %>%
-  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         diff = diff*100,
-         pheno_cat = factor(case_when(
-    pheno %in% vol_list_global ~ "Global Volume",
-    pheno %in% vol_list_regions ~ "Regional Volume",
-    pheno %in% sa_list ~ "Regional SA",
-    pheno %in% ct_list ~ "Regional CT",
-    TRUE ~ NA_character_), ordered=TRUE, levels=c("Global Volume", "Regional Volume", "Regional SA", "Regional CT"))) %>%
-    mutate(pheno = factor(pheno, ordered=TRUE, levels=c(vol_list_global, vol_list_regions, sa_list, ct_list)))#sort w/in pheno_cat
-```
-
-stat test re-do w wilcox 
-```{r}
-stat.test <- plt.df %>%
-  group_by(dataset, pheno) %>%
-  wilcox_test(diff ~ sex) %>%
-  adjust_pvalue(method = "fdr") %>%
-  add_significance("p.adj")
-```
-```{r}
-stat.test2 <- stat.test %>%
-  add_xy_position(x = "pheno", dodge = 0.8, fun="max") %>%
-  mutate(p.adj.signif = ifelse(p.adj.signif == "ns", "ns", "*")) #simplify significance labels
-```
-
-```{r}
-dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
-
-big_violin_plt <- plt.df %>%
-  ggplot(aes(x=pheno, y=diff)) +
-  geom_violin(aes(x=interaction(pheno,pheno_cat, sep = "&"), y=diff, fill=sex, color=sex)) +
-  # geom_violin(aes(fill=sex, color=sex)) +
-  theme_linedraw(base_size = 11) +
-  labs(y="Centile Error", x = "Brain Feature") +
-  theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), panel.spacing.x = unit(.1, "lines"), panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
-  stat_pvalue_manual(stat.test2, label = "p.adj.signif", label.size = 3, tip.length = 0, hide.ns = TRUE, remove.bracket = TRUE) +
-  # facet_grid2(dataset ~ pheno_cat, labeller=labeller(dataset=dataset_names), scales="free_x", space = "free_x", switch="x", strip = custom_strip) +
-  facet_wrap(~dataset, labeller=labeller(dataset=dataset_names), nrow=2) +
-  guides(x = ggh4x::guide_axis_nested(delim = "&")) +
-  theme(plot.title = element_text(size=12), axis.ticks.x = element_blank(), axis.text.x = element_blank(), ggh4x.axis.nesttext.x = element_text(angle = 90, vjust=0.4), legend.position="top") +
-  labs(fill = "Sex", color="Sex")
-  # ggtitle("Male and female centile errors")
-big_violin_plt
-ggsave("figs/big_sex_violin_plt.jpeg", big_violin_plt, width=12, height=6, units="in")
-```
-
-```{r, eval=FALSE}
-big_violin_plt_wlabels <- plt.df %>%
-  ggplot(aes(x=pheno, y=diff)) +
-  geom_violin(aes(x=interaction(pheno,pheno_cat, sep = "&"), y=diff, fill=sex, color=sex)) +
-  # geom_violin(aes(fill=sex, color=sex)) +
-  theme_linedraw(base_size = 11) +
-  labs(y="Centile Error", x = "Brain Feature") +
-  theme(plot.title = element_text(size=12)) +
-  stat_pvalue_manual(stat.test2, label = "p.adj.signif", label.size = 2.5, tip.length = 0, remove.bracket = TRUE) +
-  # facet_grid2(dataset ~ pheno_cat, labeller=labeller(dataset=dataset_names), scales="free_x", space = "free_x", switch="x", strip = custom_strip) +
-  facet_wrap(~dataset, labeller=labeller(dataset=dataset_names), nrow=2) +
-  guides(x = ggh4x::guide_axis_nested(delim = "&")) +
-  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust=0.4, size=6), ggh4x.axis.nesttext.x = element_text(angle = 90, vjust=0.4), legend.position="top") +
-  labs(fill = "Sex", color="Sex")
-  # ggtitle("Male and female centile errors")
-big_violin_plt_wlabels
-ggsave("figs/big_sex_violin_plt_wlabels.jpeg", big_violin_plt_wlabels, width=16, height=9, units="in")
-```
-
-
-```{r}
 sex_t_tests_in_feat.df2 <- sex_t_tests_in_feat.df %>%
   mutate(pheno_cat = as.factor(case_when(
     pheno %in% vol_list_global ~ "Global Volume",
@@ -924,16 +605,14 @@ p_sex <- ggarrange(
   common.legend = TRUE, legend = "bottom"
   )
 
-p_sexannotate <- annotate_figure(p_sex, top = text_grob("Figure 2A. Sex-biases in centile score errors across combat configurations", 
+p_sexannotate <- annotate_figure(p_sex, top = text_grob("Figure 2A. Sex-differences in centile score errors across combat configurations", 
                color = "black", size = 14, hjust=.65))
 p_sexannotate
 ggsave("figs/sex_diff_win_feat.jpeg", p_sexannotate, width=7, height=8)
 saveRDS(p_sexannotate, file="figs/sex_diff_win_feat.RDS")
 ```
 
-Sex Effect is the median male centile error - median female centile error (i.e. units are in centiles). Therefore, + sex effect (blue) means female scores tend to have more positive errors (TRUE centile > calculated centile) and - sex effect (green) means females have more negative errors (TRUE centile < calculated centile)? Honestly, not the most straightforward interpretation, i know - may make more sense to just plot the median errors separately in males and females than to plot the differences between the two.
-
-look at # males vs females w extreme mean centiles
+Sex Effect is the median male centile error - median female centile error (i.e. units are in centiles). Therefore, + sex effect (blue) means female scores tend to have more positive errors (TRUE centile > calculated centile) and - sex effect (green) means females have more negative errors (TRUE centile < calculated centile)
 
 ### W/o extremes
 Are extreme centiles (<5% and >95%) driving observed results?
@@ -989,6 +668,8 @@ centile error diffs
 noext_cent_res <- centile.t.tests.full_result(no_ext, feature_list=pheno_abs.diff.list)
 saveRDS(noext_cent_res, "./derivatives/ukb_basic/featurewise_cent_t_tests_all_noext_out.RDS")
 ```
+
+bigger group -> relatively worse fit
 
 ```{r}
 noext_cent_res <- readRDS("./derivatives/ukb_basic/featurewise_cent_t_tests_all_noext_out.RDS")
@@ -1056,7 +737,7 @@ no.ext_merge %>%
   ggtitle("W/in feature average magnitude of centile error, w/ and w/o extreme subjects")
 ```
 
-w/in feature sex-biases
+w/in feature sex-differences
 ```{r, message=FALSE, eval=FALSE}
 noext.sex_t_tests_in_feat.df <- sex.bias.feat.t.tests(no_ext, feature_list=pheno_diff_list)
 saveRDS(noext.sex_t_tests_in_feat.df, "./derivatives/ukb_basic/featurewise_cent_sexbias_all_noext_out.RDS")
@@ -1130,7 +811,7 @@ noext_plot.df %>%
   facet_wrap(~dataset, scales="free_y")
 ```
 
-## Z-SCORES
+# Z-SCORES
 
 Do z scores change based on combat version?
 
@@ -1145,9 +826,7 @@ print(p)
 }
 ```
 
-Foregoing anova based on emails with andrew (anova violates assumtptions of no equal variance but there's no option for kruskall-wallace with paired samples - which these are, since it's the same subjects)
-
-Within each phenotype, iterate paired t test of ranks between each combo of combat dfs (nonparametric per discussion with Andrew). (see Zimmerman & Zumbo, 1993). Using custom functions from `ranked_welch_tests.R`.
+Within each phenotype, iterate paired t test of ranks between each combo of combat dfs using custom functions from `ranked_welch_tests.R`.
 
 ```{r, eval=FALSE}
 full_z_res <- centile.t.tests.full_result(diffs.df, feature_list=z.pheno_abs.diff.list)
@@ -1209,94 +888,15 @@ z.diffs.plot
 ggsave("figs/win_feature_mean_z_abs.diffs.jpeg", z.diffs.plot)
 ```
 
-plot w ref sites
-```{r, eval=FALSE}
-#get means w/in feature 
-mean.z.diffs.long <- diffs.df %>%
-  dplyr::select(sex, dataset, pheno, z.pheno_abs.diff.list) %>%
-  mutate(dataset = factor(dataset, levels = c("ukb_CN", "cf", "cf.lm", "cf.gam", "cf.gamlss", "cf.lm_refA", "cf.gam_refA", "cf.gamlss_refA"), ordered = TRUE)) %>%
-  group_by(dataset) %>%
-  summarize(across(starts_with("abs.diff_"), mean)) %>%
-  ungroup() %>%
-  pivot_longer(cols=starts_with("abs.diff_"), values_to="z_abs.diff", names_to = "pheno", names_prefix = "abs.diff_") %>%
-  mutate(pheno=gsub(".z", "", pheno)) %>%
-  mutate(pheno_cat = as.factor(case_when(
-      pheno %in% vol_list_global ~ "Global Volume",
-      pheno %in% vol_list_regions ~ "Regional Volume",
-      pheno %in% sa_list ~ "Regional SA",
-      pheno %in% ct_list ~ "Regional CT",
-      TRUE ~ NA_character_)),
-      label = sub("_[^_]*_", "_", pheno))
-
-mean.z.diffs.long %>%
-  dplyr::filter(dataset != "ukb_CN") %>%
-  ggplot() +
-  geom_histogram(aes(x=z_abs.diff, fill=dataset, y = stat(width*density)), color="black", alpha=0.6, position="identity") +
-  theme_linedraw(base_size = 11) +
-  facet_grid(dataset~pheno_cat) +
-  scale_y_continuous(labels = scales::percent) + 
-  labs(y="Percent Features", x = "Mean Absolute Z-Score Error") +
-  ggtitle("Absolute errors in zscores of brain structure features across ComBat processing pipelines")
-```
-
 Quick comp of cf.gam and cf.gamlss
 
 ```{r}
-gam_better.z <- gam.gamlss.diffs %>%
-  group_by(dataset) %>%
-  summarize_at(z.pheno_abs.diff.list, median) %>%
-  ungroup() %>%
-  pivot_longer(cols = all_of(z.pheno_abs.diff.list), names_to="pheno") %>%
-  pivot_wider(names_from = dataset, values_from=value, names_glue = "med_{dataset}") %>%
-  mutate(gam_minus_gamlss = (med_cf.gam - med_cf.gamlss),
-         pheno = sub("abs.diff_", "", pheno)) %>%
-  ungroup() %>%
-  dplyr::filter(gam_minus_gamlss < 0)
-
-gam_better.z$pheno
-
 ns_gam_gamlss_comp.z <- full_z_res %>%
-  dplyr::filter(comp=="cf.gamlss_cf.gam" & sig_fdr == TRUE)
-
-intersect(gam_better.z$pheno, ns_gam_gamlss_comp.z$pheno)
+  dplyr::filter(comp=="cf.gamlss_cf.gam" & sig_fdr == TRUE & bigger_group == "cf.gamlss")
+nrow(ns_gam_gamlss_comp.z)
 ```
 
-### Sex-Biases
-
-Visualize
-
-```{r, eval=FALSE}
-subj_sum.df %>%
-  dplyr::filter(dataset == "cf.gamlss" | dataset == "cf.gam" | dataset == "cf.lm") %>%
-  ggplot() +
-  geom_boxplot(aes(x=sex, y=mean_z_abs.diff, fill=sex)) +
-  labs(y= "Magnitude Z Error", x = "ComBat Configurations") +
-  facet_wrap(~dataset, scales="free_y") +
-  theme(legend.position="none") +
-  ggtitle("Within-subject mean magnitude of error in z-scores across ComBat configurations")
-
-subj_sum.df %>%
-  ggplot(aes(x=dataset, y=mean_z_diff, fill=sex)) +
-  geom_violin(trim=FALSE, scale="width") +
-  labs(y="Z Error", x = "ComBat Configurations") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  ggtitle("Within-subject mean error in z-scores across ComBat configurations")
-
-subj_sum.df %>%
-  dplyr::filter(dataset == "cf.gamlss" | dataset == "cf.gam" | dataset == "cf.lm") %>%
-  ggplot(aes(x=sim.site, y=mean_z_abs.diff, fill=sex)) +
-  geom_violin(trim=FALSE) +
-  facet_wrap(~dataset) +
-  labs(y="Magnitude Z Error", x = "Simulated Site") +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  ggtitle("Within-subject mean magnitude error in z-scores across \nComBat configurations")
-
-#look at sex distributions of ppts across sites
-subj_sum.df %>%
-  ggplot() +
-  geom_bar(aes(x=sim.site, fill=sex), position="fill")+
-  ggtitle("Distributions of male and female subjects across simulated sites")
-```
+### Sex-Differences
 
 Significance testing (w/in sub. mean abs z error) 
 
@@ -1318,7 +918,7 @@ print(p)
 }
 ```
 
-skewed but ~ variances? sticking with t test of ranks. Also calculating the median z-score errors of males and females
+skewed but ~ variances, sticking with t test of ranks. Also calculating the median z-score errors of males and females
 
 ```{r, message=FALSE, eval=FALSE}
 z.sex_t_tests_in_feat.df <- sex.bias.feat.t.tests(diffs.df, feature_list=z.pheno_diff_list)
@@ -1341,7 +941,7 @@ z.sex_t_tests_in_feat.df %>%
 ### W/o extremes
 Are extreme z-scores (<-2 and >2) driving observed results?
 
-Get raw centiles and merge with centile differences
+Get raw z-scores and merge with z-score differences
 
 ```{r}
 z.df_list <- c()
@@ -1360,6 +960,7 @@ for(pheno in pheno_list.z) {
 }
 length(z.df_list) == length(pheno_list.z)
 ```
+
 merge into single dataframe
 ```{r, message=FALSE}
 z.no_ext <- Reduce(full_join, z.df_list)
@@ -1428,7 +1029,7 @@ z.no.ext_merge %>%
   ggtitle("W/in feature average magnitude of z error, w/ and w/o extreme subjects")
 ```
 
-w/in feature sex-biases
+w/in feature sex-differences
 ```{r, message=FALSE}
 noext.z.sex_t_tests_in_feat.df <- sex.bias.feat.t.tests(z.no_ext, feature_list=z.pheno_diff_list)
 saveRDS(noext.z.sex_t_tests_in_feat.df, "./derivatives/ukb_basic/featurewise_z_sexbias_all_noext_out.RDS")
@@ -1455,7 +1056,7 @@ z.sex_t_tests_in_feat.df %>%
     as.data.frame()
 ```
 
-## CENTILE FANS
+# CENTILE FANS
 
 pulled predicted centiles from cubic using `scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_basic/centile_csvs/*_centiles.csv' .`
 
@@ -1490,68 +1091,6 @@ global.df.long <- ukb_cn_df %>%
   pivot_longer(cols = vol_list_global, values_to = "value", names_to="pheno")
 ```
 
-
-```{r, eval=FALSE}
-global.cent.df <- centiles.df %>%
-  dplyr::filter(pheno_cat == "Global Volume") %>%
-  dplyr::filter(!grepl('-refA', dataset))
-
-
-for (feature in unique(global.cent.df$pheno)) {
-
-  df <- global.cent.df %>%
-    dplyr::filter(pheno == feature)
-  
- plot <- ggplot() +
-      #geom_point(aes(x=ukb_cn_df$age_days, y=ukb_cn_df[[feature]]), alpha=0.5) +
-      #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
-      geom_line(aes(x=df$age_days, y=df$M_centile_1, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$M_centile_2, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$M_centile_3, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$M_centile_4, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$M_centile_5, color=df$dataset), linewidth=1.5) +
-      geom_line(aes(x=df$age_days, y=df$M_centile_6, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$M_centile_7, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$M_centile_8, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$M_centile_9, color=df$dataset)) +
-      labs(title=paste("Male", feature, "brain chart"))
- 
- print(plot)
- 
- plot <- ggplot() +
-      #geom_point(aes(x=ukb_cn_df$age_days, y=ukb_cn_df[[feature]]), alpha=0.5) +
-      #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
-      geom_line(aes(x=df$age_days, y=df$F_centile_1, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$F_centile_2, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$F_centile_3, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$F_centile_4, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$F_centile_5, color=df$dataset), linewidth=1.5) +
-      geom_line(aes(x=df$age_days, y=df$F_centile_6, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$F_centile_7, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$F_centile_8, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$F_centile_9, color=df$dataset)) +
-      labs(title=paste("Female", feature, "brain chart"))
- 
- print(plot)
- 
- plot <- ggplot() +
-      geom_point(aes(x=ukb_cn_df$age_days, y=ukb_cn_df[[feature]]), alpha=0.5) +
-      #scale_colour_manual(values=c("#5AAE61FF", "#9970ABFF")) +
-      geom_line(aes(x=df$age_days, y=df$centile_1, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$centile_2, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$centile_3, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$centile_4, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$centile_5, color=df$dataset), linewidth=1.5) +
-      geom_line(aes(x=df$age_days, y=df$centile_6, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$centile_7, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$centile_8, color=df$dataset)) +
-      geom_line(aes(x=df$age_days, y=df$centile_9, color=df$dataset)) +
-      labs(title=paste(feature, "brain chart"))
- 
- print(plot)
-  
-}
-```
 
 Looking at WMV more specifically for visualizations
 ```{r}
@@ -1724,7 +1263,7 @@ ggplot(r.sa.pc.df) +
   labs(title="SA of right postcentral brain charts")
 ```
 
-## FIGURE 1: METHODS
+# FIGURE 1: METHODS
 
 toy distributions showing harmonization - based on code from GPT3.5
 
@@ -1834,23 +1373,10 @@ rbind(cf.df, cf.gam.df, cf.gamlss.df) %>%
   theme_classic(base_size=20) +
   xlab("Centile Error") + 
   theme(axis.title.y=element_blank(), axis.text.y=element_blank(), axis.ticks.y=element_blank(), axis.line.y = element_blank()) +
-  scale_x_continuous(labels=c('', '', '', 0, '', '', ''))
+  scale_x_continuous(labels=c('', 0, ''), breaks=c(-20, 0, -20))
 ```
 
-## FIGURE 2
-
-not sure whether to include
-```{r, eval=FALSE}
-#look at sex distributions of ppts across sites
-data.p <- subj_sum.df %>%
-  count(sim.site, sex) %>% 
-  group_by(sim.site) %>%
-  mutate(prop = n / sum(n)) %>%
-  ggplot(aes(x = sim.site, y = prop, fill = sex)) +
-  geom_col() +
-  theme_linedraw(base_size = 11) +
-  ggtitle("Distributions of male and female subjects across simulated sites")
-```
+# FIGURE 2
 
 Combine plots
 
