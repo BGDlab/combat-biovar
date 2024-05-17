@@ -340,7 +340,7 @@ echo "getting subject-level summary stats"
 # SUBMIT SUBJ-LEVEL SUMMARY JOBS
 
 #LIST permutations
-for p in $(seq -f "%02g" 1 11) #11 sims
+for n_prop in $(seq -f "%02g" 1 11) #11 sims
 do
 	echo "Prepping prop-$n_prop"
 	#write bash script
