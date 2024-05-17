@@ -7,7 +7,7 @@
 # SET PATHS
 img=/cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif #singularity image
 base=/cbica/home/gardnerm/combat-biovar #base path (cubic)
-save_path=$base/data/lifespan
+save_path=$base/data/ukb_basic
 #######################################################################################
 helpFunction()
 {
