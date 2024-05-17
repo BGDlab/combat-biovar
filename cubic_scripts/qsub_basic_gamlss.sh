@@ -74,8 +74,26 @@ elif [ -d $1 ]
 then
 	for csv_file in "$1"/*.csv #select JUST csvs
 	do
-		csv_name=$(basename $csv_file .csv)
-		csv_name=${csv_name//_/\-}
+
+	#append "raw" suffix to OG, non-combatted data
+		#see if filename contains 'cf'
+		if [[ $csv_file == *"cf"* ]]
+		then
+			#append "_raw" at end
+			new_name="${csv_file/.csv/_raw.csv}"
+
+			#rename file
+			mv "$csv_file" "$new_name"
+			echo "Renamed: $csv_file -> $new_name"
+			csv_name=$(basename $new_name .csv)
+			csv_name=${csv_name//_/\-}
+			csv_to_load=$new_name
+		else
+			#otherwise just take name as is
+			csv_name=$(basename $csv_file .csv)
+			csv_name=${csv_name//_/\-}
+			csv_to_load=$csv_file
+		fi
 		echo "Pulling data from $csv_name"
 		#iterate through measure types (vol, SA, CT, global vols) for correct global corrections
 		for list in "$pheno_path"/*
@@ -87,7 +105,7 @@ then
 				#write bash script
 				bash_script=$bash_dir/${pheno}_${csv_name}_basic_fit.sh
 				touch $bash_script
-				echo "singularity run --cleanenv /cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif Rscript --save $mod_script $csv_file $pheno $gamlss_dir" > $bash_script
+				echo "singularity run --cleanenv /cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif Rscript --save $mod_script $csv_to_load $pheno $gamlss_dir" > $bash_script
 
 				#qsub bash script
 				qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
