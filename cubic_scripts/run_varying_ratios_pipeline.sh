@@ -344,7 +344,7 @@ for n_prop in $(seq -f "%02g" 1 11) #11 sims
 do
 	echo "Prepping prop-$n_prop"
 	#write bash script
-	bash_script=$bash_dir/prop-${n_prop}_cent_sum.sh
+	bash_script=$cent_bash_dir/prop-${n_prop}_cent_sum.sh
 	touch $bash_script
 		
 	echo "singularity run --cleanenv $img Rscript --save $cent_subj_parse $n_prop $cent_save_dir" > $bash_script
