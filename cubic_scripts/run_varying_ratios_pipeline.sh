@@ -347,7 +347,7 @@ do
 	bash_script=$cent_bash_dir/prop-${n_prop}_cent_sum.sh
 	touch $bash_script
 		
-	echo "singularity run --cleanenv $img Rscript --save $cent_subj_parse $n_prop $cent_save_dir" > $bash_script
+	echo "singularity run --cleanenv $img Rscript --save $cent_subj_parse '$n_prop $cent_save_dir" > $bash_script
 
 	#qsub bash script
 	qsub -N prop-${n_prop}_sum -o $cent_bash_dir/prop-${n_prop}_sum_out.txt -e $cent_bash_dir/prop-${n_prop}_sum_err.txt -l h_vmem=64G,s_vmem=64G $bash_script
