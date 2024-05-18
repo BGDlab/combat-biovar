@@ -7,8 +7,6 @@
 # $csv_path/subject-wise/*_subj_pred.csv x # perms
 # $csv_path/*_featurewise_cent_t_tests.csv x2
 # $csv_path/*_featurewise_cent_z_tests.csv x2
-# $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv x1
-# $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv x1
 # $csv_path/*_featurewise_cent_sex_bias_tests.RDS x2
 # $csv_path/*_featurewise_z_sex_bias_tests.RDS x2
 # $csv_path/*_no_ext.csv x # perms
@@ -41,8 +39,6 @@ rm -rf $csv_path/*_diffs.csv
 rm -rf $csv_path/subject-wise/*_subj_pred.csv
 rm -rf $csv_path/*_featurewise_cent_t_tests.csv
 rm -rf $csv_path/*_featurewise_cent_z_tests.csv
-rm -rf $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv
-rm -rf $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv
 rm -rf $csv_path/*_featurewise_cent_sex_bias_tests.RDS
 rm -rf $csv_path/*_featurewise_z_sex_bias_tests.RDS
 rm -rf $csv_path/*_no_ext.csv
@@ -106,15 +102,6 @@ touch $bash_script
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'full' 'perm' " > $bash_script
 ## qsub bash script
 qsub -N perm_cent_tests -o $bash_dir/cent_test_out.txt -e $bash_dir/cent_test_err.txt -l h_vmem=120G,s_vmem=120G $bash_script
-
-# sex-bias test of subj-means
-r_script=$r_base/ratio_subject-wise_results.R
-bash_script=$bash_dir/perm_subj-wise_sex_bias_test.sh 
-touch $bash_script
-
-echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'perm'" > $bash_script
-## qsub bash script
-qsub -N perm_sub-wide_sex_tests -o $bash_dir/sub-wide_sex_test_out.txt -e $bash_dir/sub-wide_sex_test_err.txt -l h_vmem=120G,s_vmem=120G $bash_script
 
 # featurewise sex bias tests
 ## based on `qsub_sex_bias_test.sh`
@@ -252,26 +239,6 @@ do
 	exit 2
     fi
     echo "count ${count_file} *featurewise_cent_?_tests.csv files"
-    sleep 60    # wait for 1min before detecting again
-done
-
-# $csv_path/subj.abs.mean_sex_bias_cent_t_tests.csv x1
-# $csv_path/subj.abs.mean_sex_bias_z_t_tests.csv x1
-SECONDS=0
-
-while :    # while TRUE
-do
-    count_file=$(find $csv_path -type f -name 'subj.abs.mean_sex_bias_*_t_tests.csv' | wc -l)
-    if [ $count_file -eq 2 ] 
-	then    # 1st job successfully finished
-        echo "all ${count_file} subj.abs.mean_sex_bias_*_t_tests.csv files found!"
-        break
-    elif [ $SECONDS -gt 86400 ] #kill if taking more than 1 day
-	then
-	echo "taking too long, abort!"
-	exit 2
-    fi
-    echo "count ${count_file} subj.abs.mean_sex_bias_*_t_tests.csv files"
     sleep 60    # wait for 1min before detecting again
 done
 

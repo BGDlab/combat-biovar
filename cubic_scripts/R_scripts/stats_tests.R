@@ -104,30 +104,6 @@ centile.t.tests.full_result <- function(df, feature_list, comp_multiplier=1){
   #detach()
 }
 
-#sex.bias.t.tests()
-# Within each combat config, test if there are significant differences in M and F subject's mean abs. centile error. Can test mean (not abs) centile errors, Z errors, etc, using `to_test` arg. FDR corrects for number of datasets tested
-
-sex.bias.t.tests <- function(df, to_test = "mean_cent_abs.diff", comp_multiplier=1){
-  
-  #conduct t test
-  df.sex.t <- df %>%
-    group_by(dataset) %>%
-    summarise(p.value = tidy(rank.welch.t.test.formula(formula=as.formula(paste(to_test, "~ sex")), paired = FALSE, p.adj = "none"))$p.value,
-              sex_diff = tidy(rank.welch.t.test.formula(formula=as.formula(paste(to_test, "~ sex")), paired = FALSE, p.adj = "none"))$estimate,
-              t.stat = tidy(rank.welch.t.test.formula(formula=as.formula(paste(to_test, "~ sex")), paired = FALSE, p.adj = "none"))$statistic,
-              df = tidy(rank.welch.t.test.formula(formula=as.formula(paste(to_test, "~ sex")), paired = FALSE, p.adj = "none"))$parameter) %>%
-    ungroup()
-  
-  #apply fdr correction
-  n_comp=length(unique(df$dataset))
-  df.sex.t <- df.sex.t %>%
-    dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = (n_comp*comp_multiplier)), #use comp_multiplier if using fun with lapply
-                  sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
-                                      p.val_fdr >= 0.05 ~ FALSE))
-  return(df.sex.t)
-  #detach()
-}
-
 # tidy(rank.welch.t.test.formula(formula=mean_cent_abs.diff ~ sex, data= ratio_subj_list[[1]], paired = FALSE, p.adj = "none"))
 # rank.welch.t.test.formula(formula=mean_cent_abs.diff ~ sex, data= ratio_subj_list[[1]], paired = FALSE, p.adj = "none")
 

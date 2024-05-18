@@ -31,9 +31,6 @@ then
 	echo "pulling *_featurewise_*_t_tests.csv"
 	scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_ratios/perm_centile_csvs/*_featurewise_*_t_tests.csv' $base/ukb_ratio
 
-	echo "pulling subj.abs.mean_sex_bias_*_t_tests.csv"
-	scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_ratios/perm_centile_csvs/subj.abs.mean_sex_bias_*_t_tests.csv' $base/ukb_ratio
-
 	echo "pulling from ukb_ratios - subject-wise/*_subj_pred.csv"
 	scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_ratios/perm_centile_csvs/subject-wise/*_subj_pred.csv' $base/ukb_ratio
 
@@ -58,9 +55,6 @@ then
 
 	echo "pulling *_featurewise_*_t_tests.csv"
 	scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_permute/perm_centile_csvs/*_featurewise_*_t_tests.csv' $base/ukb_perm
-
-	echo "pulling subj.abs.mean_sex_bias_*_t_tests.csv"
-	scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_permute/perm_centile_csvs/subj.abs.mean_sex_bias_*_t_tests.csv' $base/ukb_perm
 
 	echo "pulling from ukb_permute - subject-wise/*_subj_pred.csv"
 	scp -r 'gardnerm@cubic-login.uphs.upenn.edu:/cbica/home/gardnerm/combat-biovar/ukb_permute/perm_centile_csvs/subject-wise/*_subj_pred.csv' $base/ukb_perm

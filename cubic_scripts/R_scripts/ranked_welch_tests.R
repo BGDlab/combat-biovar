@@ -1,10 +1,11 @@
 #load libraries
 library(stats)
 
-#contains 2 functions for running welch's t-test on data rankings (accounting for both skew and unequal variances - Zimmerman & Zumbo, 1993)
+#contains 3 functions for running welch's t-test on data rankings (accounting for both skew and unequal variances - Zimmerman & Zumbo, 1993)
 
 # rank.welch.t.test() - analogous to t.test()
 # pairwise.rank.welch.t.test() - analogous to pairwise.t.test()
+# pairwise.rank.maxgrp() - also returns group with larger ranks
 
 rank.welch.t.test <- function (x, ...) {
   UseMethod("rank.welch.t.test", x)
