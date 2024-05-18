@@ -42,7 +42,7 @@ if (args[1] == "basic"){
   predictions <- get.predictions(df_path = path_to_csvs)
   
   #GET CENTILE & Z ERRORS
-  pred_err <- get.diffs(predictions, pheno_list=pheno.list, ref_level = "ukb_CN")
+  pred_err <- get.diffs(predictions, pheno_list=pheno.list, ref_level = "raw")
   
   str <- as.character("ukb_basic")
 
