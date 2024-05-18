@@ -344,25 +344,6 @@ prop.global_cent_errs_plot_bysex <- prop.global_abs.diffs %>%
 
 ### Sex-Biases
 
-Test subj. mean abs errors (mean_cent_abs.diff) using `ratio_subject-wise_results.R`, saved as `subj.abs.mean_sex_bias_cent_t_tests.csv`
-
-```{r}
-cent.subj.mean.test.df <- fread(paste0(data_path, "/subj.abs.mean_sex_bias_cent_t_tests.csv"))
-cent.subj.mean.test.df <- cent.subj.mean.test.df %>%
-  mutate(prop = factor(prop, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
-         dataset = as.factor(dataset))
-# cent.subj.mean.test.df
-```
-
-```{r}
-cent.subj.mean.test.df %>%
-  # filter(comp=="cf.gamlss_cf.gam") %>%
-  ggplot() +
-  geom_col(aes(x=prop, y=sig_fdr, fill=dataset), position="dodge") +
-  facet_wrap(~dataset) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="none")
-```
-
 Test w/in feature sex-biases in errors (diff_list) using `featurewise_sex_bias_test.R`, saved as `full_featurewise_cent_sex_bias_tests.RDS`
 
 ```{r}
@@ -685,24 +666,6 @@ prop.global_z_errs_plot
 *need to add stat tests to plot*
 
 ### Sex-Biases
-Test subj. mean abs errors (mean_cent_abs.diff) using `ratio_subject-wise_results.R`, saved as `subj.abs.mean_sex_bias_z_t_tests.csv`
-
-```{r}
-z.subj.mean.test.df <- fread(paste0(data_path, "/subj.abs.mean_sex_bias_z_t_tests.csv"))
-z.subj.mean.test.df <- z.subj.mean.test.df %>%
-  mutate(prop = factor(prop, levels=c("0M:10F", "1M:9F", "2M:8F", "3M:7F", "4M:6F", "5M:5F", "6M:4F", "7M:3F", "8M:2F", "9M:1F", "10M:0F"), ordered=TRUE),
-         dataset = as.factor(dataset))
-z.subj.mean.test.df
-```
-
-```{r}
-z.subj.mean.test.df %>%
-  # filter(comp=="cf.gamlss_cf.gam") %>%
-  ggplot() +
-  geom_col(aes(x=prop, y=sig_fdr, fill=dataset), position="dodge") +
-  facet_wrap(~dataset) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position="none")
-```
 
 Test w/in feature sex-differences in errors (diff_list) using `featurewise_sex_bias_test.R`, saved as `full_featurewise_cent_sex_bias_tests.RDS`
 
