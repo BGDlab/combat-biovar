@@ -5,7 +5,7 @@
 
 ########################################
 ## Expects args:
-# "perm" vs "prop"
+# "basic", "perm" or "prop"
 # number of perm/prop iteration
 # path to csvs (both read and save)
 ########################################
