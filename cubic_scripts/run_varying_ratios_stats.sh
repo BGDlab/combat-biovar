@@ -152,22 +152,22 @@ echo "launching stats tests on data w extremes removed"
 
 # featurewise error tests
 r_script=$r_base/ratio_results.R
-bash_script=$bash_dir/centile_tests.sh
+bash_script=$bash_dir/noext_centile_tests.sh
 touch $bash_script
 
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext'" > $bash_script
 ## qsub bash script
-qsub -N prop_cent_tests -o $bash_dir/cent_test_out.txt -e $bash_dir/cent_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+qsub -N prop_cent_tests -o $bash_dir/noext_cent_test_out.txt -e $bash_dir/noext_cent_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
 
 # featurewise sex bias tests
 ## based on `qsub_sex_bias_test.sh`
 r_script=$r_base/featurewise_sex_bias_test.R
-bash_script=$bash_dir/sex_bias_test.sh
+bash_script=$bash_dir/noext_sex_bias_test.sh
 touch $bash_script
 
 echo "singularity run --cleanenv $img Rscript --save $r_script $csv_path 'no.ext' 'prop'" > $bash_script
 ## qsub bash script
-qsub -N prop_sex-bias -o $bash_dir/sex_bias_test_out.txt -e $bash_dir/sex_bias_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
+qsub -N prop_sex-bias -o $bash_dir/noext_sex_bias_test_out.txt -e $bash_dir/noext_sex_bias_test_err.txt -l h_vmem=60.5G,s_vmem=60.0G $bash_script
 
 #######################################################
 # CHECK FOR OUTPUTS
