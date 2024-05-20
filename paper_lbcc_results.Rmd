@@ -809,6 +809,44 @@ gmv.raw.pred.df <- gmv.raw.pred.df %>%
          combat= "raw")
 ```
 
+load ComBat-harmonized data
+```{r}
+cf.lm.data <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler_log-cf_cf.lm_batch.study_data.csv"))
+gmv.cf.lm.mod <- readRDS(paste0(der_path, "/GMV_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_no.tbv_mod.rds"))
+
+gmv.cf.lm.pred.df <- pred.across.ages.lbcc(gmv.cf.lm.mod, cf.lm.data)
+
+gmv.cf.lm.pred.df %>%
+  ggplot() +
+  geom_line(aes(x=age_days, y=f.sigma), color="red") +
+  geom_line(aes(x=age_days, y=m.sigma), color="blue")
+
+gmv.cf.lm.mod.site <- readRDS(paste0(der_path, "/GMV_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_site.est_mod.rds"))
+
+gmv.cf.lm.pred.site.df <- pred.across.ages.lbcc.study(gmv.cf.lm.mod.site, cf.lm.data)
+
+gmv.cf.lm.pred.site.df %>%
+  ggplot() +
+  geom_line(aes(x=age_days, y=f.sigma), color="red") +
+  geom_line(aes(x=age_days, y=m.sigma), color="blue")
+```
+
+```{r}
+gmv.cf.lm.pred.site.df <- gmv.cf.lm.pred.site.df %>%
+  mutate(study_incl = TRUE,
+         combat= "combat")
+gmv.cf.lm.pred.df <- gmv.cf.lm.pred.df %>%
+  mutate(study_incl = FALSE,
+         combat= "combat")
+
+gmv.cf.lm.pred.df_full <- full_join(gmv.cf.lm.pred.site.df, gmv.cf.lm.pred.df)
+
+gmv.cf.lm.pred.df_full %>%
+  ggplot() +
+  geom_line(aes(x=age_days, y=f.sigma, color=study_incl))
+```
+
+
 load ComBat-GAM-harmonized data
 ```{r}
 cf.gam.data <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler_log-cf_cf.gam_batch.study_data.csv"))
@@ -846,7 +884,6 @@ gmv.cf.gam.pred.df_full %>%
   geom_line(aes(x=age_days, y=f.sigma, color=study_incl))
 ```
 
-
 load ComBatLS-harmonized data
 ```{r}
 cf.gamlss.data <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler_log-cf_cf.gamlss_batch.study_data.csv"))
@@ -860,6 +897,8 @@ gmv.cf.gamlss.pred.df %>%
   geom_line(aes(x=age_days, y=m.sigma), color="blue")
 
 gmv.cf.gamlss.mod.site <- readRDS(paste0(der_path, "/GMV_lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_site.est_mod.rds"))
+
+gmv.cf.gamlss.mod.site$sigma.coefficients
 
 gmv.cf.gamlss.pred.site.df <- pred.across.ages.lbcc.study(gmv.cf.gamlss.mod.site, cf.gamlss.data)
 
@@ -886,7 +925,7 @@ gmv.cf.gamlss.pred.df_full %>%
 
 
 ```{r}
-all.pred.df <- reduce(list(gmv.cf.gam.pred.df_full, gmv.cf.gamlss.pred.df_full, gmv.raw.pred.site.df, gmv.raw.pred.df), full_join)
+all.pred.df <- reduce(list(gmv.cf.gam.pred.df_full, gmv.cf.lm.pred.df_full, gmv.cf.gamlss.pred.df_full, gmv.raw.pred.site.df, gmv.raw.pred.df), full_join)
 
 all.pred.df %>%
   ggplot() +
@@ -916,6 +955,20 @@ wmv.raw.pred.site.df <- wmv.raw.pred.site.df %>%
 wmv.raw.pred.df <- wmv.raw.pred.df %>%
   mutate(study_incl = FALSE,
          combat= "raw")
+
+#combat
+wmv.cf.lm.mod <- readRDS(paste0(der_path, "/wmv_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_no.tbv_mod.rds"))
+wmv.cf.lm.pred.df <- pred.across.ages.lbcc(wmv.cf.lm.mod, cf.lm.data)
+
+wmv.cf.lm.mod.site <- readRDS(paste0(der_path, "/wmv_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_site.est_mod.rds"))
+wmv.cf.lm.pred.site.df <- pred.across.ages.lbcc.study(wmv.cf.lm.mod.site, cf.lm.data)
+
+wmv.cf.lm.pred.site.df <- wmv.cf.lm.pred.site.df %>%
+  mutate(study_incl = TRUE,
+         combat= "combat")
+wmv.cf.lm.pred.df <- wmv.cf.lm.pred.df %>%
+  mutate(study_incl = FALSE,
+         combat= "combat")
 
 #combat-gam
 wmv.cf.gam.mod <- readRDS(paste0(der_path, "/wmv_lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_no.tbv_mod.rds"))
@@ -947,7 +1000,7 @@ wmv.cf.gamlss.pred.df <- wmv.cf.gamlss.pred.df %>%
 ```
 
 ```{r}
-wmv.all.pred.df <- reduce(list(wmv.raw.pred.site.df, wmv.raw.pred.df, wmv.cf.gam.pred.site.df, wmv.cf.gam.pred.df, wmv.cf.gamlss.pred.site.df, wmv.cf.gamlss.pred.df), full_join)
+wmv.all.pred.df <- reduce(list(wmv.raw.pred.site.df, wmv.raw.pred.df, wmv.cf.gam.pred.site.df, wmv.cf.gam.pred.df, wmv.cf.gamlss.pred.site.df, wmv.cf.gamlss.pred.df, wmv.cf.lm.pred.site.df, wmv.cf.lm.pred.df), full_join)
 
 wmv.all.pred.df %>%
   ggplot() +
@@ -977,6 +1030,20 @@ sgmv.raw.pred.site.df <- sgmv.raw.pred.site.df %>%
 sgmv.raw.pred.df <- sgmv.raw.pred.df %>%
   mutate(study_incl = FALSE,
          combat= "raw")
+
+#combat
+sgmv.cf.lm.mod <- readRDS(paste0(der_path, "/sgmv_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_no.tbv_mod.rds"))
+sgmv.cf.lm.pred.df <- pred.across.ages.lbcc(sgmv.cf.lm.mod, cf.lm.data)
+
+sgmv.cf.lm.mod.site <- readRDS(paste0(der_path, "/sgmv_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_site.est_mod.rds"))
+sgmv.cf.lm.pred.site.df <- pred.across.ages.lbcc.study(sgmv.cf.lm.mod.site, cf.lm.data)
+
+sgmv.cf.lm.pred.site.df <- sgmv.cf.lm.pred.site.df %>%
+  mutate(study_incl = TRUE,
+         combat= "combat")
+sgmv.cf.lm.pred.df <- sgmv.cf.lm.pred.df %>%
+  mutate(study_incl = FALSE,
+         combat= "combat")
 
 #combat-gam
 sgmv.cf.gam.mod <- readRDS(paste0(der_path, "/sgmv_lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_no.tbv_mod.rds"))
@@ -1008,7 +1075,7 @@ sgmv.cf.gamlss.pred.df <- sgmv.cf.gamlss.pred.df %>%
 ```
 
 ```{r}
-sgmv.all.pred.df <- reduce(list(sgmv.raw.pred.site.df, sgmv.raw.pred.df, sgmv.cf.gam.pred.site.df, sgmv.cf.gam.pred.df, sgmv.cf.gamlss.pred.site.df, sgmv.cf.gamlss.pred.df), full_join)
+sgmv.all.pred.df <- reduce(list(sgmv.raw.pred.site.df, sgmv.raw.pred.df, sgmv.cf.gam.pred.site.df, sgmv.cf.gam.pred.df, sgmv.cf.gamlss.pred.site.df, sgmv.cf.gamlss.pred.df, sgmv.cf.lm.pred.site.df, sgmv.cf.lm.pred.df), full_join)
 
 sgmv.all.pred.df %>%
   ggplot() +
@@ -1029,15 +1096,24 @@ See Ventricles
 #raw
 ven.raw.mod <- readRDS(paste0(der_path, "/Ventricles_lifespan-CN-imp-sites-euler_raw_no.tbv_mod.rds"))
 ven.raw.pred.df <- pred.across.ages.lbcc(ven.raw.mod, raw.data)
-# ven.raw.mod.site <- readRDS(paste0(der_path, "/Ventricles_lifespan-CN-imp-sites-euler_raw_site.est_mod.rds"))
-# ven.raw.pred.site.df <- pred.across.ages.lbcc.study(ven.raw.mod.site, raw.data)
 
-# ven.raw.pred.site.df <- ven.raw.pred.site.df %>%
-#   mutate(study_incl = TRUE,
-#          combat= "raw")
 ven.raw.pred.df <- ven.raw.pred.df %>%
   mutate(study_incl = FALSE,
          combat= "raw")
+
+#combat
+ven.cf.lm.mod <- readRDS(paste0(der_path, "/Ventricles_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_no.tbv_mod.rds"))
+ven.cf.lm.pred.df <- pred.across.ages.lbcc(ven.cf.lm.mod, cf.lm.data)
+
+ven.cf.lm.mod.site <- readRDS(paste0(der_path, "/Ventricles_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_site.est_mod.rds"))
+ven.cf.lm.pred.site.df <- pred.across.ages.lbcc.study(ven.cf.lm.mod.site, cf.lm.data)
+
+ven.cf.lm.pred.site.df <- ven.cf.lm.pred.site.df %>%
+  mutate(study_incl = TRUE,
+         combat= "combat")
+ven.cf.lm.pred.df <- ven.cf.lm.pred.df %>%
+  mutate(study_incl = FALSE,
+         combat= "combat")
 
 #combat-gam
 ven.cf.gam.mod <- readRDS(paste0(der_path, "/Ventricles_lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_no.tbv_mod.rds"))
@@ -1069,7 +1145,7 @@ ven.cf.gamlss.pred.df <- ven.cf.gamlss.pred.df %>%
 ```
 
 ```{r}
-ven.all.pred.df <- reduce(list(ven.raw.pred.df, ven.cf.gam.pred.site.df, ven.cf.gam.pred.df, ven.cf.gamlss.pred.site.df, ven.cf.gamlss.pred.df), full_join) #ven.raw.pred.site.df
+ven.all.pred.df <- reduce(list(ven.raw.pred.df, ven.cf.gam.pred.site.df, ven.cf.gam.pred.df, ven.cf.gamlss.pred.site.df, ven.cf.gamlss.pred.df, ven.cf.lm.pred.site.df, ven.cf.lm.pred.df), full_join) #ven.raw.pred.site.df
 
 ven.all.pred.df %>%
   ggplot() +
@@ -1084,6 +1160,28 @@ raw.data %>%
   ggplot() +
   geom_histogram(aes(x=age_days, fill=sex), position="identity", alpha=0.5) +
   ggtitle("Sample distribution")
+```
+
+Get predictions for sex-effects
+
+```{r}
+mean(comfam.cf.gam_VolGlob$estimates$gamma.star, na.rm=TRUE)
+mean(comfam.cf.gamlss_VolGlob$estimates$gamma.star, na.rm=TRUE)
+mean(comfam.cf.gam_VolReg$estimates$gamma.star, na.rm=TRUE)
+mean(comfam.cf.gamlss_VolReg$estimates$gamma.star, na.rm=TRUE)
+mean(comfam.cf.gam_CT$estimates$gamma.star, na.rm=TRUE)
+mean(comfam.cf.gamlss_CT$estimates$gamma.star, na.rm=TRUE)
+mean(comfam.cf.gam_SA$estimates$gamma.star, na.rm=TRUE)
+mean(comfam.cf.gamlss_SA$estimates$gamma.star, na.rm=TRUE)
+
+mean(abs(comfam.cf.gam_SA$estimates$delta.star - 1), na.rm=TRUE)
+mean(abs(comfam.cf.gamlss_SA$estimates$delta.star - 1), na.rm=TRUE)
+mean(abs(comfam.cf.gam_CT$estimates$delta.star - 1), na.rm=TRUE)
+mean(abs(comfam.cf.gamlss_CT$estimates$delta.star - 1), na.rm=TRUE)
+mean(abs(comfam.cf.gam_VolReg$estimates$delta.star - 1), na.rm=TRUE)
+mean(abs(comfam.cf.gamlss_VolReg$estimates$delta.star - 1), na.rm=TRUE)
+mean(abs(comfam.cf.gam_VolGlob$estimates$delta.star - 1), na.rm=TRUE)
+mean(abs(comfam.cf.gamlss_VolGlob$estimates$delta.star - 1), na.rm=TRUE)
 ```
 
 #Feature Centile ~ Mean Study Age
