@@ -88,7 +88,7 @@ then
 			new_name="${csv_file/.csv/_raw.csv}"
 
 			#rename file
-			#mv "$csv_file" "$new_name"
+			mv "$csv_file" "$new_name"
 			echo "Renamed: $csv_file -> $new_name"
 			csv_name=$(basename $new_name .csv)
 			csv_name=${csv_name//_/\-}
@@ -108,7 +108,7 @@ then
 				echo "singularity run --cleanenv /cbica/home/gardnerm/software/containers/r_gamlss_0.0.1.sif Rscript --save $mod_script $csv_to_load $pheno $gamlss_dir" > $bash_script
 
 				#qsub bash script
-				#qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
+				qsub -N ${pheno}.${csv_name} -o $bash_dir/${pheno}_${csv_name}_out.txt -e $bash_dir/${pheno}_${csv_name}_err.txt $bash_script
 
 			done < $list
 		done
