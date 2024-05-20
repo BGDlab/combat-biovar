@@ -17,7 +17,7 @@ rank.welch.t.test.default <- function(x_list, y_list,
                               mu = 0, paired = FALSE, conf.level = 0.95, ...){
   #rank pooled vals
   pooled <- c(x_list, y_list)
-  pooled_r <- rank(pooled, na.last='NA') #remove NAs
+  pooled_r <- rank(pooled, na.last=NA) #remove NAs
   
   # Split the rankings back into the original lists
   x_ranks <- pooled_r[seq_along(x_list)]
@@ -53,7 +53,7 @@ rank.welch.t.test.formula <- function(formula, data, subset, na.action, ...)
   names(mf) <- NULL
   response <- attr(attr(mf, "terms"), "response")
   # rank values
-  mf[[response]] <- rank(mf[[response]], na.last="NA")
+  mf[[response]] <- rank(mf[[response]], na.last=NA)
   # group
   g <- factor(mf[[-response]])
   if(nlevels(g) != 2L)
@@ -88,7 +88,7 @@ pairwise.rank.welch.t.test <- function(x, g, p.adjust.method = p.adjust.methods,
     
     #rank pooled vals
     pooled <- c(xi, xj)
-    pooled_r <- rank(pooled, na.last="NA")
+    pooled_r <- rank(pooled, na.last=NA)
     
     ## split rankings back into the original lists
     x_ranks <- pooled_r[seq_along(xi)]
@@ -111,7 +111,7 @@ pairwise.rank.welch.t.test <- function(x, g, p.adjust.method = p.adjust.methods,
     
     #rank pooled vals
     pooled <- c(xi, xj)
-    pooled_r <- rank(pooled, na.last="NA")
+    pooled_r <- rank(pooled, na.last=NA)
     
     ## split rankings back into the original lists
     x_ranks <- pooled_r[seq_along(xi)]
@@ -155,7 +155,7 @@ pairwise.rank.maxgrp <- function(x, g, p.adjust.method = p.adjust.method,
     
     #rank pooled vals
     pooled <- c(xi, xj)
-    pooled_r <- rank(pooled, na.last="NA")
+    pooled_r <- rank(pooled, na.last=NA)
     
     ## split rankings back into the original lists
     x_ranks <- pooled_r[seq_along(xi)]
