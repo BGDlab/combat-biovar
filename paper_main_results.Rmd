@@ -150,7 +150,7 @@ Foregoing anova based on emails with Andrew (anova violates assumptions of no eq
 
 Within each feature (phenotype), iterate paired t test of ranks between each combo of combat dfs (nonparametric per discussion with Andrew). (see Zimmerman & Zumbo, 1993). Using custom functions from `ranked_welch_tests.R`.
 
-```{r, }
+```{r, eval=FALSE}
 full_cent_res <- centile.t.tests.full_result(diffs.df, feature_list=pheno_abs.diff.list)
 saveRDS(full_cent_res, "./derivatives/ukb_basic/featurewise_cent_t_tests_all_out.RDS") #running once and saving because it takes a long time
 ```
@@ -425,7 +425,7 @@ for (cf in c("cf.gam", "cf.gamlss")) {
 
 not normally distributed, use nonparametric t test of ranks with welch correction for different variances. Also calculating the median centile errors of males and females, since this seems like a more intuitive thing to plot than effect size (since the effect size is in units of rank, not actually centiles)
 
-```{r, message=FALSE, }
+```{r, message=FALSE, eval=FALSE}
 sex_t_tests_in_feat.df <- sex.bias.feat.t.tests(diffs.df, feature_list=pheno_diff_list)
 saveRDS(sex_t_tests_in_feat.df, "./derivatives/ukb_basic/featurewise_cent_sexbias_all_out.RDS")
 ```
@@ -721,7 +721,7 @@ no.ext_merge %>%
 ```
 
 w/in feature sex-differences
-```{r, message=FALSE, }
+```{r, message=FALSE, eval=FALSE}
 noext.sex_t_tests_in_feat.df <- sex.bias.feat.t.tests(no_ext, feature_list=pheno_diff_list)
 saveRDS(noext.sex_t_tests_in_feat.df, "./derivatives/ukb_basic/featurewise_cent_sexbias_all_noext_out.RDS")
 ```
@@ -811,7 +811,7 @@ print(p)
 
 Within each phenotype, iterate paired t test of ranks between each combo of combat dfs using custom functions from `ranked_welch_tests.R`.
 
-```{r}
+```{r, eval=FALSE}
 full_z_res <- centile.t.tests.full_result(diffs.df, feature_list=z.pheno_abs.diff.list)
 saveRDS(full_z_res, "./derivatives/ukb_basic/featurewise_z_t_tests_all_out.RDS")
 ```
@@ -897,7 +897,7 @@ print(p)
 
 skewed but ~ variances, sticking with t test of ranks. Also calculating the median z-score errors of males and females
 
-```{r, message=FALSE}
+```{r, message=FALSE, eval=FALSE}
 z.sex_t_tests_in_feat.df <- sex.bias.feat.t.tests(diffs.df, feature_list=z.pheno_diff_list)
 saveRDS(z.sex_t_tests_in_feat.df, "./derivatives/ukb_basic/featurewise_z_sexbias_all_out.RDS")
 ```
@@ -954,7 +954,7 @@ sum(is.na(z.no_ext))
 Rerun stats tests
 
 z error diffs
-```{r}
+```{r, eval=FALSE}
 noext_z_res <- centile.t.tests.full_result(z.no_ext, feature_list=z.pheno_abs.diff.list)
 saveRDS(noext_z_res, "./derivatives/ukb_basic/featurewise_z_t_tests_all_noext_out.RDS")
 ```
@@ -1020,7 +1020,7 @@ z.no.ext_merge %>%
 ```
 
 w/in feature sex-differences
-```{r, message=FALSE}
+```{r, message=FALSE, eval=FALSE}
 noext.z.sex_t_tests_in_feat.df <- sex.bias.feat.t.tests(z.no_ext, feature_list=z.pheno_diff_list)
 saveRDS(noext.z.sex_t_tests_in_feat.df, "./derivatives/ukb_basic/featurewise_z_sexbias_all_noext_out.RDS")
 ```
