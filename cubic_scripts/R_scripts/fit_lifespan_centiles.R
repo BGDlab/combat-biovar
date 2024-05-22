@@ -33,7 +33,8 @@ print(fname_str_search)
 #find correct df
 all.csvs <- list.files(path = df_path, pattern = ".csv", full.names = TRUE)
 #csv name = fname_str w/o _no.tbv
-fname_str_search.csv <- gsub("_no.tbv", "", fname_str_search)
+fname_str_csv <- gsub("_no.tbv", "", fname_str)
+fname_str_search.csv <- gsub("_|-", "[-_]", fname_str_csv)
 matched_csv <- all.csvs[grep(fname_str_search.csv, all.csvs)]
 print(paste("csv:", matched_csv))
 df <- fread(matched_csv, stringsAsFactors = TRUE)
