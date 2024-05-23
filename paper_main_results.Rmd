@@ -1186,6 +1186,7 @@ ven_plot <- ggplot(ven.df) +
   #scale_color_manual(values = c('raw'= "black", cf.gam = "#E84617", cf.gamlss = "#17E846", cf.lm = "purple")) +
   scale_color_manual(values = c('raw'= "black", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) + 
   theme_linedraw(base_size = 11) +
+  theme(plot.title = element_text(size=12), legend.position="bottom") +
   geom_label(data=tmp_labels, aes(x=age_years, y=value, label=as.character(centile)), nudge_x = -0.75, size=3) +
   xlab("Age (days)") + ylab("Volume (mm3)") +
   labs(title="Ventricular volume brain charts")
@@ -1377,7 +1378,7 @@ fig_2 <- ggarrange(
   ggarrange(global_cent_errs_plot, p_diff, ncol=1, nrow=2, heights = c(1.2, 2), common.legend = FALSE, labels=c(NA, "C"), vjust = c(-0.25)),
   ncol=2, nrow=1, 
   labels=c("A", "B"),
-  widths=c(1.1, 1)
+  widths=c(1.2, 1)
   #hjust=0.01,
   # align = "hv"
   )
