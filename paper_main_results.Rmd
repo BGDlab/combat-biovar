@@ -527,7 +527,6 @@ sex.var.plot <- ggplot(sex.var.plot.df) +
   facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
   paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nCentile Error", limits = c(-0.25, 0.25)) #
-saveRDS(sex.var.plot, file="figs/sex_var_plot.RDS")
 ```
 
 ```{r}
@@ -565,9 +564,6 @@ sex.var.plot.global <- ggplot(sex.var.plot.global.df) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
   paletteer::scale_fill_paletteer_c("grDevices::Cork", limits = c(-0.25, 0.25), name = "Male - Female Median \nCentile Error") #,
 # sex.var.plot.global
-
-#save RDS
-saveRDS(sex.var.plot.global, file="figs/sex_var_plot_global.RDS")
 ```
 
 Combine plots - need to keep playing around to make the spacing pretty when it saves out
@@ -575,7 +571,7 @@ Combine plots - need to keep playing around to make the spacing pretty when it s
 p_sex <- ggarrange(
   sex.var.plot.global, sex.var.plot,
   ncol=2, nrow=1, 
-  widths = c(1, 3.1),
+  widths = c(1, 3.2),
   #labels=c("A", "B"),
   #hjust=0.01,
   align = "hv",
@@ -1253,6 +1249,137 @@ ggplot(r.sa.pc.df) +
   xlab("Age (days)") + ylab("Volume (mm3)") +
   theme_minimal() +
   labs(title="SA of right postcentral brain charts")
+```
+
+# SCALE EFFECTS OF SEX
+
+Get differences in male vs female predicted variances at mean sample age
+
+```{r}
+var.csvs <- list.files(path = paste0(data_path, "/ukb_basic"), pattern = "_variance.csv", full.names = TRUE)
+combined_var <- data.frame()
+
+for (file in var.csvs) {
+  # Read each CSV file
+  data <- fread(file)
+  
+  # Add a "Source_File" column with the file name
+  data <- data %>%
+    mutate(Source_File = as.factor(basename(file))) %>%
+    mutate(dataset = gsub("_data|_variance.csv", "", Source_File),
+           sex_standard = sex_effect/f.var)
+  
+  # Bind the data to the combined dataframe
+  combined_var <- bind_rows(combined_var, data, .id = "File_ID")
+}
+range(combined_var$sex_standard)
+
+combined_var <- combined_var %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)),
+      label = sub("_[^_]*_", "_", pheno))
+
+#get summary df for p vals, plotting
+drop1.df <- fread(paste0(data_path, "/ukb_basic/drop1_tests.csv"), stringsAsFactors = TRUE) %>%
+  dplyr::select(-V1) %>%
+  rename(dataset=Dataset,
+         pheno=Model) %>%
+    dplyr::filter(Moment == "sigma" & Term == "sexMale") %>%
+  mutate(dataset = gsub("-data|ukb-CN-data-simsites-", "", dataset)) %>% #clean up dataset naming
+  mutate(dataset = factor(dataset, levels = unique(dataset), ordered = FALSE)) %>%
+  mutate(dataset = relevel(dataset, ref= "raw"))
+
+
+sigma.sex.df <- left_join(combined_var, drop1.df)
+sigma.sex.df2 <- left_join(sigma.sex.df, dk.parc)
+
+#combined_var <- Reduce(function(x, y) full_join(x, y), list(combined_var, dk.parc, drop1.df))
+```
+
+
+
+```{r}
+dataset_names <- c(raw = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+#var plot
+var.plot.df <- sigma.sex.df2 %>%
+  dplyr::filter(pheno_cat != "Global Volume" & dataset != "cf") %>%
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
+         sex_standard = ifelse(drop1.pval <0.05, sex_standard, NA)) %>%
+  group_by(dataset, pheno_cat)
+
+range(var.plot.df$sex_standard, na.rm=T)
+
+tp <- unique(var.plot.df[,c('dataset','pheno_cat')]) %>%
+  dplyr::filter(dataset=="raw")
+tp$sex_standard <- 1
+
+var.plot <- ggplot(var.plot.df) +
+  geom_rect(data = tp, fill="gray", xmin = -Inf,xmax = Inf,
+            ymin = -Inf, ymax = Inf, alpha = 0.4) +
+  ggseg::geom_brain(atlas = dk_nomed, 
+             position = position_brain(hemi ~ side),
+             aes(fill = sex_standard)) +
+  #scale_fill_gradient2() +
+  facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
+  theme_linedraw(base_size=12) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Sex Effect", limits = c(-0.12, 0.12), breaks = c(-0.1, 0,0.1))
+var.plot
+
+#ggsave("figs/male_variance_ohbm.jpeg", var.plot, width=10, height=10)
+saveRDS(var.plot, file="figs/sex_var_plot.RDS")
+```
+
+```{r}
+#plot global
+var.plot.global.df <- sigma.sex.df2 %>%
+  dplyr::filter(pheno_cat == "Global Volume" & dataset != "cf") %>%
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+  dplyr::select(!c(label, region, hemi)) %>% #drop cols corresponding to dk regions
+  dplyr::mutate(tissue_class = case_when(pheno == "GMV" ~ "cGM",
+                                            pheno == "Ventricles" ~ "CSF",
+                                            pheno == "WMV" ~ "WM",
+                                            pheno == "sGMV" ~ "sGM",
+                                            TRUE ~ NA_character_),
+         sex_standard = ifelse(drop1.pval <0.05, sex_standard, NA)) %>%
+  group_by(dataset)
+
+tp <- unique(var.plot.global.df[,c('dataset','pheno_cat')]) %>%
+  dplyr::filter(dataset=="raw")
+tp$sex_standard <- 1
+
+range(var.plot.global.df$sex_standard, na.rm=T)
+
+var.plot.global <- ggplot(var.plot.global.df) +
+  geom_rect(data = tp, fill="gray", xmin = -Inf,xmax = Inf,
+            ymin = -Inf, ymax = Inf, alpha = 0.4) +
+  ggseg::geom_brain(atlas = aseg_cerebrum, 
+             aes(fill = sex_standard),
+             side = c("coronal")) +
+  #scale_fill_gradient2() +
+  facet_grid(dataset~pheno_cat) + 
+  theme_linedraw(base_size=12) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Sex Effect", limits = c(-0.12, 0.12), breaks = c(-0.1, 0,0.1))
+#var.plot.global
+saveRDS(var.plot.global, file="figs/sex_var_plot_global.RDS")
+```
+
+Combine plots
+```{r}
+p <- ggarrange(
+  var.plot.global, var.plot,
+  ncol=2, nrow=1, 
+  widths = c(1, 3.1),
+  #labels=c("A", "B"),
+  #hjust=0.01,
+  align = "hv",
+  common.legend = TRUE, legend = "bottom"
+  )
 ```
 
 # FIGURE 1: METHODS
