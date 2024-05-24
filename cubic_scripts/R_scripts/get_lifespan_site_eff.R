@@ -38,7 +38,7 @@ print(notbv_model.files[1:4])
 notbv_summary.list <- lapply(notbv_model.files, get.gamlss.summary)
 names(notbv_summary.list) <- lapply(notbv_model.files, get.y)
 #dataframe
-notbv_summary.df <- bind_rows(notbv_summary.list, .id=pheno)
+notbv_summary.df <- bind_rows(notbv_summary.list, .id="pheno")
 #write out
 fwrite(notbv_summary.df, paste0(save_path, "/", fname_str, "_notbv_full_sum.csv"))
 
@@ -52,7 +52,7 @@ print(site.est_model.files[1:4])
 site.est_summary.list <- lapply(site.est_model.files, get.gamlss.summary)
 names(site.est_summary.list) <- lapply(site.est_model.files, get.y)
 #dataframe
-site.est_summary.df <- bind_rows(site.est_summary.list, .id=pheno)
+site.est_summary.df <- bind_rows(site.est_summary.list, .id="pheno")
 #write out
 fwrite(site.est_summary.df, paste0(save_path, "/", fname_str, "_site.est_full_sum.csv"))
 
