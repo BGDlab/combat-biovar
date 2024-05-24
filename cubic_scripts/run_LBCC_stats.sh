@@ -104,7 +104,7 @@ do
 	bash_script=$cent_bash_dir/${config}_site_est.sh
 	touch $bash_script
 	
-	echo "singularity run --cleanenv $img Rscript --save $mod_summary_script $gamlss_dir $save_path $config" > $bash_script
+	echo "singularity run --cleanenv $img Rscript --save $mod_summary_script $gamlss_dir $cent_save_dir $config" > $bash_script
 
 	#qsub bash script
 	qsub -N $config -o $cent_bash_dir/${config}_site_est_out.txt -e $cent_bash_dir/${config}_site_est_err.txt $bash_script
