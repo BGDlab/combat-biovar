@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, gdata)
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, gdata, gtExtras)
 #Sys.setenv("MC_CORES"=10L)
 options("mc.cores")
 
@@ -99,17 +99,45 @@ cent.feat.t.test.df <- bind_rows(cent.feat.t.test, .id="perm") %>%
   separate_wider_delim(cols=comp, delim="_", names=c("group1", "group2"), cols_remove=FALSE) %>%
   mutate(smaller_group=ifelse(bigger_group==group1, group2, group1))
 
-cent.feat.t.test.df %>%
+cent.tbl <- cent.feat.t.test.df %>%
   group_by(comp, smaller_group) %>%
-  summarize(n_sig=sum(sig_fdr))
+  summarize(n_sig=sum(sig_fdr)) %>%
+  mutate(perc_tests = n_sig/(208*100))
+
+cent.tbl.pretty <- cent.tbl %>%
+  mutate(comp = case_when(comp == "cf.gam_cf" ~ "ComBat-GAM vs ComBat w/o Covariates",
+                          comp == "cf.gamlss_cf" ~ "ComBatLS vs ComBat w/o Covariates", 
+                          comp == "cf.gamlss_cf.gam" ~ "ComBatLS vs ComBat-GAM",
+                          comp == "cf.lm_cf" ~ "Linear ComBat vs ComBat w/o Covariates",
+                          comp == "cf.lm_cf.gam" ~ "Linear ComBat vs ComBat-GAM",
+                          comp == "cf.lm_cf.gamlss" ~ "Linear ComBat vs ComBatLS"),
+         smaller_group = case_when(smaller_group == "cf" ~ "ComBat w/o Covariates",
+                                   smaller_group == "cf.lm" ~ "Linear ComBat",
+                                   smaller_group == "cf.gam" ~ "ComBat-GAM",
+                                   smaller_group == "cf.gamlss" ~ "ComBatLS")) %>%
+  rename(#"Pairwise Comparison"=comp,
+         "Lower Errors" = smaller_group,
+         "N Features" = n_sig,
+         "% Features" = perc_tests)
+
+cent.tbl.pretty %>%
+  gt() %>% 
+  #gt_theme_538() %>% 
+tab_style(style = list(cell_fill(color = "gray95")),
+    locations = cells_row_groups()) %>%
+  fmt_percent(
+    columns = "% Features",
+    decimals = 2
+  ) %>%
+  tab_options(column_labels.font.weight = "bold") %>%
+  tab_header(title = "Pairwise comparisons of ComBat methods' absolute centile errors for 208 brain features across 100 replications")
 ```
 
-**need to prettify table for supplement**
 
 ```{r}
 comp_names <- c(cf.gam_cf = "ComBat-GAM v. ComBat w/o Covar", cf.gamlss_cf = "ComBatLS v. ComBat w/o Covar", cf.gamlss_cf.gam = "ComBatLS v. ComBat-GAM", cf.lm_cf.gam ="ComBat-GAM v. linear ComBat", cf.lm_cf.gamlss = "ComBatLS v. linear ComBat", cf.lm_cf = "linear ComBat v. ComBat w/o Covar")
 
-dataset_names <- c(ukb_CN = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+dataset_names <- c(raw = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
 
 cent.test.comp.plt <- cent.feat.t.test.df %>%
   dplyr::filter(sig_fdr==TRUE) %>%
@@ -117,73 +145,60 @@ cent.test.comp.plt <- cent.feat.t.test.df %>%
 ggplot() +
   geom_bar(aes(x=perm, fill=smaller_group)) +
   theme_linedraw()+
-  theme(axis.text.x = element_blank()) +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "bottom") +
   facet_grid(pheno_cat~comp, scales="free_y", labeller = labeller(comp = as_labeller(comp_names))) +
   scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "Better ComBat \nConfiguration", labels=dataset_names) +
   labs(x="Sampling Permutation", y="Feature Count")
-ggsave(paste0(base_path, "/figs/perm_cent_test_barplt.jpg"), plot=cent.test.comp.plt, width=15.5, height=6, units="in")
 ```
 
 ```{r}
-#look at combatGAM vs combatLS
 cent.feat.t.test.df %>%
-  dplyr::filter(sig_fdr==TRUE & comp =="cf.gamlss_cf.gam") %>%
-ggplot(aes(x=perm, fill=bigger_group)) +
-  geom_bar() +
-  # geom_text(stat='count', aes(label=..count..)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  facet_wrap(~pheno_cat)
+  dplyr::filter(bigger_group=="cf.gamlss" & sig_fdr==TRUE) %>%
+  group_by(comp, pheno_cat) %>%
+  summarize(count = n())
 
-cf.gam_worse <- cent.feat.t.test.df %>%
-  dplyr::filter(sig_fdr==TRUE & comp =="cf.gamlss_cf.gam" & bigger_group == "cf.gamlss") %>%
-  group_by(perm) %>%
-  summarise(count = n())
-
-median(cf.gam_worse$count)
-IQR(cf.gam_worse$count)
+cent.feat.t.test.df %>%
+  dplyr::filter(sig_fdr==TRUE & bigger_group == "cf.gamlss") %>%
+  group_by(comp, perm) %>%
+  summarise(count = n()) %>%
+  ungroup() %>%
+  group_by(comp) %>%
+  summarize(med.count = median(count),
+            IQR.count = IQR(count))
 ```
 
 Plot CT with combatGAM and combatLS on brains
 
 ```{r}
 ct.t.tests <- cent.feat.t.test.df %>%
-  dplyr::filter(comp =="cf.gamlss_cf.gam" & stringr::str_detect(pheno, "CT")) %>%
-  mutate(label=gsub("_CT", "", pheno),
-         better_fit = case_when(sig_fdr==TRUE & bigger_group == "cf.gam" ~ "cf.gamlss",
-                              sig_fdr==TRUE & bigger_group == "cf.gamlss" ~ "cf.gam",
-                              sig_fdr==FALSE ~ "NS"))
+  dplyr::filter(pheno_cat == "Regional CT" & grepl("gamlss", comp)) %>%
+  mutate(label=gsub("_CT", "", pheno))
 
 ct.t.tests_to_plt <- left_join(ct.t.tests, dk.parc)
 
-ct.brain.plt <- ct.t.tests_to_plt %>%
-  ggplot() +
-  theme_linedraw(base_size=12) +
-  ggseg::geom_brain(atlas = dk_nomed, 
-             position = position_brain(hemi ~ side),
-            aes(fill=better_fit)) +
-  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank(),
-        legend.position="top") +
-  scale_fill_manual(values = c(NS= "darkgray", cf.gam = "#3D75C2", cf.gamlss ="#CFB023FF"), name = "Better ComBat Method", labels=dataset_names) +
-  facet_wrap(~perm, nrow=2)
-
 ct.t.tests_to_plt.sum <- ct.t.tests_to_plt %>%
-  group_by(hemi, region, label, bigger_group) %>%
-  summarise(n_worse = sum(sig_fdr)) %>%
-  pivot_wider(id_cols=c(hemi, label, region), names_from = bigger_group, values_from=n_worse) %>%
-  mutate(cf.gamlss=ifelse(is.na(cf.gamlss), 0, cf.gamlss)) %>%
-  mutate(cf.gamlss_minus_cf.gam_better=as.integer(cf.gam-cf.gamlss),
-         percent_cf.gamlss_better=(cf.gam/100)*100) %>%
-  ungroup()
+  group_by(comp, hemi, region, label, smaller_group) %>%
+  summarise(n_better = sum(sig_fdr)) %>%
+  mutate(perc.better=n_better/100) %>% #make NAs into 0s
+  ungroup() %>%
+  pivot_wider(id_cols=c(comp, hemi, label, region), names_from = smaller_group, values_from=perc.better) %>%
+  dplyr::select(!c(cf, cf.lm, cf.gam))
+
+min(ct.t.tests_to_plt.sum$cf.gamlss)
+
+comp_names <- c(cf.gamlss_cf = "vs. ComBat w/o Covar", cf.lm_cf.gamlss = "vs. linear ComBat", cf.gamlss_cf.gam ="vs. ComBat-GAM")
 
 ct.brain.sum.plt <- ct.t.tests_to_plt.sum %>%
+  mutate(comp=as.character(comp)) %>%
   ggplot() +
   theme_linedraw(base_size=12) +
   ggseg::geom_brain(atlas = dk_nomed, 
              position = position_brain(hemi ~ side),
-            aes(fill=percent_cf.gamlss_better))  +
+            aes(fill=cf.gamlss))  +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
-  scale_fill_gradient(low="#605210", high= "#e6d16d",  name = "% Replications") +
-  labs(title="Replications where ComBatLS recapitulates cortical thickness centiles \nsignificantly better than ComBat-GAM")
+  scale_fill_gradient(low="#605210", high= "#EFE2A2",  name = "Proportion Replications", limits = c(.5, 1), breaks=c(0.50, 0.75, 1.00)) +
+  facet_wrap(~comp, labeller = labeller(comp = as_labeller(comp_names)))
+ct.brain.sum.plt
 ```
 
 W/in subj average plots
@@ -212,7 +227,7 @@ cent.subj.sex.test.list <- readRDS(paste0(data_path, "/full_featurewise_cent_sex
 cent.subj.sex.test.df <- bind_rows(cent.subj.sex.test.list)
 ```
 
-simple bar-plot to count regions w sigificant sex-biases
+simple bar-plot to count regions w significant sex-biases
 
 ```{r}
 cent.subj.sex.test.df %>%
@@ -235,7 +250,7 @@ cent.subj.sex.test.df %>%
             max_sex_diff = max(median_sex_diff, na.rm=TRUE))
 
 #look by feature type
-cent.subj.sex.test.df %>%
+sex_bias_hist_plt <- cent.subj.sex.test.df %>%
   dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss" | dataset == "cf.lm") %>%
   mutate(dataset = factor(dataset, levels = c("cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
   mutate(pheno_cat = factor(case_when(
@@ -246,12 +261,14 @@ cent.subj.sex.test.df %>%
     TRUE ~ NA_character_)),
     perm = as.factor(sub("perm-0", "", perm))) %>%
 ggplot() +
-  geom_histogram(aes(x=median_sex_diff, color=perm, fill=perm), alpha=0.3, position="identity") +
+  geom_histogram(aes(x=median_sex_diff, color=perm, fill=perm), alpha=0.3, position="identity", bins=40) +
   geom_vline(xintercept = 0, linetype="dashed") +
-  facet_grid(pheno_cat~dataset, scales="free", labeller = labeller(dataset = as_labeller(dataset_names))) +
+  facet_grid(pheno_cat~dataset, scales="free_y", labeller = labeller(dataset = as_labeller(dataset_names))) +
   theme_linedraw(base_size=12) +
   theme(legend.position = "none") +
-  labs(x="Male - Female Median Centile Errors", y="Number of Features") 
+  labs(x="Male - Female Median Centile Errors", y="Number of Features") +
+  ggtitle("Sex differences in median centile errors across 100 sampling replications")
+ggsave(filename="figs/sex_bias_hist_plt.png", sex_bias_hist_plt)
 ```
 
 Distribution of error medians w/in each pheno category
@@ -275,37 +292,28 @@ t.test.cent.sex.test.med <- cent.sex.test.med %>%
                   sig_fdr = case_when(p.val_fdr < 0.001 ~ "***",
                                p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
                                p.val_fdr >= 0.01 & p.val_fdr < 0.05 ~ "*",
-                               p.val_fdr >= 0.05 ~ ""))
-
-t.test.cent.sex.test.med.filt <- t.test.cent.sex.test.med %>% dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss")
+                               p.val_fdr >= 0.05 ~ ""),
+         y_pos = case_when(dataset=="cf" ~ 11,
+                           dataset=="cf.lm" ~ 11,
+                           dataset=="cf.gam" ~ 10.5,
+                           dataset=="cf.gamlss" ~ 6))
 
 t.test.cent.sex.test.med %>%
   ggplot() +
   geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
 
-sex_bias_density_plt <- cent.sex.test.med %>%
-  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
-  ggplot() +
-  geom_density(aes(x=median_of_median_sex_diff*100, fill=dataset, color=dataset), alpha=0.6, position = "identity") +
-  geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
-  facet_wrap(~pheno_cat) +
-  theme_linedraw() +
-  geom_text(aes(label = sig_fdr, x= x_pos*100, y=ifelse(t.test.cent.sex.test.med.filt$dataset == "cf.gam", 10.2, 5.5)),
-              data = t.test.cent.sex.test.med.filt) +
-  scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
-  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
-  theme(legend.position = "bottom")+
-  labs(x="Medians of Sex-Differences in Centile Errors", y="Density Across 100 Replications")
 
-cent.sex.test.med %>%
-  #dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+t.test.cent.sex.test.med.filt <- t.test.cent.sex.test.med %>% dplyr::filter(dataset != "cf")
+
+sex_bias_density_plt <- cent.sex.test.med %>%
+  dplyr::filter(dataset != "cf") %>%
   ggplot() +
   geom_density(aes(x=median_of_median_sex_diff*100, fill=dataset, color=dataset), alpha=0.6, position = "identity") +
   geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
   facet_wrap(~pheno_cat) +
   theme_linedraw() +
-  geom_text(aes(label = sig_fdr, x= x_pos*100, y=ifelse(t.test.cent.sex.test.med$dataset == "cf.gam", 10.2, 5.5)),
-              data = t.test.cent.sex.test.med) +
+  geom_text(aes(label = sig_fdr, x= x_pos*100, y=y_pos),
+              data = t.test.cent.sex.test.med.filt) +
   scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   theme(legend.position = "bottom")+
@@ -423,6 +431,12 @@ all_cent_sum.df_scaled <- all_cent_sum.df %>%
   mutate(female_ratio_sc = female_ratio/first(female_ratio),
          female_ratio_diff = female_ratio - first(female_ratio))
 
+y_pos.df <- all_cent_sum.df_scaled %>%
+  group_by(source, pheno_cat, dataset) %>%
+  summarise(y_pos=max(female_ratio_diff))
+
+all_t_test.df <- full_join(all_t_test.df, y_pos.df)
+
 #plots!
 all_cent_sum.df %>%
   dplyr::filter(dataset != "raw") %>%
@@ -438,59 +452,7 @@ all_cent_sum.df %>%
 
 cent_ext_list <- c(ext = ">80% and <20%", high = ">80%", low = "<20%")
 
-all_cent_sum_boxplt <- all_cent_sum.df %>%
-  dplyr::filter(dataset != "raw" & dataset != "cf") %>%
-  mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
-  ggplot(aes(x=dataset, y=female_ratio)) +
-  geom_boxplot(aes(color=dataset)) +
-  # geom_dotplot(binaxis = "y", stackdir="center") +
-  facet_grid(pheno_cat~source, scales="free_y", labeller = labeller(source=cent_ext_list)) +
-  geom_hline(data=all_cent.sum_raw, aes(yintercept=female_ratio), linetype="dashed")+
-  # geom_text(aes(label = sig_fdr, y = max_val + 0.01),
-  #             data = all_t_test.df[which(all_t_test.df$dataset != "cf"),]) +
-  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
-  theme_linedraw() +
-  scale_x_discrete(labels=dataset_names) +
-  # scale_y_continuous(labels=function(x)x/all_t_test.df$female_ratio[which(raw_df$pheno_cat == pheno_cat)]) + 
-  theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  labs(y="Proportion Female", x = "Dataset")
-
-all_cent_sum.df_scaled %>%
-  dplyr::filter(dataset != "raw" & dataset != "cf") %>%
-  mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
-  ggplot(aes(x=dataset, y=female_ratio_sc)) +
-  geom_boxplot(aes(color=dataset)) +
-  # geom_dotplot(binaxis = "y", stackdir="center") +
-  facet_grid(pheno_cat~source, scales="free_y", labeller = labeller(source=cent_ext_list)) +
-  geom_hline(yintercept=1, linetype="dashed")+
-  # geom_text(aes(label = sig_fdr, y = max_val + 0.01),
-  #             data = all_t_test.df[which(all_t_test.df$dataset != "cf"),]) +
-  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
-  theme_linedraw() +
-  scale_x_discrete(labels=dataset_names) +
-  # scale_y_continuous(labels=function(x)x/all_t_test.df$female_ratio[which(raw_df$pheno_cat == pheno_cat)]) + 
-  theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  labs(y="Female Bias", x = "Dataset")
-
 all_cent_sum_boxplt.diff <- all_cent_sum.df_scaled %>%
-  dplyr::filter(dataset != "raw" & dataset != "cf") %>%
-  mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
-  ggplot(aes(x=dataset, y=female_ratio_diff)) +
-  geom_boxplot(aes(color=dataset)) +
-  # geom_dotplot(binaxis = "y", stackdir="center") +
-  facet_grid(pheno_cat~source, scales="free_y", labeller = labeller(source=cent_ext_list)) +
-  geom_hline(yintercept=0, linetype="dashed")+
-  # geom_text(aes(label = sig_fdr, y = max_val + 0.01),
-  #             data = all_t_test.df[which(all_t_test.df$dataset != "cf"),]) +
-  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
-  theme_linedraw() +
-  scale_x_discrete(labels=dataset_names) +
-  # scale_y_continuous(labels=function(x)x/all_t_test.df$female_ratio[which(raw_df$pheno_cat == pheno_cat)]) + 
-  theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  labs(y="Female Bias", x = "Dataset")
-
-
-raise <- all_cent_sum.df_scaled %>%
   dplyr::filter(dataset != "raw" & dataset != "cf" & source != "ext") %>%
   mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
   ggplot(aes(x=dataset, y=female_ratio_diff)) +
@@ -498,16 +460,14 @@ raise <- all_cent_sum.df_scaled %>%
   # geom_dotplot(binaxis = "y", stackdir="center") +
   facet_grid(pheno_cat~source, scales="free_y", labeller = labeller(source=cent_ext_list)) +
   geom_hline(yintercept=0, linetype="dashed")+
-  # geom_text(aes(label = sig_fdr, y = max_val + 0.01),
-  #             data = all_t_test.df[which(all_t_test.df$dataset != "cf"),]) +
+  geom_text(aes(label = sig_fdr, y = (y_pos)), nudge_y=.005,
+               data = all_t_test.df[which(all_t_test.df$dataset != "cf" & all_t_test.df$source != "ext"),]) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
   theme_linedraw() +
   scale_x_discrete(labels=dataset_names) +
   # scale_y_continuous(labels=function(x)x/all_t_test.df$female_ratio[which(raw_df$pheno_cat == pheno_cat)]) + 
   theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   labs(y="Female Bias", x = "Dataset")
-
-ggsave(filename="figs/raise.png", raise)
 
 all_cent_sum_boxplt_wtest <- all_cent_sum.df %>%
   dplyr::filter(dataset != "raw") %>%
@@ -526,13 +486,6 @@ all_cent_sum_boxplt_wtest <- all_cent_sum.df %>%
   labs(y="Proportion Female", x = "Dataset")
 
 ```
-
-linear ComBat ~ too few women with high centiles, too many women with low centiles; ~ balances out overall
-
-ComBat-GAM -> variable pattern, pretty close to raw
-
-ComBatLS -> pretty close to raw!
-
 
 ### Without Extremes
 
@@ -676,23 +629,15 @@ ggplot() +
   facet_grid(pheno_cat~comp, scales="free_y", labeller = labeller(comp = as_labeller(comp_names)))
 ```
 
-look at combatGAM vs combatLS
-
+look at ratios
 ```{r}
 z.feat.t.test.df %>%
-  dplyr::filter(sig_fdr==TRUE & comp =="cf.gamlss_cf.gam") %>%
-ggplot(aes(x=perm, fill=bigger_group)) +
-  geom_bar() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  facet_wrap(~pheno_cat)
-
-z.feat.t.test.df %>%
-  dplyr::filter(sig_fdr==TRUE & comp =="cf.gamlss_cf.gam") %>%
+  dplyr::filter(sig_fdr==TRUE & grepl("gamlss", comp)) %>%
 ggplot(aes(x=perm, fill=bigger_group)) +
   geom_bar(position='fill') +
   geom_hline(yintercept = .5) +
   theme(axis.text.x = element_blank()) +
-  facet_wrap(~pheno_cat)
+  facet_grid(comp~pheno_cat)
 ```
 
 W/in subj average plots
@@ -718,7 +663,7 @@ z.sex.test.list <- readRDS(paste0(data_path, "/full_featurewise_z_sex_bias_tests
 z.sex.test.df <- bind_rows(z.sex.test.list)
 ```
 
-simple bar-plot to count regions w sigificant sex-biases
+simple bar-plot to count regions w significant sex-biases
 
 ```{r}
 z.sex.test.df %>%
@@ -1078,17 +1023,11 @@ ggsave("figs/figure_3.jpeg", fig_3, width=15, height=10, units="in")
 ## Supplemental Fig
 ```{r}
 sfig <- ggarrange(cent.test.comp.plt, ct.brain.sum.plt,
-                  ncol=1, nrow=2, heights = c(2, 1))
+                  ncol=1, nrow=2, heights = c(1.8, 1), labels = "AUTO")
 sfig
-ggsave(paste0(base_path, "/figs/combat_abs_errs_supp_plt.jpg"), plot=sfig, width=11, height=7, units="in")
-
+ggsave(paste0(base_path, "/figs/combat_abs_errs_supp_plt.jpg"), plot=sfig, width=13, height=9, units="in")
 ```
 
-```{r}
-sex.var.plot.global <- readRDS("figs/sex_var_plot_global.RDS")
-sex.var.plot <- readRDS("figs/sex_var_plot.RDS")
-
-```
 
 Figure 3 but with sig. tests for boxplots
 
