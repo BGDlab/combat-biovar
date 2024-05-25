@@ -214,13 +214,7 @@ df_raw_feat_aov.study %>%
   ggplot() +
   geom_bar(aes(y=sig_fdr))
 
-df_raw_feat_aov.study %>%
-  ggplot() +
-  geom_histogram(aes(x=etasq, fill=sig_fdr), alpha=0.5)
-
-df_raw_feat_aov.study %>%
-  dplyr::filter(sig_fdr == TRUE) %>%
-  nrow()
+table(df_raw_feat_aov.study$sig_fdr)
 ```
 ```{r}
 raw_centile_df.mean <- raw_centile_df.clean %>%
@@ -248,10 +242,10 @@ raw_centile_df.mean %>%
   theme(legend.position = "none") +
   facet_wrap(~study)
 ```
-linear model
+
+ANOVA of subjects' mean centiles across studies
 
 ```{r}
-summary(lm(mean_cent ~ study, data=raw_centile_df.mean))
 summary(aov(mean_cent ~ study, data=raw_centile_df.mean))
 ```
 
@@ -285,9 +279,7 @@ df_raw_feat_aov.z.study %>%
   ggplot() +
   geom_bar(aes(y=sig_fdr))
 
-df_raw_feat_aov.z.study %>%
-  dplyr::filter(sig_fdr == TRUE) %>%
-  nrow()
+table(df_raw_feat_aov.z.study$sig_fdr)
 ```
 
 average w/in subject
@@ -304,19 +296,10 @@ raw_z_df.mean <- raw_z_df.clean %>%
 nrow(raw_z_df.mean) == n_unique(raw_z_df.clean$participant)
 ```
 
-```{r}
-raw_z_df.mean %>%
-  ggplot() +
-  geom_point(aes(x=age_days/365.25, y=mean_z), alpha=0.5) +
-  geom_smooth(aes(x=age_days/365.25, y=mean_z), method="lm") 
-# +
-#   facet_wrap(~study)
-```
 
-linear model
+ANOVA of subject means
 
 ```{r}
-summary(lm(mean_z ~ study, data=raw_z_df.mean))
 summary(aov(mean_z ~ study, data=raw_z_df.mean))
 ```
 
@@ -357,13 +340,7 @@ df_gam_feat_aov.study %>%
   ggplot() +
   geom_bar(aes(y=sig_fdr))
 
-df_gam_feat_aov.study %>%
-  ggplot() +
-  geom_histogram(aes(x=etasq, fill=sig_fdr), alpha=0.5)
-
-df_gam_feat_aov.study %>%
-  dplyr::filter(sig_fdr == TRUE) %>%
-  nrow()
+table(df_gam_feat_aov.study$sig_fdr)
 ```
 
 average w/in subject
@@ -395,10 +372,9 @@ gam_centile_df.mean %>%
   facet_wrap(~study)
 ```
 
-linear model
+ANOVA
 
 ```{r}
-summary(lm(mean_cent ~ study, data=gam_centile_df.mean))
 summary(aov(mean_cent ~ study, data=gam_centile_df.mean))
 ```
 
@@ -432,9 +408,7 @@ df_gam_feat_aov.z.study %>%
   ggplot() +
   geom_bar(aes(y=sig_fdr))
 
-df_gam_feat_aov.z.study %>%
-  dplyr::filter(sig_fdr == TRUE) %>%
-  nrow()
+table(df_gam_feat_aov.z.study$sig_fdr)
 ```
 
 average w/in subject
@@ -456,14 +430,11 @@ gam_z_df.mean %>%
   ggplot() +
   geom_point(aes(x=age_days/365.25, y=mean_z), alpha=0.5) +
   geom_smooth(aes(x=age_days/365.25, y=mean_z), method="lm") 
-# +
-#   facet_wrap(~study)
 ```
 
-linear model
+Subject mean ANOVA
 
 ```{r}
-summary(lm(mean_z ~ study, data=gam_z_df.mean))
 summary(aov(mean_z ~ study, data=gam_z_df.mean))
 ```
 
@@ -475,13 +446,6 @@ summary(aov(mean_z ~ study, data=gam_z_df.mean))
 gamlss_centile_df.clean <- full_join(gamlss_centile_df, study_site_key) %>% 
   mutate(age_years=age_days/365.25) %>%
   dplyr::select(!contains(".z")) #drop z-scores and non-centiles & !ends_with("_total") & !contains("TBV")
-```
-
-
-```{r}
-ggplot(gamlss_centile_df.clean) +
-  geom_point(aes(x=age_days, y=rh_Vol_insula, color=study), alpha=0.5) +
-  theme(legend.position="none")
 ```
 
 w/in feature ANOVAs
@@ -509,13 +473,7 @@ df_gamlss_feat_aov.study %>%
   ggplot() +
   geom_bar(aes(y=sig_fdr))
 
-df_gamlss_feat_aov.study %>%
-  ggplot() +
-  geom_histogram(aes(x=etasq, fill=sig_fdr))
-
-df_gamlss_feat_aov.study %>%
-  dplyr::filter(sig_fdr==TRUE) %>%
-  nrow()
+table(df_gamlss_feat_aov.study$sig_fdr)
 ```
 
 average w/in subject
@@ -535,15 +493,6 @@ gamlss_centile_df.mean <- gamlss_centile_df.clean %>%
 nrow(gamlss_centile_df.mean) == n_unique(gamlss_centile_df.mean$participant)
 ```
 
-```{r}
-ggplot(gamlss_centile_df.mean) +
-  geom_point(aes(x=(age_days/365.25), y=mean_cent, color=study), alpha=0.5) +
-  theme(legend.position="none")
-
-ggplot(gamlss_centile_df.clean) +
-  geom_point(aes(x=age_days, y=lh_Vol_inferiortemporal, color=study), alpha=0.2) +
-  theme(legend.position="none")
-```
 
 ```{r}
 gamlss_centile_df.mean %>%
@@ -551,25 +500,11 @@ gamlss_centile_df.mean %>%
   geom_boxplot(aes(x=reorder(study, age_days), y=mean_cent)) + 
   #geom_boxplot(aes(x=study, y=mean_cent)) +
   theme(axis.text.x = element_text(angle=90, hjust=0.5))
-
-gamlss_centile_df.mean %>%
-  ggplot() +
-  geom_point(aes(x=age_days/365.25, y=mean_cent, color=study), alpha=0.5) +
-  geom_smooth(aes(x=age_days/365.25, y=mean_cent, color=study), method="lm") +
-  theme(legend.position = "none")
-
-gamlss_centile_df.mean %>%
-  dplyr::filter(age_days>365) %>%
-  ggplot(aes(x=age_days/365.25, y=mean_cent)) +
-  geom_point(aes(color=study), alpha=0.7) +
-  geom_smooth(method="lm") +
-  theme(legend.position="none")
 ```
 
-linear model
+subject mean ANOVA
 
 ```{r}
-summary(lm(mean_cent ~ study, data=gamlss_centile_df.mean))
 summary(aov(mean_cent ~ study, data=gamlss_centile_df.mean))
 ```
 
@@ -603,9 +538,7 @@ df_gamlss_feat_aov.z.study %>%
   ggplot() +
   geom_bar(aes(y=sig_fdr))
 
-df_gamlss_feat_aov.z.study %>%
-  dplyr::filter(sig_fdr == TRUE) %>%
-  nrow()
+table(df_gamlss_feat_aov.z.study$sig_fdr)
 ```
 
 average w/in subject
@@ -631,10 +564,9 @@ gamlss_z_df.mean %>%
   theme(legend.position="none")
 ```
 
-linear model
+subject mean ANOVA
 
 ```{r}
-summary(lm(mean_z ~ study, data=gamlss_z_df.mean))
 summary(aov(mean_z ~ study, data=gamlss_z_df.mean))
 ```
 
@@ -652,49 +584,6 @@ setdiff(pheno_list, raw.feat_to_test),
 setdiff(pheno_list, gam.feat_to_test)) %>% unique()
 ```
 
-
-```{r}
-summary(lm(mean_cent ~ study, data=gamlss_centile_df.mean))
-summary(lm(mean_cent ~ study, data=gam_centile_df.mean))
-summary(lm(mean_cent ~ study, data=raw_centile_df.mean))
-```
-
-compare magnitude of effect size for study (w/in feature anovas) across unharmonized, combat-gam and combatLS centiles
-
-```{r}
-df_gamlss_feat_aov.study$combat <- "gamlss"
-df_gam_feat_aov.study$combat <- "gam"
-df_raw_feat_aov.study$combat <- "raw"
-
-#put all data frames into list
-df_list.tmp <- list(df_gamlss_feat_aov.study, df_gam_feat_aov.study, df_raw_feat_aov.study)
-
-#merge all data frames in list
-feat_aov.df <- df_list.tmp %>% reduce(full_join)
-
-feat_aov.df <- feat_aov.df %>%
-  mutate(pheno_cat = as.factor(case_when(
-      pheno %in% vol_list_global ~ "Global Volume",
-      pheno %in% vol_list_regions ~ "Regional Volume",
-      pheno %in% sa_list ~ "Regional SA",
-      pheno %in% ct_list ~ "Regional CT",
-      TRUE ~ NA_character_)))
-
-feat_aov.df %>%
-  group_by(combat) %>%
-  summarize(n_sig = sum(sig_fdr))
-
-feat_aov.df %>%
-  ggplot() +
-  geom_point(aes(x=etasq, y=pheno, color=combat, shape=sig_fdr), alpha=0.6) +
-  facet_wrap(~pheno_cat, scales="free")
-
-feat_aov.df %>%
-  dplyr::filter(combat!="raw") %>%
-  ggplot() +
-  geom_point(aes(x=etasq, y=pheno, color=combat, shape=sig_fdr), alpha=0.6) +
-  facet_wrap(~pheno_cat, scales="free")
-```
 ```{r}
 gamlss_centile_df.mean$combat <- "gamlss"
 gam_centile_df.mean$combat <- "gam"
@@ -746,10 +635,14 @@ f2.df <- f2.df %>%
       pheno %in% ct_list ~ "Regional CT",
       TRUE ~ NA_character_)))
 
-ggplot(f2.df) +
+fsq.df <- ggplot(f2.df) +
   geom_col(aes(x=pheno, y=fsq, fill=combat), position="dodge") + 
   facet_wrap(~pheno_cat, scales="free") +
-  theme(axis.text.x = element_blank())
+  theme_linedraw() +
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank()) +
+  labs(x = "Feature", y = "Effect Size (Cohen's F-Squared)", fill="ComBat")
+
+ggsave("figs/supp_fsq.jpeg", fsq.df, width=8, height=6, units="in")
 ```
 
 ```{r}
@@ -768,635 +661,21 @@ f2.df.sum %>%
   summarise(mean_fsq_diff = mean(F2_diff)) %>%
   ggplot() + 
   geom_col(aes(x=pheno_cat, y=mean_fsq_diff), position="dodge")
-
-f2.df.sum %>%
-  #group_by(pheno_cat) %>%
-  mutate(smaller_eff = case_when(F2_diff < 0 ~ "ComBatGAM",
-                                    F2_diff > 0 ~ "ComBatLS")) %>%
-  ggplot() +
-  geom_bar(aes(x=smaller_eff, fill=pheno_cat), position="dodge")
 ```
 
-## Centile Fans
-**try plotting shapes of trajectores w/ and w/o study term to see how much they change the effect of age!
-
-load unharmonized data
-```{r}
-raw.data <- fread(file="/Users/megardn/Desktop/BGD_Repos/combat_biovar/data/lifespan_CN_imp-sites_euler.csv")
-gmv.raw.mod <- readRDS(paste0(der_path, "/GMV_lifespan-CN-imp-sites-euler_raw_no.tbv_mod.rds"))
-
-gmv.raw.pred.df <- pred.across.ages.lbcc(gmv.raw.mod, raw.data)
-
-gmv.raw.pred.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma), color="red") +
-  geom_line(aes(x=age_days, y=m.sigma), color="blue")
-
-gmv.raw.mod.site <- readRDS(paste0(der_path, "/GMV_lifespan-CN-imp-sites-euler-raw_site.est_mod.rds"))
-
-gmv.raw.pred.site.df <- pred.across.ages.lbcc.study(gmv.raw.mod.site, raw.data)
-
-gmv.raw.pred.site.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma), color="red") +
-  geom_line(aes(x=age_days, y=m.sigma), color="blue")
-
-gmv.raw.pred.site.df <- gmv.raw.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "raw")
-gmv.raw.pred.df <- gmv.raw.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "raw")
-```
-
-load ComBat-harmonized data
-```{r}
-cf.lm.data <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler_log-cf_cf.lm_batch.study_data.csv"))
-gmv.cf.lm.mod <- readRDS(paste0(der_path, "/GMV_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_no.tbv_mod.rds"))
-
-gmv.cf.lm.pred.df <- pred.across.ages.lbcc(gmv.cf.lm.mod, cf.lm.data)
-
-gmv.cf.lm.pred.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma), color="red") +
-  geom_line(aes(x=age_days, y=m.sigma), color="blue")
-
-gmv.cf.lm.mod.site <- readRDS(paste0(der_path, "/GMV_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_site.est_mod.rds"))
-
-gmv.cf.lm.pred.site.df <- pred.across.ages.lbcc.study(gmv.cf.lm.mod.site, cf.lm.data)
-
-gmv.cf.lm.pred.site.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma), color="red") +
-  geom_line(aes(x=age_days, y=m.sigma), color="blue")
-```
-
-```{r}
-gmv.cf.lm.pred.site.df <- gmv.cf.lm.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "combat")
-gmv.cf.lm.pred.df <- gmv.cf.lm.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "combat")
-
-gmv.cf.lm.pred.df_full <- full_join(gmv.cf.lm.pred.site.df, gmv.cf.lm.pred.df)
-
-gmv.cf.lm.pred.df_full %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma, color=study_incl))
-```
-
-
-load ComBat-GAM-harmonized data
-```{r}
-cf.gam.data <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler_log-cf_cf.gam_batch.study_data.csv"))
-gmv.cf.gam.mod <- readRDS(paste0(der_path, "/GMV_lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_no.tbv_mod.rds"))
-
-gmv.cf.gam.pred.df <- pred.across.ages.lbcc(gmv.cf.gam.mod, cf.gam.data)
-
-gmv.cf.gam.pred.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma), color="red") +
-  geom_line(aes(x=age_days, y=m.sigma), color="blue")
-
-gmv.cf.gam.mod.site <- readRDS(paste0(der_path, "/GMV_lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_site.est_mod.rds"))
-
-gmv.cf.gam.pred.site.df <- pred.across.ages.lbcc.study(gmv.cf.gam.mod.site, cf.gam.data)
-
-gmv.cf.gam.pred.site.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma), color="red") +
-  geom_line(aes(x=age_days, y=m.sigma), color="blue")
-```
-
-```{r}
-gmv.cf.gam.pred.site.df <- gmv.cf.gam.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "combatGAM")
-gmv.cf.gam.pred.df <- gmv.cf.gam.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "combatGAM")
-
-gmv.cf.gam.pred.df_full <- full_join(gmv.cf.gam.pred.site.df, gmv.cf.gam.pred.df)
-
-gmv.cf.gam.pred.df_full %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma, color=study_incl))
-```
-
-load ComBatLS-harmonized data
-```{r}
-cf.gamlss.data <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler_log-cf_cf.gamlss_batch.study_data.csv"))
-gmv.cf.gamlss.mod <- readRDS(paste0(der_path, "/GMV_lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_no.tbv_mod.rds"))
-
-gmv.cf.gamlss.pred.df <- pred.across.ages.lbcc(gmv.cf.gamlss.mod, cf.gamlss.data)
-
-gmv.cf.gamlss.pred.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma), color="red") +
-  geom_line(aes(x=age_days, y=m.sigma), color="blue")
-
-gmv.cf.gamlss.mod.site <- readRDS(paste0(der_path, "/GMV_lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_site.est_mod.rds"))
-
-gmv.cf.gamlss.mod.site$sigma.coefficients
-
-gmv.cf.gamlss.pred.site.df <- pred.across.ages.lbcc.study(gmv.cf.gamlss.mod.site, cf.gamlss.data)
-
-gmv.cf.gamlss.pred.site.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma), color="red") +
-  geom_line(aes(x=age_days, y=m.sigma), color="blue")
-```
-
-```{r}
-gmv.cf.gamlss.pred.site.df <- gmv.cf.gamlss.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "combatLS")
-gmv.cf.gamlss.pred.df <- gmv.cf.gamlss.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "combatLS")
-
-gmv.cf.gamlss.pred.df_full <- full_join(gmv.cf.gamlss.pred.site.df, gmv.cf.gamlss.pred.df)
-
-gmv.cf.gamlss.pred.df_full %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma, color=study_incl))
-```
-
-
-```{r}
-all.pred.df <- reduce(list(gmv.cf.gam.pred.df_full, gmv.cf.lm.pred.df_full, gmv.cf.gamlss.pred.df_full, gmv.raw.pred.site.df, gmv.raw.pred.df), full_join)
-
-all.pred.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma, linetype=study_incl, color=combat))
-
-all.pred.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=m.sigma, linetype=study_incl, color=combat)) +
-  ggtitle("GMV")
-
-raw.data %>%
-  ggplot() +
-  geom_histogram(aes(x=age_days, fill=sex), position="identity", alpha=0.5)
-```
-
-See WMV
-```{r}
-#raw
-wmv.raw.mod <- readRDS(paste0(der_path, "/wmv_lifespan-CN-imp-sites-euler_raw_no.tbv_mod.rds"))
-wmv.raw.pred.df <- pred.across.ages.lbcc(wmv.raw.mod, raw.data)
-wmv.raw.mod.site <- readRDS(paste0(der_path, "/wmv_lifespan-CN-imp-sites-euler-raw_site.est_mod.rds"))
-wmv.raw.pred.site.df <- pred.across.ages.lbcc.study(wmv.raw.mod.site, raw.data)
-
-wmv.raw.pred.site.df <- wmv.raw.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "raw")
-wmv.raw.pred.df <- wmv.raw.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "raw")
-
-#combat
-wmv.cf.lm.mod <- readRDS(paste0(der_path, "/wmv_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_no.tbv_mod.rds"))
-wmv.cf.lm.pred.df <- pred.across.ages.lbcc(wmv.cf.lm.mod, cf.lm.data)
-
-wmv.cf.lm.mod.site <- readRDS(paste0(der_path, "/wmv_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_site.est_mod.rds"))
-wmv.cf.lm.pred.site.df <- pred.across.ages.lbcc.study(wmv.cf.lm.mod.site, cf.lm.data)
-
-wmv.cf.lm.pred.site.df <- wmv.cf.lm.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "combat")
-wmv.cf.lm.pred.df <- wmv.cf.lm.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "combat")
-
-#combat-gam
-wmv.cf.gam.mod <- readRDS(paste0(der_path, "/wmv_lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_no.tbv_mod.rds"))
-wmv.cf.gam.pred.df <- pred.across.ages.lbcc(wmv.cf.gam.mod, cf.gam.data)
-
-wmv.cf.gam.mod.site <- readRDS(paste0(der_path, "/wmv_lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_site.est_mod.rds"))
-wmv.cf.gam.pred.site.df <- pred.across.ages.lbcc.study(wmv.cf.gam.mod.site, cf.gam.data)
-
-wmv.cf.gam.pred.site.df <- wmv.cf.gam.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "combatGAM")
-wmv.cf.gam.pred.df <- wmv.cf.gam.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "combatGAM")
-
-#combatLS
-wmv.cf.gamlss.mod <- readRDS(paste0(der_path, "/wmv_lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_no.tbv_mod.rds"))
-wmv.cf.gamlss.pred.df <- pred.across.ages.lbcc(wmv.cf.gamlss.mod, cf.gamlss.data)
-
-wmv.cf.gamlss.mod.site <- readRDS(paste0(der_path, "/wmv_lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_site.est_mod.rds"))
-wmv.cf.gamlss.pred.site.df <- pred.across.ages.lbcc.study(wmv.cf.gamlss.mod.site, cf.gamlss.data)
-
-wmv.cf.gamlss.pred.site.df <- wmv.cf.gamlss.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "combatLS")
-wmv.cf.gamlss.pred.df <- wmv.cf.gamlss.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "combatLS")
-```
-
-```{r}
-wmv.all.pred.df <- reduce(list(wmv.raw.pred.site.df, wmv.raw.pred.df, wmv.cf.gam.pred.site.df, wmv.cf.gam.pred.df, wmv.cf.gamlss.pred.site.df, wmv.cf.gamlss.pred.df, wmv.cf.lm.pred.site.df, wmv.cf.lm.pred.df), full_join)
-
-wmv.all.pred.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma, linetype=study_incl, color=combat))
-
-wmv.all.pred.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=m.sigma, linetype=study_incl, color=combat)) +
-  ggtitle("WMV")
-
-raw.data %>%
-  ggplot() +
-  geom_histogram(aes(x=age_days, fill=sex), position="identity", alpha=0.5)
-```
-
-See sGMV
-```{r}
-#raw
-sgmv.raw.mod <- readRDS(paste0(der_path, "/sgmv_lifespan-CN-imp-sites-euler_raw_no.tbv_mod.rds"))
-sgmv.raw.pred.df <- pred.across.ages.lbcc(sgmv.raw.mod, raw.data)
-sgmv.raw.mod.site <- readRDS(paste0(der_path, "/sgmv_lifespan-CN-imp-sites-euler-raw_site.est_mod.rds"))
-sgmv.raw.pred.site.df <- pred.across.ages.lbcc.study(sgmv.raw.mod.site, raw.data)
-
-sgmv.raw.pred.site.df <- sgmv.raw.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "raw")
-sgmv.raw.pred.df <- sgmv.raw.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "raw")
-
-#combat
-sgmv.cf.lm.mod <- readRDS(paste0(der_path, "/sgmv_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_no.tbv_mod.rds"))
-sgmv.cf.lm.pred.df <- pred.across.ages.lbcc(sgmv.cf.lm.mod, cf.lm.data)
-
-sgmv.cf.lm.mod.site <- readRDS(paste0(der_path, "/sgmv_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_site.est_mod.rds"))
-sgmv.cf.lm.pred.site.df <- pred.across.ages.lbcc.study(sgmv.cf.lm.mod.site, cf.lm.data)
-
-sgmv.cf.lm.pred.site.df <- sgmv.cf.lm.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "combat")
-sgmv.cf.lm.pred.df <- sgmv.cf.lm.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "combat")
-
-#combat-gam
-sgmv.cf.gam.mod <- readRDS(paste0(der_path, "/sgmv_lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_no.tbv_mod.rds"))
-sgmv.cf.gam.pred.df <- pred.across.ages.lbcc(sgmv.cf.gam.mod, cf.gam.data)
-
-sgmv.cf.gam.mod.site <- readRDS(paste0(der_path, "/sgmv_lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_site.est_mod.rds"))
-sgmv.cf.gam.pred.site.df <- pred.across.ages.lbcc.study(sgmv.cf.gam.mod.site, cf.gam.data)
-
-sgmv.cf.gam.pred.site.df <- sgmv.cf.gam.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "combatGAM")
-sgmv.cf.gam.pred.df <- sgmv.cf.gam.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "combatGAM")
-
-#combatLS
-sgmv.cf.gamlss.mod <- readRDS(paste0(der_path, "/sgmv_lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_no.tbv_mod.rds"))
-sgmv.cf.gamlss.pred.df <- pred.across.ages.lbcc(sgmv.cf.gamlss.mod, cf.gamlss.data)
-
-sgmv.cf.gamlss.mod.site <- readRDS(paste0(der_path, "/sgmv_lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_site.est_mod.rds"))
-sgmv.cf.gamlss.pred.site.df <- pred.across.ages.lbcc.study(sgmv.cf.gamlss.mod.site, cf.gamlss.data)
-
-sgmv.cf.gamlss.pred.site.df <- sgmv.cf.gamlss.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "combatLS")
-sgmv.cf.gamlss.pred.df <- sgmv.cf.gamlss.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "combatLS")
-```
-
-```{r}
-sgmv.all.pred.df <- reduce(list(sgmv.raw.pred.site.df, sgmv.raw.pred.df, sgmv.cf.gam.pred.site.df, sgmv.cf.gam.pred.df, sgmv.cf.gamlss.pred.site.df, sgmv.cf.gamlss.pred.df, sgmv.cf.lm.pred.site.df, sgmv.cf.lm.pred.df), full_join)
-
-sgmv.all.pred.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma, linetype=study_incl, color=combat))
-
-sgmv.all.pred.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=m.sigma, linetype=study_incl, color=combat)) +
-  ggtitle("sGMV")
-
-raw.data %>%
-  ggplot() +
-  geom_histogram(aes(x=age_days, fill=sex), position="identity", alpha=0.5)
-```
-
-See Ventricles
-```{r}
-#raw
-ven.raw.mod <- readRDS(paste0(der_path, "/Ventricles_lifespan-CN-imp-sites-euler_raw_no.tbv_mod.rds"))
-ven.raw.pred.df <- pred.across.ages.lbcc(ven.raw.mod, raw.data)
-
-ven.raw.pred.df <- ven.raw.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "raw")
-
-#combat
-ven.cf.lm.mod <- readRDS(paste0(der_path, "/Ventricles_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_no.tbv_mod.rds"))
-ven.cf.lm.pred.df <- pred.across.ages.lbcc(ven.cf.lm.mod, cf.lm.data)
-
-ven.cf.lm.mod.site <- readRDS(paste0(der_path, "/Ventricles_lifespan-CN-imp-sites-euler-log-cf-cf.lm-batch.study-data_site.est_mod.rds"))
-ven.cf.lm.pred.site.df <- pred.across.ages.lbcc.study(ven.cf.lm.mod.site, cf.lm.data)
-
-ven.cf.lm.pred.site.df <- ven.cf.lm.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "combat")
-ven.cf.lm.pred.df <- ven.cf.lm.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "combat")
-
-#combat-gam
-ven.cf.gam.mod <- readRDS(paste0(der_path, "/Ventricles_lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_no.tbv_mod.rds"))
-ven.cf.gam.pred.df <- pred.across.ages.lbcc(ven.cf.gam.mod, cf.gam.data)
-
-ven.cf.gam.mod.site <- readRDS(paste0(der_path, "/Ventricles_lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_site.est_mod.rds"))
-ven.cf.gam.pred.site.df <- pred.across.ages.lbcc.study(ven.cf.gam.mod.site, cf.gam.data)
-
-ven.cf.gam.pred.site.df <- ven.cf.gam.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "combatGAM")
-ven.cf.gam.pred.df <- ven.cf.gam.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "combatGAM")
-
-#combatLS
-ven.cf.gamlss.mod <- readRDS(paste0(der_path, "/Ventricles_lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_no.tbv_mod.rds"))
-ven.cf.gamlss.pred.df <- pred.across.ages.lbcc(ven.cf.gamlss.mod, cf.gamlss.data)
-
-ven.cf.gamlss.mod.site <- readRDS(paste0(der_path, "/Ventricles_lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_site.est_mod.rds"))
-ven.cf.gamlss.pred.site.df <- pred.across.ages.lbcc.study(ven.cf.gamlss.mod.site, cf.gamlss.data)
-
-ven.cf.gamlss.pred.site.df <- ven.cf.gamlss.pred.site.df %>%
-  mutate(study_incl = TRUE,
-         combat= "combatLS")
-ven.cf.gamlss.pred.df <- ven.cf.gamlss.pred.df %>%
-  mutate(study_incl = FALSE,
-         combat= "combatLS")
-```
-
-```{r}
-ven.all.pred.df <- reduce(list(ven.raw.pred.df, ven.cf.gam.pred.site.df, ven.cf.gam.pred.df, ven.cf.gamlss.pred.site.df, ven.cf.gamlss.pred.df, ven.cf.lm.pred.site.df, ven.cf.lm.pred.df), full_join) #ven.raw.pred.site.df
-
-ven.all.pred.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=f.sigma, linetype=study_incl, color=combat))
-
-ven.all.pred.df %>%
-  ggplot() +
-  geom_line(aes(x=age_days, y=m.sigma, linetype=study_incl, color=combat)) +
-  ggtitle("Ventricles")
-
-raw.data %>%
-  ggplot() +
-  geom_histogram(aes(x=age_days, fill=sex), position="identity", alpha=0.5) +
-  ggtitle("Sample distribution")
-```
-
-Get predictions for sex-effects
-
-```{r}
-mean(comfam.cf.gam_VolGlob$estimates$gamma.star, na.rm=TRUE)
-mean(comfam.cf.gamlss_VolGlob$estimates$gamma.star, na.rm=TRUE)
-mean(comfam.cf.gam_VolReg$estimates$gamma.star, na.rm=TRUE)
-mean(comfam.cf.gamlss_VolReg$estimates$gamma.star, na.rm=TRUE)
-mean(comfam.cf.gam_CT$estimates$gamma.star, na.rm=TRUE)
-mean(comfam.cf.gamlss_CT$estimates$gamma.star, na.rm=TRUE)
-mean(comfam.cf.gam_SA$estimates$gamma.star, na.rm=TRUE)
-mean(comfam.cf.gamlss_SA$estimates$gamma.star, na.rm=TRUE)
-
-mean(abs(comfam.cf.gam_SA$estimates$delta.star - 1), na.rm=TRUE)
-mean(abs(comfam.cf.gamlss_SA$estimates$delta.star - 1), na.rm=TRUE)
-mean(abs(comfam.cf.gam_CT$estimates$delta.star - 1), na.rm=TRUE)
-mean(abs(comfam.cf.gamlss_CT$estimates$delta.star - 1), na.rm=TRUE)
-mean(abs(comfam.cf.gam_VolReg$estimates$delta.star - 1), na.rm=TRUE)
-mean(abs(comfam.cf.gamlss_VolReg$estimates$delta.star - 1), na.rm=TRUE)
-mean(abs(comfam.cf.gam_VolGlob$estimates$delta.star - 1), na.rm=TRUE)
-mean(abs(comfam.cf.gamlss_VolGlob$estimates$delta.star - 1), na.rm=TRUE)
-```
-
-#Feature Centile ~ Mean Study Age
+#ComBat-GAM vs ComBatLS: Delta Centile
 
 Get study info
 ```{r}
+nrow(raw_centile_df.clean) == n_unique(raw_centile_df.clean$participant)
+
 study_info <- raw_centile_df.clean %>%
-  pivot_longer(cols=any_of(pheno_list), names_to="pheno", values_to = "centile") %>%
   group_by(study) %>%
   summarize(study_mean_age=mean(age_years),
             study_median_age=median(age_years),
-            study_n= n()) %>%
+            study_n = n()) %>%
   dplyr::select(study, study_mean_age, study_median_age, study_n)
 ```
-
-W/in feat lms
-
-##Unharmonized
-
-```{r}
-raw_centile_df.clean_study <- full_join(raw_centile_df.clean, study_info)
-
-df_raw_feat_lm <- data.frame()
-for(pheno in raw.feat_to_test){
-  # print(pheno)
-  df <- tidy(aov(raw_centile_df.clean_study[[pheno]] ~ raw_centile_df.clean_study[["study_mean_age"]]))
-  df$pheno <- pheno
-  df_raw_feat_lm <- rbind(df_raw_feat_lm, df)
-}
-
-df_raw_feat_lm <- df_raw_feat_lm %>%
-  dplyr::filter(term != "Residuals") %>%
-  dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(raw.feat_to_test)), #apply fdr correction across all phenos tested
-                  sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
-                                      p.val_fdr >= 0.05 ~ FALSE))
-df_raw_feat_lm %>%
-  ggplot() +
-  geom_bar(aes(y=sig_fdr))
-
-df_raw_feat_lm %>%
-  ggplot() +
-  geom_histogram(aes(x=statistic))
-```
-
-##ComBat-GAM
-
-```{r}
-gam_centile_df.clean_study <- full_join(gam_centile_df.clean, study_info)
-
-df_gam_feat_lm <- data.frame()
-for(pheno in gam.feat_to_test){
-  # print(pheno)
-  df <- tidy(aov(gam_centile_df.clean_study[[pheno]] ~ gam_centile_df.clean_study[["study_mean_age"]]))
-  df$pheno <- pheno
-  df_gam_feat_lm <- rbind(df_gam_feat_lm, df)
-}
-
-df_gam_feat_lm <- df_gam_feat_lm %>%
-  dplyr::filter(term != "Residuals") %>%
-  dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(gam.feat_to_test)), #apply fdr correction across all phenos tested
-                  sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
-                                      p.val_fdr >= 0.05 ~ FALSE))
-
-df_gam_feat_lm %>%
-  ggplot() +
-  geom_bar(aes(y=sig_fdr))
-
-df_gam_feat_lm %>%
-  ggplot() +
-  geom_histogram(aes(x=statistic))
-```
-
-##ComBatLS
-
-```{r}
-gamlss_centile_df.clean_study <- full_join(gamlss_centile_df.clean, study_info)
-
-df_gamlss_feat_lm <- data.frame()
-for(pheno in gamlss.feat_to_test){
-  # print(pheno)
-  df <- tidy(aov(gamlss_centile_df.clean_study[[pheno]] ~ gamlss_centile_df.clean_study[["study_mean_age"]]))
-  df$pheno <- pheno
-  df_gamlss_feat_lm <- rbind(df_gamlss_feat_lm, df)
-}
-
-df_gamlss_feat_lm <- df_gamlss_feat_lm %>%
-  dplyr::filter(term != "Residuals") %>%
-  dplyr::mutate(p.val_fdr = p.adjust(p.value, method="fdr", n = length(gamlss.feat_to_test)), #apply fdr correction across all phenos tested
-                  sig_fdr = case_when(p.val_fdr < 0.05 ~ TRUE,
-                                      p.val_fdr >= 0.05 ~ FALSE))
-df_gamlss_feat_lm %>%
-  ggplot() +
-  geom_bar(aes(y=sig_fdr))
-
-df_gamlss_feat_lm %>%
-  ggplot() +
-  geom_histogram(aes(x=statistic))
-```
-
-*statistic ~ effect size?
-
-```{r}
-df_raw_feat_lm$combat <- "raw"
-df_gam_feat_lm$combat <- "gam"
-df_gamlss_feat_lm$combat <- "gamlss"
-
-#put all data frames into list
-df_list.tmp <- list(df_raw_feat_lm, df_gam_feat_lm, df_gamlss_feat_lm)
-
-#merge all data frames in list
-all_feat_lm <- df_list.tmp %>% reduce(full_join)
-
-all_feat_lm %>%
-  ggplot() +
-  geom_histogram(aes(x=statistic, fill=combat, color=combat), position="identity", alpha=0.5, bins=50)
-```
-
-#Subject-Level Mean Centiles ~ Mean Study Age
-
-```{r}
-raw_centile_df.mean2 <- full_join(raw_centile_df.mean, study_info)
-summary(lm(mean_cent ~ study_mean_age, data=raw_centile_df.mean2))
-
-raw_centile_df.mean2 %>%
-  ggplot(aes(x=study_mean_age, y=mean_cent)) +
-  geom_point(aes(color=study), alpha=0.7) +
-  geom_smooth(method="lm") +
-  theme(legend.position="none")
-```
-
-
-```{r}
-gam_centile_df.mean2 <- full_join(gam_centile_df.mean, study_info)
-summary(lm(mean_cent ~ study_mean_age, data=gam_centile_df.mean2))
-
-gam_centile_df.mean2 %>%
-  ggplot(aes(x=study_mean_age, y=mean_cent)) +
-  geom_point(aes(color=study), alpha=0.7) +
-  geom_smooth(method="lm") +
-  theme(legend.position="none")
-
-gam_centile_df.mean2 <- gam_centile_df.mean2 %>%
-  mutate(age_diff = (age_days/365.25) - study_mean_age)
-
-summary(lm(mean_cent ~ abs(age_diff), data=gam_centile_df.mean2))
-gam_centile_df.mean2 %>%
-  ggplot(aes(x=abs(age_diff), y=mean_cent)) +
-  geom_point(aes(color=study), alpha=0.7) +
-  geom_smooth(method="lm") +
-  theme(legend.position="none")
-```
-
-```{r}
-gamlss_centile_df.mean2 <- full_join(gamlss_centile_df.mean, study_info)
-summary(lm(mean_cent ~ study_mean_age, data=gamlss_centile_df.mean2))
-
-gamlss_centile_df.mean2 %>%
-  ggplot(aes(x=study_mean_age, y=mean_cent)) +
-  geom_point(aes(color=study), alpha=0.7) +
-  geom_smooth(method="lm") +
-  theme(legend.position="none")
-
-gamlss_centile_df.mean2 <- gamlss_centile_df.mean2 %>%
-  mutate(age_diff = (age_days/365.25) - study_mean_age)
-
-summary(lm(mean_cent ~ abs(age_diff), data=gamlss_centile_df.mean2))
-gamlss_centile_df.mean2 %>%
-  ggplot(aes(x=abs(age_diff), y=mean_cent)) +
-  geom_point(aes(color=study), alpha=0.7) +
-  geom_smooth(method="lm") +
-  theme(legend.position="none")
-```
-
-Plots
-
-```{r}
-gamlss_centile_df.mean2$combat <- "gamlss"
-gam_centile_df.mean2$combat <- "gam"
-raw_centile_df.mean2$combat <- "raw"
-
-#put all data frames into list
-df_list.tmp <- list(gamlss_centile_df.mean2, gam_centile_df.mean2, raw_centile_df.mean2)
-
-#merge all data frames in list
-all_subj_means.df <- df_list.tmp %>% reduce(full_join)
-
-all_subj_means.df %>%
-  ggplot(aes(x=study_mean_age, y=mean_cent, color=combat)) +
-  geom_point(alpha=0.6) +
-  geom_smooth(method="lm")
-
-all_subj_means.df %>%
-  ggplot(aes(x=study_mean_age, y=mean_cent, color=combat)) +
-  geom_point(alpha=0.3) +
-  geom_smooth(method="lm") +
-  facet_wrap(~combat)
-
-summary(lm(mean_cent ~ study_mean_age, data=raw_centile_df.mean2))
-summary(lm(mean_cent ~ study_mean_age, data=gam_centile_df.mean2))
-summary(lm(mean_cent ~ study_mean_age, data=gamlss_centile_df.mean2))
-```
-
-```{r}
-summary(lm(mean_cent ~ study_n, data=raw_centile_df.mean2))
-summary(lm(mean_cent ~ study_n, data=gam_centile_df.mean2))
-summary(lm(mean_cent ~ study_n, data=gamlss_centile_df.mean2))
-
-all_subj_means.df %>%
-  ggplot(aes(x=study_n, y=mean_cent, color=combat)) +
-  geom_point(alpha=0.6) +
-  geom_smooth(method="lm")
-```
-all assoc with study n
-
-#ComBat-GAM vs ComBatLS: Delta Centile
 
 clean delta df
 
@@ -1417,6 +696,8 @@ mean_cent_deltas_df <- cent_deltas_df %>%
 
 mean_cent_deltas_df_study <- full_join(mean_cent_deltas_df, study_info)
 ```
+
+control for N when looking at deltas b/c UKB will always have low deltas since it's having an outsized effect on setting the distribution that both ComBatGAM and ComBatLS are targeting.
 
 check mean subj delta ~ study mean age
 
@@ -1444,12 +725,16 @@ mean_cent_deltas_df_study %>%
   geom_abline(slope = coef(abs_lm)[["study_mean_age"]], 
               intercept = coef(abs_lm)[["(Intercept)"]])+
   theme(legend.position="none")
+```
 
+See if a subject's distance from their study's mean age is assoc with how much their centile changes
+
+```{r}
 mean_cent_deltas_df_study <- mean_cent_deltas_df_study %>%
   mutate(age_diff = (age_days/365.25) - study_mean_age,
          abs_age_diff = abs(age_diff))
 
-abs_lm2 <- lm(abs_mean_delta_cent ~ study_mean_age + study_n + abs_age_diff, data=mean_cent_deltas_df_study)
+abs_lm2 <- lm(abs_mean_delta_cent ~ study_n + abs_age_diff, data=mean_cent_deltas_df_study)
 summary(abs_lm2)
 
 mean_cent_deltas_df_study %>%
@@ -1458,32 +743,72 @@ mean_cent_deltas_df_study %>%
   geom_smooth(method="lm")
 ```
 
-control for N when looking at deltas b/c UKB will always have low deltas since it's having an outsized effect on setting the distribution that both ComBatGAM and ComBatLS are targeting. 
+## Subject-Level Mean Centiles ~ Mean Study Age
+
+Make sure that results of mean centile delta ~ mean study age are related to the difference itself, not because ComBatLS and/or ComBat-GAM centiles are associated with mean study age.
+
+```{r}
+raw_centile_df.mean2 <- full_join(raw_centile_df.mean, study_info)
+summary(lm(mean_cent ~ study_mean_age, data=raw_centile_df.mean2))
+
+raw_centile_df.mean2 %>%
+  ggplot(aes(x=study_mean_age, y=mean_cent)) +
+  geom_point(aes(color=study), alpha=0.7) +
+  geom_smooth(method="lm") +
+  theme(legend.position="none")
+```
+
+NS
+
+```{r}
+gam_centile_df.mean2 <- full_join(gam_centile_df.mean, study_info)
+summary(lm(mean_cent ~ study_mean_age, data=gam_centile_df.mean2))
+
+gam_centile_df.mean2 %>%
+  ggplot(aes(x=study_mean_age, y=mean_cent)) +
+  geom_point(aes(color=study), alpha=0.7) +
+  geom_smooth(method="lm") +
+  theme(legend.position="none")
+
+gam_centile_df.mean2 <- gam_centile_df.mean2 %>%
+  mutate(age_diff = (age_days/365.25) - study_mean_age)
+
+summary(lm(mean_cent ~ abs(age_diff), data=gam_centile_df.mean2))
+gam_centile_df.mean2 %>%
+  ggplot(aes(x=abs(age_diff), y=mean_cent)) +
+  geom_point(aes(color=study), alpha=0.7) +
+  geom_smooth(method="lm") +
+  theme(legend.position="none")
+```
+
+NS
+
+```{r}
+gamlss_centile_df.mean2 <- full_join(gamlss_centile_df.mean, study_info)
+summary(lm(mean_cent ~ study_mean_age, data=gamlss_centile_df.mean2))
+
+gamlss_centile_df.mean2 %>%
+  ggplot(aes(x=study_mean_age, y=mean_cent)) +
+  geom_point(aes(color=study), alpha=0.7) +
+  geom_smooth(method="lm") +
+  theme(legend.position="none")
+
+gamlss_centile_df.mean2 <- gamlss_centile_df.mean2 %>%
+  mutate(age_diff = (age_days/365.25) - study_mean_age)
+
+summary(lm(mean_cent ~ abs(age_diff), data=gamlss_centile_df.mean2))
+gamlss_centile_df.mean2 %>%
+  ggplot(aes(x=abs(age_diff), y=mean_cent)) +
+  geom_point(aes(color=study), alpha=0.7) +
+  geom_smooth(method="lm") +
+  theme(legend.position="none")
+```
+
+NS
 
 #FIGURE 5
 
-```{r}
-# study demographics
-fig5 <- ggarrange(
-ggarrange(sample_boxplot, sample_barplot,
-          full_boxplot, full_barplot,
-          nrow=2, ncol=2, 
-          #align = "h", 
-          common.legend = TRUE,
-          legend = "bottom",
-          widths=c(1.7, 1),
-          heights=c(10, 1)),
-# boxplots
-mean_cents_bxplt,
-common.legend=FALSE,
-nrow=1, ncol=2,
-labels="AUTO",
-widths=c(1, 4)
-)
-
-ggsave("figs/figure_5_horizontal.jpeg", fig5, width=18, height=9, units="in")
-```
-alternative vertical stacking
+Reformatting plots for prettier composite fig
 
 ```{r}
 blank <- ggplot() + theme_void()
@@ -1589,20 +914,13 @@ mean_delta_fig <- mean_cent_deltas_df_study %>%
                     x = study_mean_age), data = pred_df,
                 inherit.aes = FALSE, alpha = 0.2) +
     geom_line(data = pred_df, aes(y = fit, x=study_mean_age))+
-  #theme(legend.position="none") +
-  labs(x="Mean Age of Primary Study Sample (Years)", y="Mean Absolute Difference in Centile Scores (Centiles)", title="Subject-wise Mean Distance Between Centiles Calculated From \nComBatLS and ComBat-GAM-harmonized Data")
-ggsave("figs/supp_mean_delta_fig.jpeg", mean_delta_fig, width=10, height=7, units="in")
-
-mean_cent_deltas_df_study %>%
-  dplyr::filter(abs_mean_delta_cent > 4) %>%
-  dplyr::select(study, study_mean_age)
-
-mean_cent_deltas_df_study%>%
-  dplyr::filter(study == "Cornell_C2") %>%
-  nrow()
+  theme_linedraw() +
+  theme(legend.position="none") +
+  labs(x="Mean Age of Primary Study Sample (Years)", y="Mean Absolute Difference in Centile Scores (Centiles)", title="Subject-wise Mean Distance Between Centiles Calculated From ComBatLS and ComBat-GAM \n-harmonized Data")
+ggsave("figs/supp_mean_delta_fig.jpeg", mean_delta_fig, width=9, height=6, units="in")
 ```
 
-Cornell_C2 has very low n=5 -> big differences in estimation
+lines show marginal effects of mean study age
 
 ```{r}
 summary(abs_lm2)
@@ -1623,14 +941,15 @@ pdat2 <- pdat2 %>%
   mutate(upper = fit + (1.96 * se.fit),
          lower = fit - (1.96 * se.fit))
 
-mean_cent_deltas_df_study %>%
+mean_delta_fig2 <- mean_cent_deltas_df_study %>%
   ggplot(aes(x=abs_age_diff, y=abs_mean_delta_cent)) +
   geom_point(alpha=0.05, aes(color=study)) +
   geom_ribbon(aes(ymin = lower, ymax = upper,
                     x = abs_age_diff), data = pdat2,
                 inherit.aes = FALSE, alpha = 0.2) +
     geom_line(data = pdat2, aes(y = fit, x=abs_age_diff)) +
+  theme_linedraw() +
   theme(legend.position="none") +
-  labs(x="Subject's Offset from Mean Age of Primary Study (Years)", y="Mean Absolute Difference in Centile Scores (Centiles)", title="Subject-wise Mean Distance Between Centiles Calculated From \nComBatLS and ComBat-GAM-harmonized Data")
+  labs(x="Subject's Offset from Mean Age of Primary Study (Years)", y="Mean Absolute Difference in Centile Scores (Centiles)", title="Subject-wise Mean Distance Between Centiles Calculated From ComBatLS and ComBat-GAM \n-harmonized Data")
+ggsave("figs/supp_mean_delta_fig2.jpeg", mean_delta_fig2, width=9, height=6, units="in")
 ```
-
