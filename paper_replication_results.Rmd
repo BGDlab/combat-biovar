@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, gdata, gtExtras)
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, gdata, gtExtras, webshot2)
 #Sys.setenv("MC_CORES"=10L)
 options("mc.cores")
 
@@ -116,11 +116,11 @@ cent.tbl.pretty <- cent.tbl %>%
                                    smaller_group == "cf.gam" ~ "ComBat-GAM",
                                    smaller_group == "cf.gamlss" ~ "ComBatLS")) %>%
   rename(#"Pairwise Comparison"=comp,
-         "Lower Errors" = smaller_group,
+         "Method Producing Smaller Absolute Errors" = smaller_group,
          "N Features" = n_sig,
          "% Features" = perc_tests)
 
-cent.tbl.pretty %>%
+pretty_cent_table <- cent.tbl.pretty %>%
   gt() %>% 
   #gt_theme_538() %>% 
 tab_style(style = list(cell_fill(color = "gray95")),
@@ -131,6 +131,8 @@ tab_style(style = list(cell_fill(color = "gray95")),
   ) %>%
   tab_options(column_labels.font.weight = "bold") %>%
   tab_header(title = "Pairwise comparisons of ComBat methods' absolute centile errors for 208 brain features across 100 replications")
+
+gtsave(pretty_cent_table, filename="figs/centile_table.png")
 ```
 
 
@@ -213,6 +215,7 @@ cent.diffs.v.plot <- perm_subj.df %>%
   scale_x_discrete(labels=c(dataset_names)) +
   # guides(fill=guide_legend(title="Sampling \nPermutation")) + 
   ggtitle("Within-subject mean magnitude of error in centile scores across ComBat configurations replicated 100x") +
+  theme_linedraw() + 
   theme(legend.position="none")
 cent.diffs.v.plot
 ggsave(filename="figs/centile_violin.png", cent.diffs.v.plot, width=11, height=4.5, units="in")
@@ -251,8 +254,8 @@ cent.subj.sex.test.df %>%
 
 #look by feature type
 sex_bias_hist_plt <- cent.subj.sex.test.df %>%
-  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss" | dataset == "cf.lm") %>%
-  mutate(dataset = factor(dataset, levels = c("cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+  #dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss" | dataset == "cf.lm") %>%
+  mutate(dataset = factor(dataset, levels = c("cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
   mutate(pheno_cat = factor(case_when(
     pheno %in% vol_list_global ~ "Global Volume",
     pheno %in% vol_list_regions ~ "Regional Volume",
@@ -263,12 +266,11 @@ sex_bias_hist_plt <- cent.subj.sex.test.df %>%
 ggplot() +
   geom_histogram(aes(x=median_sex_diff, color=perm, fill=perm), alpha=0.3, position="identity", bins=40) +
   geom_vline(xintercept = 0, linetype="dashed") +
-  facet_grid(pheno_cat~dataset, scales="free_y", labeller = labeller(dataset = as_labeller(dataset_names))) +
+  facet_grid(pheno_cat ~ dataset, scales="free", labeller = labeller(dataset = as_labeller(dataset_names))) +
   theme_linedraw(base_size=12) +
   theme(legend.position = "none") +
-  labs(x="Male - Female Median Centile Errors", y="Number of Features") +
-  ggtitle("Sex differences in median centile errors across 100 sampling replications")
-ggsave(filename="figs/sex_bias_hist_plt.png", sex_bias_hist_plt)
+  labs(x="Male - Female Median Centile Errors", y="Number of Features")
+ggsave(filename="figs/sex_bias_hist_plt.png", sex_bias_hist_plt, height=7, width=10, units="in")
 ```
 
 Distribution of error medians w/in each pheno category
@@ -293,10 +295,12 @@ t.test.cent.sex.test.med <- cent.sex.test.med %>%
                                p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
                                p.val_fdr >= 0.01 & p.val_fdr < 0.05 ~ "*",
                                p.val_fdr >= 0.05 ~ ""),
-         y_pos = case_when(dataset=="cf" ~ 11,
+         y_pos = case_when(dataset=="cf" ~ 9.3,
                            dataset=="cf.lm" ~ 11,
                            dataset=="cf.gam" ~ 10.5,
                            dataset=="cf.gamlss" ~ 6))
+#get vals
+t.test.cent.sex.test.med
 
 t.test.cent.sex.test.med %>%
   ggplot() +
@@ -318,6 +322,21 @@ sex_bias_density_plt <- cent.sex.test.med %>%
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   theme(legend.position = "bottom")+
   labs(x="Medians of Sex-Differences in Centile Errors", y="Density Across 100 Replications")
+
+#with combat w/o covar
+sex_bias_density_plt_full <- cent.sex.test.med %>%
+  ggplot() +
+  geom_density(aes(x=median_of_median_sex_diff*100, fill=dataset, color=dataset), alpha=0.6, position = "identity") +
+  geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
+  facet_wrap(~pheno_cat) +
+  theme_linedraw() +
+  geom_text(aes(label = sig_fdr, x= x_pos*100, y=y_pos),
+              data = t.test.cent.sex.test.med) +
+  scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  theme(legend.position = "bottom") +
+  labs(x="Medians of Sex-Differences in Centile Errors", y="Density Across 100 Replications")
+ggsave(filename="figs/sex_bias_density_plt_full.png", sex_bias_density_plt_full, height=7, width=10, units="in")
 ```
 
 plot subj. with averages in extremes 
@@ -366,15 +385,6 @@ low_cent.sum <- perm_subj.df2_long %>%
     male_ratio = sum(sex == "Male") / n(),
     female_ratio = sum(sex == "Female") / n()
   )
-
-ext_cent.sum <- perm_subj.df2_long %>%
-  dplyr::filter(pheno_cat != "allpheno") %>%
-  dplyr::filter(mean_centile < 0.20 | mean_centile > 0.80) %>%
-  group_by(dataset, perm, pheno_cat) %>%
-  summarise(
-    male_ratio = sum(sex == "Male") / n(),
-    female_ratio = sum(sex == "Female") / n()
-  )
 ```
 
 ```{r}
@@ -383,9 +393,6 @@ high_cent.sum_raw <- high_cent.sum %>%
   dplyr::filter(dataset == "raw" & perm=="perm-001")
 
 low_cent.sum_raw <- low_cent.sum %>%
-  dplyr::filter(dataset == "raw" & perm=="perm-001")
-
-ext_cent.sum_raw <- ext_cent.sum %>%
   dplyr::filter(dataset == "raw" & perm=="perm-001")
 
 #test significance
@@ -412,15 +419,14 @@ get_t_tests <- function(df, raw_df){
 
 high_t_test.df <- lapply(split(high_cent.sum, high_cent.sum$pheno_cat), get_t_tests, raw_df=high_cent.sum_raw) %>% bind_rows()
 low_t_test.df <- lapply(split(low_cent.sum, low_cent.sum$pheno_cat), get_t_tests, raw_df=low_cent.sum_raw) %>% bind_rows()
-ext_t_test.df <- lapply(split(ext_cent.sum, ext_cent.sum$pheno_cat), get_t_tests, raw_df=ext_cent.sum_raw) %>% bind_rows()
 
 #merge dfs
-all_cent_sum.df <- gdata::combine(high_cent.sum, low_cent.sum, ext_cent.sum) %>%
+all_cent_sum.df <- gdata::combine(high_cent.sum, low_cent.sum) %>%
   mutate(source = gsub("_cent.sum", "", source))
 all_cent.sum_raw <- all_cent_sum.df %>%
   dplyr::filter(dataset == "raw" & perm=="perm-001")
 
-all_t_test.df <- gdata::combine(high_t_test.df, low_t_test.df, ext_t_test.df) %>%
+all_t_test.df <- gdata::combine(high_t_test.df, low_t_test.df) %>%
   mutate(source = gsub("_t_test.df", "", source))
 
 #scale by raw value
@@ -435,8 +441,11 @@ y_pos.df <- all_cent_sum.df_scaled %>%
   group_by(source, pheno_cat, dataset) %>%
   summarise(y_pos=max(female_ratio_diff))
 
-all_t_test.df <- full_join(all_t_test.df, y_pos.df)
+all_t_test.df <- full_join(all_t_test.df, y_pos.df) %>%
+  dplyr::filter(dataset != "raw")
+```
 
+```{r}
 #plots!
 all_cent_sum.df %>%
   dplyr::filter(dataset != "raw") %>%
@@ -450,10 +459,10 @@ all_cent_sum.df %>%
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"),  name = "ComBat Configuration", labels=dataset_names) + 
   theme_linedraw()
 
-cent_ext_list <- c(ext = ">80% and <20%", high = ">80%", low = "<20%")
+cent_ext_list <- c(high = ">80%", low = "<20%")
 
 all_cent_sum_boxplt.diff <- all_cent_sum.df_scaled %>%
-  dplyr::filter(dataset != "raw" & dataset != "cf" & source != "ext") %>%
+  dplyr::filter(dataset != "raw" & dataset != "cf") %>%
   mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
   ggplot(aes(x=dataset, y=female_ratio_diff)) +
   geom_boxplot(aes(color=dataset)) +
@@ -461,7 +470,7 @@ all_cent_sum_boxplt.diff <- all_cent_sum.df_scaled %>%
   facet_grid(pheno_cat~source, scales="free_y", labeller = labeller(source=cent_ext_list)) +
   geom_hline(yintercept=0, linetype="dashed")+
   geom_text(aes(label = sig_fdr, y = (y_pos)), nudge_y=.005,
-               data = all_t_test.df[which(all_t_test.df$dataset != "cf" & all_t_test.df$source != "ext"),]) +
+               data = all_t_test.df[which(all_t_test.df$dataset != "cf"),]) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
   theme_linedraw() +
   scale_x_discrete(labels=dataset_names) +
@@ -471,7 +480,7 @@ all_cent_sum_boxplt.diff <- all_cent_sum.df_scaled %>%
 
 all_cent_sum_boxplt_wtest <- all_cent_sum.df %>%
   dplyr::filter(dataset != "raw") %>%
-  mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
+  mutate(source = factor(source, levels=c("low", "high"), ordered=TRUE)) %>%
   ggplot(aes(x=dataset, y=female_ratio)) +
   geom_boxplot(aes(color=dataset)) +
   # geom_dotplot(binaxis = "y", stackdir="center") +
@@ -484,7 +493,7 @@ all_cent_sum_boxplt_wtest <- all_cent_sum.df %>%
   scale_x_discrete(labels=dataset_names) +
   theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   labs(y="Proportion Female", x = "Dataset")
-
+#ggsave(filename="figs/all_cent_sum_boxplt_wtest.png", all_cent_sum_boxplt_wtest)
 ```
 
 ### Without Extremes
@@ -500,7 +509,9 @@ noext.cent.feat.t.test.df <- bind_rows(noext.cent.feat.t.test, .id="perm") %>%
       pheno %in% vol_list_regions ~ "Regional Volume",
       pheno %in% sa_list ~ "Regional SA",
       pheno %in% ct_list ~ "Regional CT",
-      TRUE ~ NA_character_)))
+      TRUE ~ NA_character_))) %>%
+      separate_wider_delim(cols=comp, delim="_", names=c("group1", "group2"), cols_remove=FALSE) %>%
+  mutate(smaller_group=ifelse(bigger_group==group1, group2, group1))
 
 noext.cent.feat.t.test.df %>%
   group_by(comp, bigger_group) %>%
@@ -510,9 +521,9 @@ noext.cent.feat.t.test.df %>%
 compare results
 ```{r}
 noext.cent.t.test.df2 <- noext.cent.feat.t.test.df %>%
-  mutate(full_df = 0)
+  mutate(full_df = "No Extremes")
 cent.feat.t.test.df2 <- cent.feat.t.test.df %>%
-  mutate(full_df = 1)
+  mutate(full_df = "Full Dataset")
 
 comp.df <- full_join(noext.cent.t.test.df2, cent.feat.t.test.df2)
 comp.df %>%
@@ -521,6 +532,19 @@ ggplot() +
   geom_bar(aes(x=perm, fill=bigger_group)) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   facet_grid(comp ~ full_df)
+
+comp_names <- c(cf.gam_cf = "ComBat-GAM v. \nComBat w/o Covar", cf.gamlss_cf = "ComBatLS v. ComBat w/o Covar", cf.gamlss_cf.gam = "ComBatLS v. ComBat-GAM", cf.lm_cf.gam ="ComBat-GAM v. linear ComBat", cf.lm_cf.gamlss = "ComBatLS v. linear ComBat", cf.lm_cf = "linear ComBat v. \nComBat w/o Covar")
+cent.test.comp.plt2 <- comp.df %>%
+  dplyr::filter(sig_fdr==TRUE) %>%
+  mutate(smaller_group=factor(smaller_group, levels=c("cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered=TRUE)) %>%
+ggplot() +
+  geom_bar(aes(x=perm, fill=smaller_group)) +
+  theme_linedraw()+
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "bottom") +
+  facet_grid(comp ~ full_df, labeller = labeller(comp = as_labeller(comp_names))) +
+  scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "Better ComBat \nConfiguration", labels=dataset_names) +
+  labs(x="Sampling Permutation", y="Feature Count")
+ggsave(filename="figs/cent_comp_noext.png", cent.test.comp.plt2, height=13, width=13, units="in")
 
 comp.df %>%
   dplyr::filter(sig_fdr==TRUE) %>%
@@ -571,7 +595,11 @@ next.t.test.cent.sex.test.med <- noext.sex.testmed %>%
                   sig_fdr = case_when(p.val_fdr < 0.001 ~ "***",
                                p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
                                p.val_fdr >= 0.01 & p.val_fdr < 0.05 ~ "*",
-                               p.val_fdr >= 0.05 ~ ""))
+                               p.val_fdr >= 0.05 ~ ""),
+         y_pos = case_when(dataset=="cf" ~ 6,
+                           dataset=="cf.lm" ~ 9,
+                           dataset=="cf.gam" ~ 9.5,
+                           dataset=="cf.gamlss" ~ 5))
 
 
 t.test.cent.sex.test.med %>%
@@ -582,19 +610,20 @@ next.t.test.cent.sex.test.med %>%
   ggplot() +
   geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
 
-noext.sex.testmed %>%
+sex_bias_density_plt_noext <- noext.sex.testmed %>%
   #dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
   ggplot() +
   geom_density(aes(x=median_of_median_sex_diff*100, fill=dataset, color=dataset), alpha=0.6, position = "identity") +
   geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
   facet_wrap(~pheno_cat) +
   theme_linedraw() +
-  geom_text(aes(label = sig_fdr, x= x_pos*100, y=ifelse(t.test.cent.sex.test.med$dataset == "cf.gam", 10.2, 5.5)),
+  geom_text(aes(label = sig_fdr, x= x_pos*100, y=y_pos),
               data = next.t.test.cent.sex.test.med) +
   scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   theme(legend.position = "bottom")+
   labs(x="Medians of Sex-Differences in Centile Errors", y="Density Across 100 Replications")
+ggsave(filename="figs/sex_bias_density_plt_noext.png", sex_bias_density_plt_noext, height=7, width=10, units="in")
 ```
 
 ## Z-SCORES
@@ -613,7 +642,9 @@ z.feat.t.test.df <- bind_rows(z.feat.t.test, .id="perm") %>%
       pheno %in% vol_list_regions ~ "Regional Volume",
       pheno %in% sa_list ~ "Regional SA",
       pheno %in% ct_list ~ "Regional CT",
-      TRUE ~ NA_character_)))
+      TRUE ~ NA_character_))) %>%
+  separate_wider_delim(cols=comp, delim="_", names=c("group1", "group2"), cols_remove=FALSE) %>%
+  mutate(smaller_group=ifelse(bigger_group==group1, group2, group1))
 
 z.feat.t.test.df %>%
   group_by(comp, bigger_group) %>%
@@ -621,12 +652,19 @@ z.feat.t.test.df %>%
 ```
 
 ```{r}
-z.feat.t.test.df %>%
+comp_names <- c(cf.gam_cf = "ComBat-GAM v. ComBat w/o Covar", cf.gamlss_cf = "ComBatLS v. ComBat w/o Covar", cf.gamlss_cf.gam = "ComBatLS v. ComBat-GAM", cf.lm_cf.gam ="ComBat-GAM v. linear ComBat", cf.lm_cf.gamlss = "ComBatLS v. linear ComBat", cf.lm_cf = "linear ComBat v. ComBat w/o Covar")
+
+z.feat.t.test.plt <- z.feat.t.test.df %>%
   dplyr::filter(sig_fdr==TRUE) %>%
 ggplot() +
-  geom_bar(aes(x=perm, fill=bigger_group)) +
-  theme(axis.text.x = element_blank()) +
-  facet_grid(pheno_cat~comp, scales="free_y", labeller = labeller(comp = as_labeller(comp_names)))
+  geom_bar(aes(x=perm, fill=smaller_group)) +
+  theme_linedraw() + 
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "bottom") +
+  labs(x="Sampling Permutation", y="Feature Count") +
+  facet_grid(pheno_cat~comp, scales="free_y", labeller = labeller(comp = as_labeller(comp_names))) +
+  scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "Better ComBat \nConfiguration", labels=dataset_names)
+
+ggsave(filename="figs/z.feat.t.test.plt.png", z.feat.t.test.plt, height=7, width=13, units="in")
 ```
 
 look at ratios
@@ -648,10 +686,50 @@ z.diffs.v.plot <- perm_subj.df %>%
   geom_violin(aes(x=dataset, y=mean_z_abs.diff, color=perm), scale="count") +
   labs(y= "Mean Absolute Z-Score Error", x = "ComBat Configurations") +
   scale_x_discrete(labels=c(dataset_names)) +
+  theme_linedraw()+
   theme(legend.position = "none") +
-  ggtitle("Within-subject mean magnitude of error in z scores across ComBat \nconfigurations replicated 10x")
+  ggtitle("Within-subject mean magnitude of error in z scores across ComBat configurations replicated 100x")
 z.diffs.v.plot
 # ggsave(filename="figs/centile_violin.png", cent.diffs.v.plot)
+ggsave(filename="figs/zscore_violin.png", z.diffs.v.plot, width=11, height=4.5, units="in")
+```
+
+
+```{r}
+z.tbl <- z.feat.t.test.df %>%
+  group_by(comp, smaller_group) %>%
+  summarize(n_sig=sum(sig_fdr)) %>%
+  mutate(perc_tests = n_sig/(208*100))
+
+z.tbl.pretty <- z.tbl %>%
+  mutate(comp = case_when(comp == "cf.gam_cf" ~ "ComBat-GAM vs ComBat w/o Covariates",
+                          comp == "cf.gamlss_cf" ~ "ComBatLS vs ComBat w/o Covariates", 
+                          comp == "cf.gamlss_cf.gam" ~ "ComBatLS vs ComBat-GAM",
+                          comp == "cf.lm_cf" ~ "Linear ComBat vs ComBat w/o Covariates",
+                          comp == "cf.lm_cf.gam" ~ "Linear ComBat vs ComBat-GAM",
+                          comp == "cf.lm_cf.gamlss" ~ "Linear ComBat vs ComBatLS"),
+         smaller_group = case_when(smaller_group == "cf" ~ "ComBat w/o Covariates",
+                                   smaller_group == "cf.lm" ~ "Linear ComBat",
+                                   smaller_group == "cf.gam" ~ "ComBat-GAM",
+                                   smaller_group == "cf.gamlss" ~ "ComBatLS")) %>%
+  rename(#"Pairwise Comparison"=comp,
+         "Method Producing Smaller Absolute Errors" = smaller_group,
+         "N Features" = n_sig,
+         "% Features" = perc_tests)
+
+pretty_z_table <- z.tbl.pretty %>%
+  gt() %>% 
+  #gt_theme_538() %>% 
+tab_style(style = list(cell_fill(color = "gray95")),
+    locations = cells_row_groups()) %>%
+  fmt_percent(
+    columns = "% Features",
+    decimals = 2
+  ) %>%
+  tab_options(column_labels.font.weight = "bold") %>%
+  tab_header(title = "Pairwise comparisons of ComBat methods' absolute Z-score errors for 208 brain features across 100 replications")
+
+gtsave(pretty_z_table, filename="figs/z_table.png")
 ```
 
 ### Sex-Biases
@@ -677,6 +755,32 @@ z.sex.test.df %>%
 ```
 
 Distribution of error medians w/in each pheno category
+
+```{r}
+#look by feature type
+z.sex_bias_hist_plt <- z.sex.test.df %>%
+  #dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss" | dataset == "cf.lm") %>%
+  mutate(dataset = factor(dataset, levels = c("cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+  mutate(pheno = gsub(".z", "", pheno)) %>%
+  mutate(pheno_cat = factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_)),
+    perm = as.factor(sub("perm-0", "", perm))) %>%
+ggplot() +
+  geom_histogram(aes(x=median_sex_diff, color=perm, fill=perm), alpha=0.3, position="identity", bins=40) +
+  geom_vline(xintercept = 0, linetype="dashed") +
+  facet_grid(pheno_cat~dataset, scales="free", labeller = labeller(dataset = as_labeller(dataset_names))) +
+  theme_linedraw(base_size=12) +
+  theme(legend.position = "none") +
+  labs(x="Male - Female Median Centile Errors", y="Number of Features") +
+  ggtitle("Sex differences in median centile errors across 100 sampling replications")
+ggsave(filename="figs/z.sex_bias_hist_plt.z.png", sex_bias_hist_plt)
+```
+
+
 ```{r}
 z.sex.test.med <- z.sex.test.df %>%
   mutate(pheno = gsub(".z", "", pheno)) %>%
@@ -698,41 +802,46 @@ t.test.z.sex.test.med <- z.sex.test.med %>%
                   sig_fdr = case_when(p.val_fdr < 0.001 ~ "***",
                                p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
                                p.val_fdr >= 0.01 & p.val_fdr < 0.05 ~ "*",
-                               p.val_fdr >= 0.05 ~ ""))
+                               p.val_fdr >= 0.05 ~ ""),
+         y_pos = case_when(dataset=="cf" ~ 155,
+                           dataset=="cf.lm" ~ 360,
+                           dataset=="cf.gam" ~ 345,
+                           dataset=="cf.gamlss" ~ 125))
 
-t.test.z.sex.test.med.filt <- t.test.z.sex.test.med %>% dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss")
+t.test.z.sex.test.med.filt <- t.test.z.sex.test.med %>% 
+  dplyr::filter(dataset != "cf")
 
 t.test.z.sex.test.med %>%
   ggplot() +
   geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
 
 z.sex_bias_density_plt <- z.sex.test.med %>%
-  dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+  dplyr::filter(dataset != "cf") %>%
   ggplot() +
   geom_density(aes(x=median_of_median_sex_diff, fill=dataset, color=dataset), alpha=0.6, position = "identity") +
   geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
   facet_wrap(~pheno_cat) +
   theme_linedraw() +
-  geom_text(aes(label = sig_fdr, x= x_pos, y=ifelse(t.test.z.sex.test.med.filt$dataset == "cf.gam", 350, 120)),
+  geom_text(aes(label = sig_fdr, x= x_pos, y=y_pos),
               data = t.test.z.sex.test.med.filt) +
   scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
-  theme(legend.position = "bottom")+
+  theme(legend.position = "none")+
   labs(x="Medians of Sex-Differences in Z Errors", y="Density Across 100 Replications")
 
-z.sex.test.med %>%
-  #dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
+z.sex_bias_density_plt2 <- z.sex.test.med %>%
   ggplot() +
   geom_density(aes(x=median_of_median_sex_diff, fill=dataset, color=dataset), alpha=0.6, position = "identity") +
   geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
-  facet_wrap(~pheno_cat) +
+  facet_wrap(~pheno_cat, scales="free") +
   theme_linedraw() +
-  geom_text(aes(label = sig_fdr, x= x_pos, y=ifelse(t.test.z.sex.test.med$dataset == "cf.gam", 350, 120)),
+  geom_text(aes(label = sig_fdr, x= x_pos, y=y_pos),
               data = t.test.z.sex.test.med) +
   scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
-  theme(legend.position = "bottom")+
+  theme(legend.position = "bottom") +
   labs(x="Medians of Sex-Differences in Z Errors", y="Density Across 100 Replications")
+ggsave(filename="figs/z.sex_bias_density_plt2.png", z.sex_bias_density_plt2, height=6, width=14, units="in")
 ```
 
 plot subj. with averages in extremes 
@@ -781,15 +890,6 @@ low_z.sum <- perm_subj.df.z._long %>%
     male_ratio = sum(sex == "Male") / n(),
     female_ratio = sum(sex == "Female") / n()
   )
-
-ext_z.sum <- perm_subj.df.z._long %>%
-  dplyr::filter(pheno_cat != "allpheno") %>%
-  dplyr::filter(mean_z < -1.5 | mean_z > 1.5) %>%
-  group_by(dataset, perm, pheno_cat) %>%
-  summarise(
-    male_ratio = sum(sex == "Male") / n(),
-    female_ratio = sum(sex == "Female") / n()
-  )
 ```
 
 ```{r}
@@ -800,20 +900,16 @@ high_z.sum_raw <- high_z.sum %>%
 low_z.sum_raw <- low_z.sum %>%
   dplyr::filter(dataset == "raw" & perm=="perm-001")
 
-ext_z.sum_raw <- ext_z.sum %>%
-  dplyr::filter(dataset == "raw" & perm=="perm-001")
-
 z.high_t_test.df <- lapply(split(high_z.sum, high_z.sum$pheno_cat), get_t_tests, raw_df=high_z.sum_raw) %>% bind_rows()
 z.low_t_test.df <- lapply(split(low_z.sum, low_z.sum$pheno_cat), get_t_tests, raw_df=low_z.sum_raw) %>% bind_rows()
-z.ext_t_test.df <- lapply(split(ext_z.sum, ext_z.sum$pheno_cat), get_t_tests, raw_df=ext_z.sum_raw) %>% bind_rows()
 
 #merge dfs
-all_z_sum.df <- gdata::combine(high_z.sum, low_z.sum, ext_z.sum) %>%
+all_z_sum.df <- gdata::combine(high_z.sum, low_z.sum) %>%
   mutate(source = gsub("_z.sum", "", source))
 all_z.sum_raw <- all_z_sum.df %>%
   dplyr::filter(dataset == "raw" & perm=="perm-001")
 
-z.all_t_test.df <- gdata::combine(z.high_t_test.df, z.low_t_test.df, z.ext_t_test.df) %>%
+z.all_t_test.df <- gdata::combine(z.high_t_test.df, z.low_t_test.df) %>%
   mutate(source = gsub("_t_test.df", "", source)) %>%
   mutate(source = gsub("z.", "", source))
 
@@ -838,11 +934,11 @@ all_z_sum.df %>%
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"),  name = "ComBat Configuration", labels=dataset_names) + 
   theme_linedraw()
 
-z_ext_list <- c(ext = ">1.5 and <-1.5", high = ">1.5", low = "<-1.5")
+z_ext_list <- c(high = ">1.5", low = "<-1.5")
 
 all_z_sum.df_scaled %>%
   dplyr::filter(dataset != "raw" & dataset != "cf") %>%
-  mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
+  mutate(source = factor(source, levels=c("low", "high"), ordered=TRUE)) %>%
   ggplot(aes(x=dataset, y=female_ratio_diff)) +
   geom_boxplot(aes(color=dataset)) +
   # geom_dotplot(binaxis = "y", stackdir="zer") +
@@ -857,9 +953,9 @@ all_z_sum.df_scaled %>%
   theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   labs(y="Female Bias", x = "Dataset")
 
-all_z_sum.df_scaled %>%
+z_sex_boxplts <- all_z_sum.df_scaled %>%
   dplyr::filter(dataset != "raw") %>%
-  mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
+  mutate(source = factor(source, levels=c("low", "high"), ordered=TRUE)) %>%
   ggplot(aes(x=dataset, y=female_ratio_diff)) +
   geom_boxplot(aes(color=dataset)) +
   # geom_dotplot(binaxis = "y", stackdir="zer") +
@@ -872,6 +968,7 @@ all_z_sum.df_scaled %>%
   scale_x_discrete(labels=dataset_names) +
   theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   labs(y="Proportion Female", x = "Dataset")
+ggsave("figs/z_sex_boxplts.jpeg", z_sex_boxplts)
 ```
 
 
@@ -888,7 +985,9 @@ noext.z.feat.t.test.df <- bind_rows(noext.z.feat.t.test, .id="perm") %>%
       pheno %in% vol_list_regions ~ "Regional Volume",
       pheno %in% sa_list ~ "Regional SA",
       pheno %in% ct_list ~ "Regional CT",
-      TRUE ~ NA_character_)))
+      TRUE ~ NA_character_))) %>%
+      separate_wider_delim(cols=comp, delim="_", names=c("group1", "group2"), cols_remove=FALSE) %>%
+  mutate(smaller_group=ifelse(bigger_group==group1, group2, group1))
 
 noext.z.feat.t.test.df %>%
   group_by(comp, bigger_group) %>%
@@ -898,17 +997,25 @@ noext.z.feat.t.test.df %>%
 compare results
 ```{r}
 noext.z.t.test.df2 <- noext.z.feat.t.test.df %>%
-  mutate(full_df = 0)
+  mutate(full_df = "No Extremes")
 z.feat.t.test.df2 <- z.feat.t.test.df %>%
-  mutate(full_df = 1)
+  mutate(full_df = "Full Dataset")
 
 z.comp.df <- full_join(noext.z.t.test.df2, z.feat.t.test.df2)
-z.comp.df %>%
+
+comp_names <- c(cf.gam_cf = "ComBat-GAM v. \nComBat w/o Covar", cf.gamlss_cf = "ComBatLS v. ComBat w/o Covar", cf.gamlss_cf.gam = "ComBatLS v. ComBat-GAM", cf.lm_cf.gam ="ComBat-GAM v. linear ComBat", cf.lm_cf.gamlss = "ComBatLS v. linear ComBat", cf.lm_cf = "linear ComBat v. \nComBat w/o Covar")
+
+z.test.comp.plt2 <- z.comp.df %>%
   dplyr::filter(sig_fdr==TRUE) %>%
+  mutate(smaller_group=factor(smaller_group, levels=c("cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered=TRUE)) %>%
 ggplot() +
-  geom_bar(aes(x=perm, fill=bigger_group)) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  facet_grid(comp ~ full_df)
+  geom_bar(aes(x=perm, fill=smaller_group)) +
+  theme_linedraw()+
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), legend.position = "bottom") +
+  facet_grid(comp ~ full_df, labeller = labeller(comp = as_labeller(comp_names))) +
+  scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "Better ComBat \nConfiguration", labels=dataset_names) +
+  labs(x="Sampling Permutation", y="Feature Count")
+ggsave(filename="figs/z_comp_noext.png", z.test.comp.plt2, height=13, width=13, units="in")
 
 z.comp.df %>%
   dplyr::filter(sig_fdr==TRUE) %>%
@@ -960,7 +1067,11 @@ next.t.test.z.sex.test.med <- noext.sex.test.z.med %>%
                   sig_fdr = case_when(p.val_fdr < 0.001 ~ "***",
                                p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
                                p.val_fdr >= 0.01 & p.val_fdr < 0.05 ~ "*",
-                               p.val_fdr >= 0.05 ~ ""))
+                               p.val_fdr >= 0.05 ~ ""),
+         y_pos = case_when(dataset=="cf" ~ 150,
+                           dataset=="cf.lm" ~ 320,
+                           dataset=="cf.gam" ~ 330,
+                           dataset=="cf.gamlss" ~ 125))
 
 
 t.test.z.sex.test.med %>%
@@ -971,19 +1082,20 @@ next.t.test.z.sex.test.med %>%
   ggplot() +
   geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
 
-noext.sex.test.z.med %>%
+z.sex_bias_density_plt_noext <- noext.sex.test.z.med %>%
   #dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
   ggplot() +
   geom_density(aes(x=median_of_median_sex_diff, fill=dataset, color=dataset), alpha=0.6, position = "identity") +
   geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
   facet_wrap(~pheno_cat) +
   theme_linedraw() +
-  geom_text(aes(label = sig_fdr, x= x_pos, y=ifelse(next.t.test.z.sex.test.med$dataset == "cf.gam", 320, 100)),
+  geom_text(aes(label = sig_fdr, x= x_pos, y=y_pos),
               data = next.t.test.z.sex.test.med) +
   scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   theme(legend.position = "bottom")+
-  labs(x="Medians of Sex-Differences in zile Errors", y="Density Across 100 Replications")
+  labs(x="Medians of Sex-Differences in Z-Score Errors", y="Density Across 100 Replications")
+ggsave(filename="figs/z_sex_bias_density_plt_noext.png", z.sex_bias_density_plt_noext, height=7, width=10, units="in")
 ```
 
 
@@ -992,12 +1104,14 @@ noext.sex.test.z.med %>%
 blank <- ggplot() + theme_void()
 sex.var.plot.global <- readRDS("figs/sex_var_plot_global.RDS")
 sex.var.plot <- readRDS("figs/sex_var_plot.RDS")
+```
 
+```{r}
 fig_3 <- ggarrange(
   ggarrange(
-  ggarrange(blank, sex.var.plot.global, sex.var.plot,
-  ncol=3, nrow=1, 
-  widths = c(.1, .8, 3.1),
+  ggarrange(blank, sex.var.plot.global, sex.var.plot, blank,
+  ncol=4, nrow=1, 
+  widths = c(.3, .7, 2.9, .4),
   hjust=0.01,
   align = "hv",
   common.legend = TRUE, legend = "bottom"
@@ -1016,7 +1130,7 @@ fig_3 <- ggarrange(
   # #labels=c("A", "B")
   )
 
-fig_3
+#fig_3
 ggsave("figs/figure_3.jpeg", fig_3, width=15, height=10, units="in")
 ```
 
@@ -1029,7 +1143,7 @@ ggsave(paste0(base_path, "/figs/combat_abs_errs_supp_plt.jpg"), plot=sfig, width
 ```
 
 
-Figure 3 but with sig. tests for boxplots
+Figure 3 but with ComBat w/o covariates
 
 ```{r}
 fig_3_wtest <- ggarrange(
