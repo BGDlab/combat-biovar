@@ -409,7 +409,7 @@ get_t_tests <- function(df, raw_df){
               pheno_cat = cat,
               max_val = max(female_ratio),
               mu=mu) %>%
-    mutate(p.val_fdr = p.adjust(p_val, method="fdr", n = (4*4*3)), #adjusting for 4 methods * 4 pheno classes * 3 centile categories
+    mutate(p.val_fdr = p.adjust(p_val, method="fdr", n = (4*4*2)), #adjusting for 4 methods * 4 pheno classes * 2 centile categories
            sig_fdr = case_when(p.val_fdr < 0.001 ~ "***",
                                p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
                                p.val_fdr >= 0.01 & p.val_fdr < 0.05 ~ "*",

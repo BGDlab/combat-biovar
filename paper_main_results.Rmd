@@ -23,7 +23,7 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, ggh4x)
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, ggh4x, skimr)
 ```
 ```{r}
 source("./cubic_scripts/R_scripts/stats_tests.R")
@@ -217,23 +217,6 @@ ggsave("figs/win_feature_mean_cent_abs.diffs.jpeg", cent.diffs.plot)
 
 Plot errors for global phenotypes
 
-get stat results for global phenos:
-```{r, message=FALSE}
-full_cent_res %>%
-  dplyr::filter(pheno %in% vol_list_global) %>%
-  dplyr::filter(!grepl('_refA', comp)) %>%
-  summarise(n_sig = sum(sig_fdr),
-            nrow = nrow(.))
-
-#n occurances of combatLS having significantly larger errors
-full_cent_res %>%
-  dplyr::filter(bigger_group == "cf.gamlss")%>%
-  dplyr::filter(!grepl('_refA', comp)) %>%
-  summarise(n_sig = sum(sig_fdr),
-            nrow = nrow(.))
-```
-
-
 ```{r}
 dataset_names <- c(raw = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
 
@@ -241,32 +224,61 @@ global_abs.diffs <- diffs.df %>%
   dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("abs.diff_", vol_list_global)) %>%
   pivot_longer(cols=starts_with("abs.diff_"), names_to="pheno", names_prefix="abs.diff_", values_to = "abs.diff")
 
+#wilcox test for visualizing significance - just going to use it for positioning info & setting up dataframe, will use actual tests run on CUBIC for signfificance
+mean_comp_tbl_calc <- global_abs.diffs %>%
+  group_by(pheno) %>%
+  pairwise_wilcox_test(abs.diff ~ dataset, comparisons=list(c("cf.lm", "cf.gam"), c("cf.gam", "cf.gamlss"), c("cf.lm", "cf.gamlss")),
+                       p.adjust.method = "fdr")
+
+mean_comp_tbl <- mean_comp_tbl_calc %>%
+  mutate(comp = factor(paste(group2, group1, sep="_"), ordered=TRUE, levels=c("cf.gam_cf", "cf.gamlss_cf", "cf.gamlss_cf.gam", "cf.lm_cf", "cf.lm_cf.gam", "cf.lm_cf.gamlss")),
+         pheno = factor(pheno, ordered=T, levels=c("GMV", "sGMV", "Ventricles", "WMV"))) %>%
+  arrange(pheno, comp) %>%
+  add_xy_position(x="pheno", fun="max", comparisons=list(c("cf.lm", "cf.gam"), c("cf.gam", "cf.gamlss"), c("cf.lm", "cf.gamlss"), c("cf.lm", "cf"), c("cf", "cf.gam"), c("cf", "cf.gamlss")))
+
+#get actual stats for global phenos
+global_cent_res <- full_cent_res %>%
+  dplyr::filter(pheno %in% vol_list_global) %>%
+  mutate(comp = factor(comp, ordered=TRUE, levels=c("cf.gam_cf", "cf.gamlss_cf", "cf.gamlss_cf.gam", "cf.lm_cf", "cf.lm_cf.gam", "cf.lm_cf.gamlss")),
+         pheno = factor(pheno, ordered=T, levels=c("GMV", "sGMV", "Ventricles", "WMV")))
+
+mean_comp_tbl2 <- inner_join(mean_comp_tbl, global_cent_res) %>%
+  add_significance("p.val_fdr", cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+  symbols = c("***", "**", "*", "ns"))
+
+#get max w/in each pheno, prop & dataset for placement
+max_abs.errs <- global_abs.diffs %>%
+  mutate(pheno = factor(pheno, ordered=T, levels=c("GMV", "sGMV", "Ventricles", "WMV"))) %>%
+  group_by(pheno, dataset) %>%
+  summarize(max_err = max(abs.diff)*100) %>%
+  ungroup() %>%
+  pivot_wider(id_cols=c(pheno), names_from=dataset, values_from=max_err, names_prefix="max_")
+  
+stats_centile_for_plot <- full_join(mean_comp_tbl2, max_abs.errs)
+
+#kinda hacky way of fixing positions
+stats_centile_for_plot.corrected <- stats_centile_for_plot %>%
+  mutate(xmax=case_when(group1=="cf.gamlss" | group2== "cf.gamlss" ~ (x+.266667),
+                        TRUE ~  x),
+         xmin=case_when(group2=="cf.lm" ~ (x-.266667),
+                        TRUE ~  x),
+         y.position=case_when(comp == "cf.lm_cf.gamlss" ~ max_cf.lm + 1,
+                              comp == "cf.lm_cf.gam" ~ max_cf.lm + .5,
+                              TRUE ~ max_cf.gam + 0.4))
+```
+
+```{r}
 global_cent_errs_plot <- global_abs.diffs %>%
   dplyr::filter(dataset == "cf.lm" | dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         pheno = factor(pheno, levels = c("WMV", "GMV", "sGMV", "Ventricles"), ordered = TRUE),
+         #pheno = factor(pheno, levels = c("WMV", "GMV", "sGMV", "Ventricles"), ordered = TRUE),
          abs.diff = abs.diff*100) %>% #for visuals
   ggplot(aes(pheno, abs.diff)) +
   geom_violin(aes(x=pheno, y=abs.diff, fill=dataset, color=dataset), scale="count") +
   theme_linedraw(base_size = 11) +
   scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
-  #WMV
-geom_signif(y_position = c(3, 3.5, 2.5), xmin = c(0.7, 0.7, 1),
-              xmax = c(1, 1.3, 1.3), annotation = c("***","***", "***"),
-              tip_length = 0, vjust = 0.6) +
-  #GMV
-  geom_signif(y_position = c(2.75, 3.25, 2.25), xmin = c(1.7, 1.7, 2),
-              xmax = c(2, 2.3, 2.3), annotation = c("***","***", "***"),
-              tip_length = 0, vjust = 0.6) +
-  #sGMV
-  geom_signif(y_position = c(2.7, 3.2, 2.2), xmin = c(2.7, 2.7, 3),
-              xmax = c(3, 3.3, 3.3), annotation = c("***","***", "***"),
-              tip_length = 0, vjust = 0.6) +
-  #Ventricles
-  geom_signif(y_position = c(7.1, 6.75, 6.45), xmin = c(3.7, 3.7, 4),
-              xmax = c(4, 4.3, 4.3), annotation = c("***","***", "***"),
-              tip_length = 0, vjust = 0.6) +
+  stat_pvalue_manual(stats_centile_for_plot.corrected, label = "p.val_fdr.signif", tip.length = 0) +
   labs(y="Absolulte Centile Error", x = "Feature") +
   theme(plot.title = element_text(size=12))
 global_cent_errs_plot
@@ -276,7 +288,6 @@ global_cent_errs_plot
 All features:
 ```{r}
 long_abs.diffs <- diffs.df %>%
-  dplyr::filter(dataset == "cf.lm" | dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
   dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("abs.diff_", pheno_list)) %>%
   pivot_longer(cols=starts_with("abs.diff_"), names_to="pheno", names_prefix="abs.diff_", values_to = "abs.diff") %>%
   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
@@ -292,8 +303,8 @@ long_abs_diff.plt <- long_abs.diffs %>%
   ggplot(aes(pheno, abs.diff)) +
   geom_violin(aes(x=pheno, y=abs.diff, fill=dataset, color=dataset), scale="count") +
   theme_linedraw(base_size = 11) +
-  scale_fill_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
-  scale_color_manual(values=c(cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+scale_fill_manual(values=c(cf = "#450C54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  scale_color_manual(values=c(cf = "#450C54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   labs(y="Absolulte Centile Error", x = "Feature") +
   theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust=0.4, size=6), legend.position="top") +
   facet_wrap(~pheno_cat, nrow=4, scales="free")
@@ -391,7 +402,7 @@ full_cent_res %>%
 Testing for significant M:F differences in centile errors within each feature
 
 check for skew (welch t.test vs ranked welch t test)
-```{r}
+```{r, eval=FALSE}
 for (pheno in pheno_list){
   val <- paste0("diff_", pheno)
   p <- ggplot(diffs.df, aes(x = diffs.df[[val]], fill= sex, color=sex)) +
@@ -504,13 +515,12 @@ sex_t_tests_to_plot <- left_join(sex_t_tests_in_feat.df2, dk.parc, by="label")
 plot w/in feature t tests
 
 ```{r}
-dataset_names <- c(raw = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+dataset_names <- c(raw = "Raw Data", cf = "ComBat \nw/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
 #var plot
 sex.var.plot.df <- sex_t_tests_to_plot %>%
-  dplyr::filter(pheno_cat != "Global Volume") %>%
-  dplyr::filter(dataset %in% c("cf.lm", "cf.gam", "cf.gamlss")) %>% #drop refA levels
+  dplyr::filter(pheno_cat != "Global Volume" & dataset != "raw") %>%
   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         median_sex_diff = median_sex_diff*100)
+         median_sex_diff = ifelse(sig_fdr == TRUE, median_sex_diff*100, NA))
 #find range
 max(sex.var.plot.df$median_sex_diff, na.rm=TRUE)
 min(sex.var.plot.df$median_sex_diff, na.rm=TRUE)
@@ -526,14 +536,13 @@ sex.var.plot <- ggplot(sex.var.plot.df) +
   #            aes(fill=median_sex_diff)) +
   facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nCentile Error", limits = c(-0.25, 0.25)) #
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nCentile Error", limits = c(-6, 6)) #
 ```
 
 ```{r}
 #plot global
 sex.var.plot.global.df <- sex_t_tests_to_plot %>%
-  dplyr::filter(pheno_cat == "Global Volume") %>%
-  dplyr::filter(dataset %in% c("cf.lm", "cf.gam", "cf.gamlss")) %>% #drop refA levels
+  dplyr::filter(pheno_cat == "Global Volume" & dataset != "raw") %>%
   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
   dplyr::select(!c(label, region, hemi)) %>% #drop cols corresponding to dk regions
   mutate(tissue_class = as.factor(case_when(pheno == "GMV" ~ "cGM",
@@ -541,7 +550,7 @@ sex.var.plot.global.df <- sex_t_tests_to_plot %>%
                                             pheno == "WMV" ~ "WM",
                                             pheno == "sGMV" ~ "sGM",
                                             TRUE ~ NA)),
-        median_sex_diff = median_sex_diff*100) %>% 
+        median_sex_diff = ifelse(sig_fdr == TRUE, median_sex_diff*100, NA)) %>% 
   group_by(dataset)
 
 #color range
@@ -562,7 +571,7 @@ sex.var.plot.global <- ggplot(sex.var.plot.global.df) +
   facet_grid(dataset~pheno_cat) + 
   theme_linedraw(base_size=12) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", limits = c(-0.25, 0.25), name = "Male - Female Median \nCentile Error") #,
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", limits = c(-6, 6), name = "Male - Female Median \nCentile Error") #,
 # sex.var.plot.global
 ```
 
@@ -578,11 +587,8 @@ p_sex <- ggarrange(
   common.legend = TRUE, legend = "bottom"
   )
 
-p_sexannotate <- annotate_figure(p_sex, top = text_grob("Figure 2A. Sex-differences in centile score errors across combat configurations", 
-               color = "black", size = 14, hjust=.65))
-p_sexannotate
-ggsave("figs/sex_diff_win_feat.jpeg", p_sexannotate, width=7, height=8)
-saveRDS(p_sexannotate, file="figs/sex_diff_win_feat.RDS")
+ggsave("figs/sex_diff_win_feat.jpeg", p_sex, width=5.5, height=5)
+saveRDS(p_sex, file="figs/sex_diff_win_feat.RDS")
 ```
 
 Sex Effect is the median male centile error - median female centile error (i.e. units are in centiles). Therefore, + sex effect (blue) means female scores tend to have more positive errors (TRUE centile > calculated centile) and - sex effect (green) means females have more negative errors (TRUE centile < calculated centile)
@@ -789,6 +795,82 @@ noext_plot.df %>%
   geom_violin(aes(x=type, y=median_sex_diff, fill=type), trim=FALSE) +
   facet_wrap(~dataset, scales="free_y")
 ```
+plot w/in feature t tests
+
+```{r}
+dataset_names <- c(raw = "Raw Data", cf = "ComBat \nw/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+#var plot
+sex.var.plot.df.noext <- noext.sex_t_tests_in_feat.df %>%
+  mutate(pheno_cat = as.factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_)),
+    label = sub("_[^_]*_", "_", pheno)) %>%
+  dplyr::filter(pheno_cat != "Global Volume" & dataset != "raw") %>%
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
+         median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+                              TRUE ~ median_sex_diff*100))
+#find range
+max(sex.var.plot.df.noext$median_sex_diff, na.rm=TRUE)
+min(sex.var.plot.df.noext$median_sex_diff, na.rm=TRUE)
+
+sex.var.plot.noext <- ggplot(sex.var.plot.df.noext) +
+  theme_linedraw(base_size=12) +
+  ggseg::geom_brain(atlas = dk_nomed, 
+             position = position_brain(hemi ~ side),
+             aes(fill = median_sex_diff)) +
+  facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nCentile Error", limits = c(-9, 9)) #
+```
+
+```{r}
+#plot global
+noext.sex.var.plot.global.df <- noext.sex_t_tests_in_feat.df %>%
+  mutate(pheno_cat = as.factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_))) %>%
+  dplyr::filter(pheno_cat == "Global Volume" & dataset != "raw") %>%
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
+         median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+                              TRUE ~ median_sex_diff*100)) %>%
+  group_by(dataset)
+
+#color range
+max(noext.sex.var.plot.global.df$median_sex_diff, na.rm=TRUE)
+min(noext.sex.var.plot.global.df$median_sex_diff, na.rm=TRUE)
+
+noext.sex.var.plot.global <- ggplot(noext.sex.var.plot.global.df) +
+  ggseg::geom_brain(atlas = aseg_cerebrum, 
+             aes(fill = median_sex_diff),
+             side = c("coronal")) +
+  facet_grid(dataset~pheno_cat) + 
+  theme_linedraw(base_size=12) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nCentile Error", limits = c(-9, 9)) #,
+# sex.var.plot.global
+```
+
+Combine plots - need to keep playing around to make the spacing pretty when it saves out
+```{r}
+noext.p_sex <- ggarrange(
+  noext.sex.var.plot.global, sex.var.plot.noext,
+  ncol=2, nrow=1, 
+  widths = c(1, 3.2),
+  #labels=c("A", "B"),
+  #hjust=0.01,
+  align = "hv",
+  common.legend = TRUE, legend = "bottom"
+  )
+
+ggsave("figs/noext.sex_diff_win_feat.jpeg", noext.p_sex, width=5.5, height=5)
+```
+
 
 # Z-SCORES
 
@@ -876,6 +958,111 @@ full_z_res %>%
   summarise(n_regions=sum(sig_fdr))
 ```
 
+All features:
+```{r}
+long_abs.diffs.z <- diffs.df %>%
+  #dplyr::filter(dataset == "cf.lm" | dataset == "cf.gam" | dataset == "cf.gamlss") %>% #drop refA levels
+  dplyr::select(participant, sex, age_days, sim.site, dataset, paste0("abs.diff_", pheno_list.z)) %>%
+  pivot_longer(cols=starts_with("abs.diff_"), names_to="pheno", names_prefix="abs.diff_", values_to = "abs.diff") %>%
+  mutate(pheno=gsub(".z", "", pheno)) %>%
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
+         pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)))
+
+long_abs_diff.plt.z <- long_abs.diffs.z %>%
+  ggplot(aes(pheno, abs.diff)) +
+  geom_violin(aes(x=pheno, y=abs.diff, fill=dataset, color=dataset), scale="count") +
+  theme_linedraw(base_size = 11) +
+  scale_fill_manual(values=c(cf = "#450C54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  scale_color_manual(values=c(cf = "#450C54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
+  labs(y="Absolulte Z-score Error", x = "Feature") +
+  theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust=0.4, size=6), legend.position="top") +
+  facet_wrap(~pheno_cat, nrow=4, scales="free")
+ggsave("figs/all_abs_err_plt_wlabels_z.jpeg", long_abs_diff.plt.z, width=13, height=10.5, units="in")
+```
+
+plot median on brain
+```{r}
+pheno_abs.z.list <- paste0("abs.diff_", pheno_list.z)
+
+#get median w/in feature 
+med.diffs.long.z <- diffs.df %>%
+  dplyr::select(sex, dataset, pheno_abs.z.list) %>%
+  dplyr::filter(dataset %in% c("cf.lm", "cf.gam", "cf.gamlss")) %>% #drop refA levels
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+  group_by(dataset) %>%
+  summarize(across(starts_with("abs.diff_"), median)) %>%
+  ungroup() %>%
+  pivot_longer(cols=starts_with("abs.diff_"), values_to="median_z_abs.diff", names_to = "pheno", names_prefix = "abs.diff_") %>%
+  mutate(pheno = gsub(".z", "", pheno)) %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)),
+      label = sub("_[^_]*_", "_", pheno))
+
+med.diffs.long2.z <- left_join(med.diffs.long.z, dk.parc, by="label")
+max(med.diffs.long2.z$median_z_abs.diff)
+```
+
+```{r}
+dataset_names <- c(raw = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+#var plot
+med.diffs.plot.df.z <- med.diffs.long2.z %>%
+  dplyr::filter(pheno_cat != "Global Volume") %>%
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE))
+
+med.diffs.plot.z <- ggplot(med.diffs.plot.df.z) +
+  theme_linedraw(base_size=12) +
+  ggseg::geom_brain(atlas = dk_nomed, 
+             position = position_brain(hemi ~ side),
+             aes(fill = median_z_abs.diff)) +
+  facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
+  paletteer::scale_fill_paletteer_c("grDevices::Oslo", name = "Median Absolute Z-Score Error", limits = c(0, .05), breaks=c(0, 0.025, 0.05)) #
+# med.diffs.plot
+```
+
+```{r}
+#plot global
+med.diffs.plot.global.df.z <- med.diffs.long2.z %>%
+  dplyr::filter(pheno_cat == "Global Volume") %>%
+  dplyr::select(!c(label, region, hemi)) %>% #drop cols corresponding to dk regions
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE))
+
+med.diffs.plot.global.z <- ggplot(med.diffs.plot.global.df.z) +
+  ggseg::geom_brain(atlas = aseg_cerebrum, 
+             aes(fill = median_z_abs.diff),
+             side = c("coronal")) +
+  #scale_fill_gradient2() +
+  facet_grid(dataset~pheno_cat) + 
+  theme_linedraw(base_size=12) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
+  paletteer::scale_fill_paletteer_c("grDevices::Oslo", name = "Median Absolute Z-Score Error", limits = c(0, .05), breaks=c(0, 0.025, 0.05))
+# med.diffs.plot.global
+```
+
+Combine plots - need to keep playing around to make the spacing pretty when it saves out
+```{r}
+p_diff.z <- ggarrange(
+  med.diffs.plot.global.z, med.diffs.plot.z,
+  ncol=2, nrow=1, 
+  widths = c(1, 3.1),
+  #labels=c("A", "B"),
+  #hjust=0.01,
+  align = "hv",
+  common.legend = TRUE, legend = "bottom"
+  )
+ggsave("figs/p_diff.z.jpeg", p_diff.z, width=7, height=5)
+```
+
+
 ### Sex-Differences
 
 Testing for significant M-F differences in z score errors WITHIN each feature!
@@ -910,6 +1097,86 @@ z.sex_t_tests_in_feat.df %>%
     ungroup() %>%
     as.data.frame()
 ```
+
+
+```{r}
+z.sex_t_tests_in_feat.df2 <- z.sex_t_tests_in_feat.df %>%
+  mutate(pheno=gsub(".z", "", pheno)) %>%
+  mutate(pheno_cat = as.factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_)),
+    label = sub("_[^_]*_", "_", pheno)) #for plotting
+z.sex_t_tests_to_plot <- left_join(z.sex_t_tests_in_feat.df2, dk.parc, by="label")
+
+max(z.sex_t_tests_to_plot$median_sex_diff)
+min(z.sex_t_tests_to_plot$median_sex_diff)
+```
+
+plot w/in feature t tests
+
+```{r}
+dataset_names <- c(raw = "Raw Data", cf = "ComBat \nw/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+#var plot
+z.sex.var.plot.df <- z.sex_t_tests_to_plot %>%
+  dplyr::filter(pheno_cat != "Global Volume" & dataset != "raw") %>%
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
+         median_sex_diff = ifelse(sig_fdr == TRUE, median_sex_diff, NA))
+
+z.sex.var.plot <- ggplot(z.sex.var.plot.df) +
+  theme_linedraw(base_size=12) +
+  ggseg::geom_brain(atlas = dk_nomed, 
+             position = position_brain(hemi ~ side),
+             aes(fill = median_sex_diff)) +
+  facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nCentile Error", limits = c(-0.4, .4)) #
+```
+
+```{r}
+#plot global
+z.sex.var.plot.global.df <- z.sex_t_tests_to_plot %>%
+  dplyr::filter(pheno_cat == "Global Volume" & dataset != "raw") %>%
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+  dplyr::select(!c(label, region, hemi)) %>% #drop cols corresponding to dk regions
+  mutate(tissue_class = as.factor(case_when(pheno == "GMV" ~ "cGM",
+                                            pheno == "Ventricles" ~ "CSF",
+                                            pheno == "WMV" ~ "WM",
+                                            pheno == "sGMV" ~ "sGM",
+                                            TRUE ~ NA)),
+        median_sex_diff = ifelse(sig_fdr == TRUE, median_sex_diff, NA)) %>% 
+  group_by(dataset)
+
+z.sex.var.plot.global <- ggplot(z.sex.var.plot.global.df) +
+  ggseg::geom_brain(atlas = aseg_cerebrum, 
+             aes(fill = median_sex_diff),
+             side = c("coronal")) +
+  #scale_fill_gradient2() +
+  facet_grid(dataset~pheno_cat) + 
+  theme_linedraw(base_size=12) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", limits = c(-0.4, 0.4), name = "Male - Female Median \nCentile Error") #,
+# sex.var.plot.global
+```
+
+Combine plots - need to keep playing around to make the spacing pretty when it saves out
+```{r}
+z.p_sex <- ggarrange(
+  z.sex.var.plot.global, z.sex.var.plot,
+  ncol=2, nrow=1, 
+  widths = c(1, 3.2),
+  #labels=c("A", "B"),
+  #hjust=0.01,
+  align = "hv",
+  common.legend = TRUE, legend = "bottom"
+  )
+
+ggsave("figs/z_sex_diff_win_feat.jpeg", z.p_sex, width=5.5, height=5)
+```
+
+Sex Effect is the median male centile error - median female centile error (i.e. units are in centiles). Therefore, + sex effect (blue) means female scores tend to have more positive errors (TRUE centile > calculated centile) and - sex effect (green) means females have more negative errors (TRUE centile < calculated centile)
 
 ### W/o extremes
 Are extreme z-scores (<-2 and >2) driving observed results?
@@ -1041,6 +1308,85 @@ z.sex_t_tests_in_feat.df %>%
     ungroup() %>%
     as.data.frame()
 ```
+
+plot w/in feature t tests
+
+```{r}
+dataset_names <- c(raw = "Raw Data", cf = "ComBat \nw/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+#var plot
+sex.var.plot.df.noext_z <- noext.z.sex_t_tests_in_feat.df %>%
+  mutate(pheno = gsub(".z", "", pheno)) %>%
+  mutate(pheno_cat = as.factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_)),
+    label = sub("_[^_]*_", "_", pheno)) %>%
+  dplyr::filter(pheno_cat != "Global Volume" & dataset != "raw") %>%
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
+         median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+                              TRUE ~ median_sex_diff))
+#find range
+max(sex.var.plot.df.noext_z$median_sex_diff, na.rm=TRUE)
+min(sex.var.plot.df.noext_z$median_sex_diff, na.rm=TRUE)
+
+sex.var.plot.noext_z <- ggplot(sex.var.plot.df.noext_z) +
+  theme_linedraw(base_size=12) +
+  ggseg::geom_brain(atlas = dk_nomed, 
+             position = position_brain(hemi ~ side),
+             aes(fill = median_sex_diff)) +
+  facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nCentile Error", limits=c(-0.5, 0.5)) #
+```
+
+```{r}
+#plot global
+noext.sex.var.plot.global.df_z <- noext.z.sex_t_tests_in_feat.df %>%
+  mutate(pheno = gsub(".z", "", pheno)) %>%
+  mutate(pheno_cat = as.factor(case_when(
+    pheno %in% vol_list_global ~ "Global Volume",
+    pheno %in% vol_list_regions ~ "Regional Volume",
+    pheno %in% sa_list ~ "Regional SA",
+    pheno %in% ct_list ~ "Regional CT",
+    TRUE ~ NA_character_))) %>%
+  dplyr::filter(pheno_cat == "Global Volume" & dataset != "raw") %>%
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
+         median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+                              TRUE ~ median_sex_diff)) %>%
+  group_by(dataset)
+
+#color range
+max(noext.sex.var.plot.global.df_z$median_sex_diff, na.rm=TRUE)
+min(noext.sex.var.plot.global.df_z$median_sex_diff, na.rm=TRUE)
+
+noext.sex.var.plot.global_z <- ggplot(noext.sex.var.plot.global.df_z) +
+  ggseg::geom_brain(atlas = aseg_cerebrum, 
+             aes(fill = median_sex_diff),
+             side = c("coronal")) +
+  facet_grid(dataset~pheno_cat) + 
+  theme_linedraw(base_size=12) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nCentile Error", limits = c(-0.5, 0.5)) #,
+# sex.var.plot.global
+```
+
+Combine plots - need to keep playing around to make the spacing pretty when it saves out
+```{r}
+noext.p_sex_z <- ggarrange(
+  noext.sex.var.plot.global_z, sex.var.plot.noext_z,
+  ncol=2, nrow=1, 
+  widths = c(1, 3.2),
+  #labels=c("A", "B"),
+  #hjust=0.01,
+  align = "hv",
+  common.legend = TRUE, legend = "bottom"
+  )
+
+ggsave("figs/z_noext.sex_diff_win_feat.jpeg", noext.p_sex_z, width=5.5, height=5)
+```
+
 
 # CENTILE FANS
 

@@ -44,6 +44,7 @@ nrow(cn.df.unique) == n_unique(cn.df.unique$participant)
 ```{r}
 skim(cn.df.unique)
 levels(cn.df.unique$study)
+n_unique(cn.df.unique$study)
 ```
 
 euler # noted as surfholes
@@ -135,7 +136,7 @@ cn.df.eulerfilt2 <- left_join(cn.df.eulerfilt, study_mad) %>%
   dplyr::filter(surfholes <= euler_threshold)
 ```
 
-Removed `r nrow(cn.df.unique) - nrow(cn.df.eulerfilt2)` subjects, `r nrow(cn.df.eulerfilt2)` remain
+Removed `r nrow(cn.df.noinf) - nrow(cn.df.eulerfilt2)` subjects, `r nrow(cn.df.eulerfilt2)` remain
 
 
 Keep studies w missing site info and just treat as single-site
