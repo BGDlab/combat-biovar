@@ -500,7 +500,7 @@ mean_cents_bxplt_nolabel <- mean_cents.df %>%
 ```
 
 
-Cohen's F squared for study effects
+##Cohen's F-squared for study effects
 
 ```{r}
 gam_centile_f2 <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_cohenfsq.csv"))

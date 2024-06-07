@@ -478,22 +478,23 @@ all_cent_sum_boxplt.diff <- all_cent_sum.df_scaled %>%
   theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   labs(y="Female Bias", x = "Dataset")
 
-all_cent_sum_boxplt_wtest <- all_cent_sum.df %>%
+all_cent_sum_boxplt.diff_full <- all_cent_sum.df_scaled %>%
   dplyr::filter(dataset != "raw") %>%
-  mutate(source = factor(source, levels=c("low", "high"), ordered=TRUE)) %>%
-  ggplot(aes(x=dataset, y=female_ratio)) +
+  mutate(source = factor(source, levels=c("low", "high", "ext"), ordered=TRUE)) %>%
+  ggplot(aes(x=dataset, y=female_ratio_diff)) +
   geom_boxplot(aes(color=dataset)) +
   # geom_dotplot(binaxis = "y", stackdir="center") +
   facet_grid(pheno_cat~source, scales="free_y", labeller = labeller(source=cent_ext_list)) +
-  geom_hline(data=all_cent.sum_raw, aes(yintercept=female_ratio), linetype="dashed")+
-  geom_text(aes(label = sig_fdr, y = max_val + 0.01),
-              data = all_t_test.df) +
+  geom_hline(yintercept=0, linetype="dashed")+
+  geom_text(aes(label = sig_fdr, y = (y_pos)), nudge_y=.005,
+               data = all_t_test.df) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
   theme_linedraw() +
   scale_x_discrete(labels=dataset_names) +
+  # scale_y_continuous(labels=function(x)x/all_t_test.df$female_ratio[which(raw_df$pheno_cat == pheno_cat)]) + 
   theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  labs(y="Proportion Female", x = "Dataset")
-#ggsave(filename="figs/all_cent_sum_boxplt_wtest.png", all_cent_sum_boxplt_wtest)
+  labs(y="Female Bias", x = "Dataset")
+ggsave(filename="figs/all_cent_sum_boxplt_wtest.png", all_cent_sum_boxplt.diff_full)
 ```
 
 ### Without Extremes

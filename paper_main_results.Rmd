@@ -1132,7 +1132,7 @@ z.sex.var.plot <- ggplot(z.sex.var.plot.df) +
              aes(fill = median_sex_diff)) +
   facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nCentile Error", limits = c(-0.4, .4)) #
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nZ-Score Error", limits = c(-0.4, .4)) #
 ```
 
 ```{r}
@@ -1157,7 +1157,7 @@ z.sex.var.plot.global <- ggplot(z.sex.var.plot.global.df) +
   facet_grid(dataset~pheno_cat) + 
   theme_linedraw(base_size=12) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", limits = c(-0.4, 0.4), name = "Male - Female Median \nCentile Error") #,
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", limits = c(-0.4, 0.4), name = "Male - Female Median \nZ-score Error") #,
 # sex.var.plot.global
 ```
 
@@ -1338,7 +1338,7 @@ sex.var.plot.noext_z <- ggplot(sex.var.plot.df.noext_z) +
              aes(fill = median_sex_diff)) +
   facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nCentile Error", limits=c(-0.5, 0.5)) #
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nZ-score Error", limits=c(-0.5, 0.5)) #
 ```
 
 ```{r}
@@ -1368,7 +1368,7 @@ noext.sex.var.plot.global_z <- ggplot(noext.sex.var.plot.global.df_z) +
   facet_grid(dataset~pheno_cat) + 
   theme_linedraw(base_size=12) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nCentile Error", limits = c(-0.5, 0.5)) #,
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nZ-score Error", limits = c(-0.5, 0.5)) #,
 # sex.var.plot.global
 ```
 
@@ -1726,6 +1726,109 @@ p <- ggarrange(
   align = "hv",
   common.legend = TRUE, legend = "bottom"
   )
+```
+
+Redo with combat w/o covariates
+
+```{r}
+dataset_names <- c(raw = "Raw Data", cf = "ComBat w/o Covar", cf.lm = "ComBat", cf.gam ="ComBat-GAM", cf.gamlss ="ComBatLS")
+#var plot
+var.plot.df2 <- sigma.sex.df2 %>%
+  dplyr::filter(pheno_cat != "Global Volume") %>%
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
+         sex_standard = ifelse(drop1.pval <0.05, sex_standard, NA)) %>%
+  group_by(dataset, pheno_cat)
+
+range(var.plot.df2$sex_standard, na.rm=T)
+
+tp <- unique(var.plot.df2[,c('dataset','pheno_cat')]) %>%
+  dplyr::filter(dataset=="raw")
+tp$sex_standard <- 1
+
+var.plot2 <- ggplot(var.plot.df2) +
+  geom_rect(data = tp, fill="gray", xmin = -Inf,xmax = Inf,
+            ymin = -Inf, ymax = Inf, alpha = 0.4) +
+  ggseg::geom_brain(atlas = dk_nomed, 
+             position = position_brain(hemi ~ side),
+             aes(fill = sex_standard)) +
+  #scale_fill_gradient2() +
+  facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
+  theme_linedraw(base_size=12) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Sex Effect", limits = c(-0.12, 0.12), breaks = c(-0.1, 0,0.1))
+```
+
+```{r}
+#plot global
+var.plot.global.df2 <- sigma.sex.df2 %>%
+  dplyr::filter(pheno_cat == "Global Volume") %>%
+  mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE)) %>%
+  dplyr::select(!c(label, region, hemi)) %>% #drop cols corresponding to dk regions
+  dplyr::mutate(tissue_class = case_when(pheno == "GMV" ~ "cGM",
+                                            pheno == "Ventricles" ~ "CSF",
+                                            pheno == "WMV" ~ "WM",
+                                            pheno == "sGMV" ~ "sGM",
+                                            TRUE ~ NA_character_),
+         sex_standard = ifelse(drop1.pval <0.05, sex_standard, NA)) %>%
+  group_by(dataset)
+
+tp <- unique(var.plot.global.df2[,c('dataset','pheno_cat')]) %>%
+  dplyr::filter(dataset=="raw")
+tp$sex_standard <- 1
+
+range(var.plot.global.df2$sex_standard, na.rm=T)
+
+var.plot.global2 <- ggplot(var.plot.global.df2) +
+  geom_rect(data = tp, fill="gray", xmin = -Inf,xmax = Inf,
+            ymin = -Inf, ymax = Inf, alpha = 0.4) +
+  ggseg::geom_brain(atlas = aseg_cerebrum, 
+             aes(fill = sex_standard),
+             side = c("coronal")) +
+  #scale_fill_gradient2() +
+  facet_grid(dataset~pheno_cat) + 
+  theme_linedraw(base_size=12) +
+  theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Sex Effect", limits = c(-0.12, 0.12), breaks = c(-0.1, 0,0.1))
+```
+
+Combine plots
+```{r}
+p <- ggarrange(
+  var.plot.global2, var.plot2,
+  ncol=2, nrow=1, 
+  widths = c(1, 3.18),
+  #labels=c("A", "B"),
+  #hjust=0.01,
+  align = "hv",
+  common.legend = TRUE, legend = "right"
+  )
+ggsave("figs/full_sex_eff_on_scale.jpeg", p, width=8, height=8, units="in")
+```
+
+
+##Test Sex-Effects Across Feature Types
+
+```{r}
+raw_sex_eff <- sigma.sex.df2 %>%
+  dplyr::filter(dataset == "raw")
+
+summary(aov(sex_standard ~ pheno_cat, data=raw_sex_eff))
+pairwise.wilcox.test(raw_sex_eff$sex_standard, raw_sex_eff$pheno_cat, p.adjust.method = "fdr")
+```
+
+plot
+
+```{r}
+comp <- get_comparisons(raw_sex_eff, pheno_cat, ref.group = NULL)
+
+? <- ggboxplot(raw_sex_eff, x = "pheno_cat", y = "sex_standard",
+          color = "pheno_cat")+ 
+  stat_compare_means(method = "wilcox.test", comparisons = comp, label="p.signif")+ # Add pairwise comparisons p-value
+  stat_compare_means(label.y = 0.25) +     # Add global p-value
+  theme(legend.position = "none") +
+  labs(x="Brain Feature Category", y="Standardized Effect of Sex on Variance")
+
+ggsave("figs/sex_eff_comp_plt.jpeg", sex_eff_comp_plt)
 ```
 
 # FIGURE 1: METHODS
