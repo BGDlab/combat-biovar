@@ -503,13 +503,16 @@ mean_cents_bxplt_nolabel <- mean_cents.df %>%
 ##Cohen's F-squared for study effects
 
 ```{r}
+raw_centile_f2 <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-raw_cohenfsq.csv"))
+raw_centile_f2$combat <- "Unharmonized"
+
 gam_centile_f2 <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_cohenfsq.csv"))
 gam_centile_f2$combat <- "ComBat-GAM"
 
 gamlss_centile_f2 <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_cohenfsq.csv"))
 gamlss_centile_f2$combat <- "ComBatLS"
 
-f2.df <- rbind(gam_centile_f2, gamlss_centile_f2)
+f2.df <- rbind(raw_centile_f2, gam_centile_f2, gamlss_centile_f2)
 f2.df <- f2.df %>%
   mutate(pheno_cat = as.factor(case_when(
       pheno %in% vol_list_global ~ "Global Volume",
@@ -517,6 +520,13 @@ f2.df <- f2.df %>%
       pheno %in% sa_list ~ "Regional SA",
       pheno %in% ct_list ~ "Regional CT",
       TRUE ~ NA_character_)))
+
+unique(f2.df$combat)
+
+f2.df %>%
+  group_by(combat) %>%
+  summarize(median = median(fsq),
+            IQR = IQR(fsq))
 ```
 
 pretty plot
@@ -527,13 +537,14 @@ fsq_plt <- ggplot(f2.df) +
   facet_wrap(~pheno_cat, scales="free") +
   theme_linedraw() +
   theme(axis.text.x = element_blank(), legend.position="bottom", axis.ticks.x = element_blank()) + 
-  scale_fill_manual(values = c('ComBat-GAM' = "#3D75C2", ComBatLS ="#CFB023FF"), name = "ComBat Configuration") +
+  scale_fill_manual(values = c('ComBat-GAM' = "#3D75C2", ComBatLS ="#CFB023FF", Unharmonized = "darkgray"), name = "Harmonization") +
   labs(y="Effect Size (Cohen's F-Squared)", x = "Brain Feature")
 ggsave("figs/cohens_fsq.jpeg", fsq_plt)
 ```
 
 ```{r}
 f2.df.sum <- f2.df %>%
+  dplyr::filter(combat != "Umharmonized") %>%
   group_by(pheno) %>%
   arrange(combat) %>%
   mutate(F2_diff = fsq - fsq[1]) #gamlss - gam value, + number means site effect is larger in combatLS
