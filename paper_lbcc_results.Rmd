@@ -599,6 +599,91 @@ mean_cent_deltas_df <- cent_deltas_df %>%
             abs_mean_delta_cent=(mean(abs(centile)))*100) 
 
 mean_cent_deltas_df_study <- full_join(mean_cent_deltas_df, study_info)
+
+summary(mean_cent_deltas_df_study$abs_mean_delta_cent)
+```
+
+see how often features move between extreme (>95% or <5%) to not-extreme
+```{r}
+#rm features that didn't converge in both datasets
+pheno_list_cent <- pheno_list[pheno_list != "lh_SA_posteriorcingulate" & pheno_list != "rh_CT_posteriorcingulate"]
+
+gam_centile_df.clean$combat <- "cf.gam"
+gamlss_centile_df.clean$combat <- "cf.gamlss"
+
+centiles_df <- full_join(gam_centile_df.clean, gamlss_centile_df.clean)
+
+centiles_cat <- centiles_df %>%
+  mutate(combat = factor(combat, ordered=TRUE, levels=c("cf.gam", "cf.gamlss"))) %>%
+  mutate(across(pheno_list_cent, ~ as.factor(case_when(. > 0.95 ~ "high", 
+                                               . < 0.05 ~ "low",
+                                               TRUE ~ "mid")))) %>%
+  arrange(combat) %>%
+  group_by(participant) %>%
+  mutate(across(pheno_list_cent, 
+                ~ . == first(.), .names = "is_equal_{col}")) %>%
+  ungroup()
+```
+
+```{r}
+centiles_cat_filt <- centiles_cat %>%
+  dplyr::select(participant, combat, all_of(pheno_list_cent))
+  
+ext_count_df <- centiles_cat_filt %>%
+  rowwise() %>%
+  mutate(count_high = sum(c_across(pheno_list_cent) == "high"),
+         count_mid = sum(c_across(pheno_list_cent) == "mid"),
+         count_low = sum(c_across(pheno_list_cent) == "low")) %>%
+  dplyr::select(participant, combat, starts_with("count"))
+
+ext_count_df %>%
+  ggplot() +
+  geom_bar(aes(x=count_high, fill=combat, color=combat), position="identity", alpha=.4)
+ext_count_df %>%
+  ggplot() +
+  geom_bar(aes(x=count_low, fill=combat, color=combat), position="identity", alpha=.4)
+```
+
+```{r}
+centiles_cat_filt2 <- centiles_cat %>%
+  dplyr::filter(combat =="cf.gamlss") %>%
+  dplyr::select(participant, starts_with("is_equal_")) %>%
+  mutate(sum = rowSums(across(starts_with("is_equal_")))) %>%
+  mutate(changed = ifelse(sum == length(pheno_list_cent), "no_change", "change")) #if not all features are true -> changed
+
+max(centiles_cat_filt2$sum) == length(pheno_list_cent) #correct
+
+length(pheno_list_cent) - mean(centiles_cat_filt2$sum) #mean per subject
+length(pheno_list_cent) - min(centiles_cat_filt2$sum) #range
+length(pheno_list_cent) - max(centiles_cat_filt2$sum)
+
+#percentage subjects
+table(centiles_cat_filt2$changed)["change"]/nrow(centiles_cat_filt2)
+
+#percentage features
+#n changed features = # total features - sum
+n_feat <- n_unique(centiles_cat_filt2$participant)*length(pheno_list_cent)
+n_unchanged <- sum(centiles_cat_filt2$sum) #true = 1 = no change
+
+n_feat-n_unchanged
+((n_feat-n_unchanged)/n_feat)*100 # % changed
+```
+
+plot
+```{r}
+centiles_cat_filt2_long <- centiles_cat_filt2 %>%
+  pivot_longer(cols=starts_with("is_equal_"), names_to="pheno", names_prefix="is_equal_", values_to="is_equal")
+
+n_unique(centiles_cat_filt2_long$participant)*206 == nrow(centiles_cat_filt2_long)
+
+cent_cat_plt <- centiles_cat_filt2_long %>%
+  dplyr::filter(is_equal==FALSE) %>%
+ggplot() +
+  geom_bar(aes(x=pheno), fill="#1D213B") +
+  theme_linedraw()+
+  theme(axis.text.x=element_blank(), axis.ticks.x = element_blank()) +
+  labs(x="Brain Feature", y= "Instances of Centile Re-categorization")
+ggsave("figs/cent_cat_plt.jpeg", cent_cat_plt, width=10, height=6, units="in")
 ```
 
 check mean subj delta ~ study mean age
@@ -694,6 +779,11 @@ gamlss_centile_df.mean2 %>%
 ```
 
 Plots
+
+```{r}
+raw_centile_df.mean2 <- full_join(raw_centile_df.mean, study_info) %>%
+  mutate(age_diff = (age_days/365.25) - study_mean_age)
+```
 
 ```{r}
 gamlss_centile_df.mean2$combat <- "gamlss"
