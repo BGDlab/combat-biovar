@@ -1968,29 +1968,29 @@ ggsave("figs/figure_2.jpeg", fig_2, width=11, height=7, units="in")
 Plotting normal curves for pres
 
 ```{r}
-data <- data.frame(A = rnorm(1000000, mean = 7, sd = 1),
+data <- data.frame(A = rnorm(1000000, mean = 7, sd = .5),
                    B = rnorm(1000000, mean = 10, sd = 2),
-                   C = rnorm(1000000, mean = 13, sd = 3),
+                   C = rnorm(1000000, mean = 13, sd = 3.5),
                    datatype=rep("raw", n=1000000))
 
-ggplot(data, aes(x = A, size=1.4)) +
-  geom_density(fill = "gray", alpha = 0.5) +
+ggplot(data, aes(x = A)) +
+  geom_density(fill = "gray", alpha = 0.5, size=4) +
   geom_vline(xintercept = mean(data$A), size=1) +
   labs(x = "Value",
        y = "Density") +
   xlim(4, 20) +
   theme_void()
 
-ggplot(data, aes(x = B, size=1.4)) +
-  geom_density(fill = "gray", alpha = 0.5) +
+ggplot(data, aes(x = B)) +
+  geom_density(fill = "gray", alpha = 0.5, size=4) +
   geom_vline(xintercept = mean(data$B), size=1) +
   labs(x = "Value",
        y = "Density") +
   xlim(4, 20) +
   theme_void()
 
-ggplot(data, aes(x = C, size=1.4)) +
-  geom_density(fill = "gray", alpha = 0.5) +
+ggplot(data, aes(x = C)) +
+  geom_density(fill = "gray", alpha = 0.5, size=4) +
   geom_vline(xintercept = mean(data$C), size=1) +
   labs(x = "Value",
        y = "Density") +
@@ -2010,8 +2010,8 @@ combatgam_data <- full_join(combatgam_data, data) %>%
 
 ```{r}
 combatgam_data %>%
-ggplot(aes(size=1.4, fill=datatype, color=datatype)) +
-  geom_density(aes(x=A), alpha = 0.5) +
+ggplot(aes(fill=datatype, color=datatype)) +
+  geom_density(aes(x=A), alpha = 0.5, size=4) +
   geom_vline(xintercept = mean(combatgam_data[combatgam_data$datatype=="raw",]$A), size=1, color="black") +
   geom_vline(xintercept = mean(combatgam_data[combatgam_data$datatype=="cf.gam",]$A), size=1, color="#3D75C2") +
 scale_color_manual(values = c(cf.gam = "#3D75C2", raw= "black", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
@@ -2019,11 +2019,12 @@ scale_color_manual(values = c(cf.gam = "#3D75C2", raw= "black", cf.lm = "#75C23D
   labs(x = "Value",
        y = "Density") +
   xlim(4, 20) +
-  theme_void()
+  theme_void() +
+  theme(legend.position="none")
 
 combatgam_data %>%
-ggplot(aes(size=1.4, fill=datatype, color=datatype)) +
-  geom_density(aes(x=B), alpha = 0.5) +
+ggplot(aes(fill=datatype, color=datatype)) +
+  geom_density(aes(x=B), alpha = 0.5, size=4) +
   geom_vline(xintercept = mean(combatgam_data[combatgam_data$datatype=="raw",]$B), size=1, color="black") +
   geom_vline(xintercept = mean(combatgam_data[combatgam_data$datatype=="cf.gam",]$B), size=1, color="#3D75C2") +
 scale_color_manual(values = c(cf.gam = "#3D75C2", raw= "black", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
@@ -2031,11 +2032,12 @@ scale_color_manual(values = c(cf.gam = "#3D75C2", raw= "black", cf.lm = "#75C23D
   labs(x = "Value",
        y = "Density") +
   xlim(4, 20) +
-  theme_void()
+  theme_void() +
+  theme(legend.position="none")
 
 combatgam_data %>%
-ggplot(aes(size=1.4, fill=datatype, color=datatype)) +
-  geom_density(aes(x=C), alpha = 0.5) +
+ggplot(aes(fill=datatype, color=datatype)) +
+  geom_density(aes(x=C), alpha = 0.5, size=4) +
   geom_vline(xintercept = mean(combatgam_data[combatgam_data$datatype=="raw",]$C), size=1, color="black") +
   geom_vline(xintercept = mean(combatgam_data[combatgam_data$datatype=="cf.gam",]$C), size=1, color="#3D75C2") +
 scale_color_manual(values = c(cf.gam = "#3D75C2", raw= "black", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
@@ -2043,13 +2045,14 @@ scale_color_manual(values = c(cf.gam = "#3D75C2", raw= "black", cf.lm = "#75C23D
   labs(x = "Value",
        y = "Density") +
   xlim(4, 20) +
-  theme_void()
+  theme_void() +
+  theme(legend.position="none")
 ```
 
 ```{r}
-combatgamlss_data <- data.frame(A = rnorm(1000000, mean = 9.5, sd = 1.5),
+combatgamlss_data <- data.frame(A = rnorm(1000000, mean = 9.5, sd = 1),
                    B = rnorm(1000000, mean = 10, sd = 2),
-                   C = rnorm(1000000, mean = 11, sd = 2.5),
+                   C = rnorm(1000000, mean = 11, sd = 3),
                    datatype=rep("cf.gamlss", n=1000000))
 
 combatgamlss_data <- full_join(combatgamlss_data, data) %>%
@@ -2058,8 +2061,8 @@ combatgamlss_data <- full_join(combatgamlss_data, data) %>%
 
 ```{r}
 combatgamlss_data %>%
-ggplot(aes(size=1.4, fill=datatype, color=datatype)) +
-  geom_density(aes(x=A), alpha = 0.5) +
+ggplot(aes(fill=datatype, color=datatype)) +
+  geom_density(aes(x=A), alpha = 0.5, size=4) +
   geom_vline(xintercept = mean(combatgamlss_data[combatgamlss_data$datatype=="raw",]$A), size=1, color="black") +
   geom_vline(xintercept = mean(combatgamlss_data[combatgamlss_data$datatype=="cf.gamlss",]$A), size=1, color="#CFB023FF") +
 scale_color_manual(values = c(cf.gam = "#3D75C2", raw= "black", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
@@ -2067,11 +2070,12 @@ scale_color_manual(values = c(cf.gam = "#3D75C2", raw= "black", cf.lm = "#75C23D
   labs(x = "Value",
        y = "Density") +
   xlim(4, 20) +
-  theme_void()
+  theme_void() +
+  theme(legend.position="none")
 
 combatgamlss_data %>%
-ggplot(aes(size=1.4, fill=datatype, color=datatype)) +
-  geom_density(aes(x=B), alpha = 0.5) +
+ggplot(aes(fill=datatype, color=datatype)) +
+  geom_density(aes(x=B), alpha = 0.5, size=4) +
   geom_vline(xintercept = mean(combatgamlss_data[combatgamlss_data$datatype=="raw",]$B), size=1, color="black") +
   geom_vline(xintercept = mean(combatgamlss_data[combatgamlss_data$datatype=="cf.gamlss",]$B), size=1, color="#CFB023FF") +
 scale_color_manual(values = c(cf.gam = "#3D75C2", raw= "black", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
@@ -2079,11 +2083,12 @@ scale_color_manual(values = c(cf.gam = "#3D75C2", raw= "black", cf.lm = "#75C23D
   labs(x = "Value",
        y = "Density") +
   xlim(4, 20) +
-  theme_void()
+  theme_void() +
+  theme(legend.position="none")
 
 combatgamlss_data %>%
-ggplot(aes(size=1.4, fill=datatype, color=datatype)) +
-  geom_density(aes(x=C), alpha = 0.5) +
+ggplot(aes(fill=datatype, color=datatype)) +
+  geom_density(aes(x=C), alpha = 0.5, size=4) +
   geom_vline(xintercept = mean(combatgamlss_data[combatgamlss_data$datatype=="raw",]$C), size=1, color="black") +
   geom_vline(xintercept = mean(combatgamlss_data[combatgamlss_data$datatype=="cf.gamlss",]$C), size=1, color="#CFB023FF") +
 scale_color_manual(values = c(cf.gam = "#3D75C2", raw= "black", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
@@ -2091,5 +2096,30 @@ scale_color_manual(values = c(cf.gam = "#3D75C2", raw= "black", cf.lm = "#75C23D
   labs(x = "Value",
        y = "Density") +
   xlim(4, 20) +
+  theme_void() +
+  theme(legend.position="none")
+```
+
+```{r}
+data2 <- data.frame(d = rnorm(1000000, mean = 0, sd = 1)) %>%
+  mutate(sd_cat = if_else(d < (0-1.7) | d > (0+1.7),"ext", "not_ext"))
+
+data2 %>%
+ggplot(aes(size=1.4), color="black")+
+  geom_density(aes(x=d), alpha = 0.5, fill="gray") +
+  geom_vline(xintercept = (0-1.65), size=1, color="#CFB023FF") +
+  geom_vline(xintercept = (0+1.65), size=1, color="#CFB023FF")+
+  theme_void()
+
+data2 %>%
+ggplot(aes(size=1.4), color="black")+
+  geom_density(aes(x=d), alpha = 0.5, fill="gray") +
+  geom_vline(xintercept = (0-1.65), size=1, color="#3D75C2") +
+  geom_vline(xintercept = (0+1.65), size=1, color="#3D75C2")+
+  theme_void()
+
+data2 %>%
+ggplot(aes(size=1.4), color="black")+
+  geom_density(aes(x=d), alpha = 0.5) +
   theme_void()
 ```
