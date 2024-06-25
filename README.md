@@ -1,6 +1,6 @@
 # combat-biovar
 
-Testing the ability of ComBatLS to harmonize multisite imaging features while preserving biological variance in scale. 
+Testing the ability of [ComBatLS](https://github.com/andy1764/ComBatFamily) to harmonize multisite imaging features while preserving biological variance in scale. 
 
 ## eda/
 Directory containing .Rmd scripts to clean data and conduct exploratory analyses.
