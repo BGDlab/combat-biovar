@@ -1,11 +1,22 @@
 ---
-title: "hbm_paper_results"
+title: "ComBatLS LBCC Results"
 output: html_document
 date: '2023-11-12'
 ---
 
-Rmd to show and get feedback on planned for results & figures for the combatLS paper. Currently thinking I'll have centile score results be the focus of the paper and keep z-scores for the supplement.
+Rmd to compile, test, and visualize ComBatLS vs ComBat-GAM harmonization in the LBCC.
 
+Relies on outputs derived/functions from:
+1. `lifespan_eda.Rmd`
+2. `run_LBCC_pipeline.sh`
+    - `R_scripts/combat_apply_w_transform.R`
+    - `R_scripts/fit_lifespan_mod_notbv.R`
+    - `R_scripts/fit_lifespan_mod_site_est.R`
+3. `run_LBCC_stats.sh`
+    - `R_scripts/fit_lifespan_centiles.R`
+    - `R_scripts/get_lifespan_site_eff.R`
+    - `R_scripts/get_lifespan_deltas.R`
+    
 # Setup
 
 ```{r setup, include=FALSE}
@@ -18,7 +29,6 @@ pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggp
 options("mc.cores")
 
 source("./cubic_scripts/R_scripts/gamlss_helper_funs.R")
-#source("./cubic_scripts/R_scripts/ranked_welch_tests.R")
 
 #ATLAS
 aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")

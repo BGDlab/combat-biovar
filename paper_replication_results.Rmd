@@ -1,8 +1,26 @@
 ---
-title: "hbm_paper_results"
+title: "ComBatLS Replication Results"
 output: html_document
 date: '2023-11-12'
 ---
+
+Rmd to compile and visualize tests of ComBatLS against other harmonization methods when replicating site simulations 100x. 
+
+Relies on outputs derived/functions from:
+
+1. `ukb_curation-eda.Rmd`
+2. `run_permutation_pipeline.sh`
+   - `R_scripts/permute_sites_.R`
+   - `R_scripts/combat_apply.R`
+   - `R_scripts/fit_perm_basic_mod.R`
+   - `R_scripts/fit_centiles.R`
+   - `R_scripts/summarise_cent_subj-wise.R`
+3. `run_permutation_stats.sh`
+   - `R_scripts/summarise_cent_subj-wise.R`
+   - `R_scripts/ratio_results.R`
+   - `R_scripts/featurewise_sex_bias_test.R`
+   - `R_scripts/remove_extremes_single.R`
+4. `pull_stats.sh`
 
 # Setup
 
