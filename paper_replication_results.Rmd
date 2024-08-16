@@ -10,7 +10,7 @@ Relies on outputs derived/functions from:
 
 1. `ukb_curation-eda.Rmd`
 2. `run_permutation_pipeline.sh`
-   - `R_scripts/permute_sites_.R`
+   - `R_scripts/permute_sites.R`
    - `R_scripts/combat_apply.R`
    - `R_scripts/fit_perm_basic_mod.R`
    - `R_scripts/fit_centiles.R`
