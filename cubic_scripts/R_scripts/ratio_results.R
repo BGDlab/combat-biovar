@@ -1,4 +1,4 @@
-1597/4# get results for varying-proportion analyses more quickly using cubic
+# get results for varying-proportion analyses more quickly using cubic
 
 set.seed(12345)
 

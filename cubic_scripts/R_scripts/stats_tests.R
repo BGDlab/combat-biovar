@@ -83,7 +83,9 @@ centile.t.tests.full_result <- function(df, feature_list, comp_multiplier = 1) {
     "pheno" = character(),
     "group1" = character(),
     "group2" = character(),
-    "p.value" = double()
+    "p.value" = double(),
+    "df" = double(),
+    "estimate" = double()
   )
   # run tests
   attach(df)
@@ -93,19 +95,25 @@ centile.t.tests.full_result <- function(df, feature_list, comp_multiplier = 1) {
                                                      paired = TRUE,
                                                      p.adj = "none"))
 
-    # also find bigger group
-    df.pairwise.est <- tidy(pairwise.rank.maxgrp(x = df[[pheno]],
+    #GET ADDITIONAL TEST PARAMETERS 
+    # this is admittedly hackey, but basically to use tidy() the object needs
+    # to be class pairwise.htest, which only has cols for the 2 groups and p.val
+    # so to get additional stats, i'm just rewriting funs that return other stats
+    # in p-value col and renaming the col :/
+    
+    # find bigger group
+    df.pairwise.grp <- tidy(pairwise.rank.maxgrp(x = df[[pheno]],
                                                  g = df[["dataset"]],
                                                  paired = TRUE,
                                                  p.adj = "none"))
     df.pairwise.est <- df.pairwise.est %>%
       rename(bigger_group = p.value) # fix name
-    # print(df.pairwise.est)
+    
+    #confirm list
+    stopifnot(dim(df.pairwise.est) == dim(df.pairwise.t))
 
     # join
     df.pairwise.t2 <- left_join(df.pairwise.t, df.pairwise.est)
-
-    stopifnot(nrow(df.pairwise.t2) == nrow(df.pairwise.t))
 
     df.pairwise.t2$pheno <- pheno
     t.df <- rbind(t.df, df.pairwise.t2)

@@ -29,13 +29,13 @@ knitr::opts_chunk$set(echo = FALSE, warning = FALSE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, gdata, gtExtras, webshot2)
+pacman::p_load(data.table, ggplot2, tidyverse, ggseg, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, gdata, gtExtras, webshot2) #ggsegExtra
 #Sys.setenv("MC_CORES"=10L)
 options("mc.cores")
 
 source("./cubic_scripts/R_scripts/gamlss_helper_funs.R")
 source("./cubic_scripts/R_scripts/ranked_welch_tests.R")
-aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
+remotes::install_github("BGDlab/ggseg-tissueclass-atlas")
 ```
 
 single script to parse outputs & get results (condensed from `ukb_sim.site_analyses.Rmd`)
@@ -303,10 +303,13 @@ cent.sex.test.med <- cent.subj.sex.test.df %>%
   group_by(dataset, perm, pheno_cat) %>%
   summarise(median_of_median_sex_diff = median(median_sex_diff))
 
+#t-test of median sex diffs in centile error distributions vs 0
 t.test.cent.sex.test.med <- cent.sex.test.med %>%
   group_by(dataset, pheno_cat) %>%
   summarise(t.test.p = tidy(t.test(median_of_median_sex_diff))$p.value,
             t.test.est = tidy(t.test(median_of_median_sex_diff))$estimate,
+            t.test.stat = tidy(t.test(median_of_median_sex_diff))$statistic,
+            t.test.df = tidy(t.test(median_of_median_sex_diff))$parameter,
             x_pos = median(median_of_median_sex_diff)) %>% #test median of each distribution against 0
   mutate(p.val_fdr = p.adjust(t.test.p, method="fdr", n = length(unique(cent.sex.test.med$dataset))*length(unique(cent.sex.test.med$pheno_cat))),
                   sig_fdr = case_when(p.val_fdr < 0.001 ~ "***",
@@ -318,12 +321,32 @@ t.test.cent.sex.test.med <- cent.sex.test.med %>%
                            dataset=="cf.gam" ~ 10.5,
                            dataset=="cf.gamlss" ~ 6))
 #get vals
-t.test.cent.sex.test.med
+t.test.cent.sex.test.med_tbl <- t.test.cent.sex.test.med %>%
+  dplyr::select(dataset, pheno_cat, t.test.est, t.test.stat, t.test.df, p.val_fdr, sig_fdr) %>%
+  mutate(dataset = case_when(dataset == "cf" ~ "ComBat w/o Covariates",
+                                   dataset == "cf.lm" ~ "Linear ComBat",
+                                   dataset == "cf.gam" ~ "ComBat-GAM",
+                                   dataset == "cf.gamlss" ~ "ComBatLS")) %>%
+  rename("ComBat Method" = dataset,
+         "Phenotype Category" = pheno_cat,
+         "Estimate" = t.test.est,
+         "t-statistic" = t.test.stat,
+         "dfs" = t.test.df,
+         "p-value (FDR-corrected)" = p.val_fdr,
+         "Significance" = sig_fdr) %>%
+  gt() %>%
+  tab_style(style = list(cell_fill(color = "gray95")),
+    locations = cells_row_groups()) %>%
+  tab_options(column_labels.font.weight = "bold") %>%
+  tab_header(title = "One-sided t-tests of sex differences in centile errors across 100 replications")
+gtsave(t.test.cent.sex.test.med_tbl, filename="figs/cent_median_sexdiff_table.png")
+```
 
+plots
+```{r}
 t.test.cent.sex.test.med %>%
   ggplot() +
   geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
-
 
 t.test.cent.sex.test.med.filt <- t.test.cent.sex.test.med %>% dplyr::filter(dataset != "cf")
 
@@ -799,7 +822,6 @@ ggplot() +
 ggsave(filename="figs/z.sex_bias_hist_plt.z.png", sex_bias_hist_plt)
 ```
 
-
 ```{r}
 z.sex.test.med <- z.sex.test.df %>%
   mutate(pheno = gsub(".z", "", pheno)) %>%
@@ -816,6 +838,8 @@ t.test.z.sex.test.med <- z.sex.test.med %>%
   group_by(dataset, pheno_cat) %>%
   summarise(t.test.p = tidy(t.test(median_of_median_sex_diff))$p.value,
             t.test.est = tidy(t.test(median_of_median_sex_diff))$estimate,
+            t.test.stat = tidy(t.test(median_of_median_sex_diff))$statistic,
+            t.test.df = tidy(t.test(median_of_median_sex_diff))$parameter,
             x_pos = median(median_of_median_sex_diff)) %>% #test median of each distribution against 0
   mutate(p.val_fdr = p.adjust(t.test.p, method="fdr", n = length(unique(z.sex.test.med$dataset))*length(unique(z.sex.test.med$pheno_cat))),
                   sig_fdr = case_when(p.val_fdr < 0.001 ~ "***",
@@ -827,6 +851,30 @@ t.test.z.sex.test.med <- z.sex.test.med %>%
                            dataset=="cf.gam" ~ 345,
                            dataset=="cf.gamlss" ~ 125))
 
+#pretty table
+t.test.z.sex.test.med_tbl <- t.test.z.sex.test.med %>%
+  dplyr::select(dataset, pheno_cat, t.test.est, t.test.stat, t.test.df, p.val_fdr, sig_fdr) %>%
+  mutate(dataset = case_when(dataset == "cf" ~ "ComBat w/o Covariates",
+                                   dataset == "cf.lm" ~ "Linear ComBat",
+                                   dataset == "cf.gam" ~ "ComBat-GAM",
+                                   dataset == "cf.gamlss" ~ "ComBatLS")) %>%
+  rename("ComBat Method" = dataset,
+         "Phenotype Category" = pheno_cat,
+         "Estimate" = t.test.est,
+         "t-statistic" = t.test.stat,
+         "dfs" = t.test.df,
+         "p-value (FDR-corrected)" = p.val_fdr,
+         "Significance" = sig_fdr) %>%
+  gt() %>%
+  tab_style(style = list(cell_fill(color = "gray95")),
+    locations = cells_row_groups()) %>%
+  tab_options(column_labels.font.weight = "bold") %>%
+  tab_header(title = "One-sided t-tests of sex differences in z-score errors across 100 replications")
+gtsave(t.test.z.sex.test.med_tbl, filename="figs/z_median_sexdiff_table.png")
+```
+
+plot
+```{r}
 t.test.z.sex.test.med.filt <- t.test.z.sex.test.med %>% 
   dplyr::filter(dataset != "cf")
 
@@ -1178,7 +1226,7 @@ fig_3_wtest <- ggarrange(
   nrow=2, ncol=1,
   labels=c("A", "B")
   ),
-  all_cent_sum_boxplt_wtest,
+  all_cent_sum_boxplt.diff,
   ncol=2, nrow=1,
   labels=c(NA, "C"),
   widths = c(1, 1.8)

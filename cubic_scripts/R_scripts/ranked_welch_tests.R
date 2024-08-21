@@ -124,7 +124,7 @@ pairwise.rank.welch.t.test <- function(x, g, p.adjust.method = p.adjust.methods,
       alternative = alternative, ...
     ))$estimate
 
-    bigger_group <- ifelse(est > 0, i, j)
+    bigger_group <- as.character(ifelse(est > 0, i, j))
     return(bigger_group)
   }
   # (estimate = estimate1-estimate2) ~ positive -> levels(g)[1], negative -> levels(g)[2]
@@ -134,7 +134,7 @@ pairwise.rank.welch.t.test <- function(x, g, p.adjust.method = p.adjust.methods,
   ans <- list(
     method = METHOD, data.name = DNAME,
     p.value = PVAL, p.adjust.method = p.adjust.method,
-    larger_group = est_matrix
+    larger_group = big_group
   )
   class(ans) <- "pairwise.htest" # prevents larger_group from displaying but enables tidy()
   ans
