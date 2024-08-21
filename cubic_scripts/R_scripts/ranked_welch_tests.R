@@ -82,7 +82,7 @@ pairwise.rank.welch.t.test <- function(x, g, p.adjust.method = p.adjust.methods,
   else "Wilcoxon rank sum test"
 
   ## comp matrix
-  compare.levels <- function(i, j) {
+  compare.levels <- function(i, j, return=c("p.value", "estimate", "df", "bigger_group")) {
     ## get vals
     xi <- x[as.integer(g) == i]
     xj <- x[as.integer(g) == j]
@@ -96,7 +96,8 @@ pairwise.rank.welch.t.test <- function(x, g, p.adjust.method = p.adjust.methods,
     y_ranks <- pooled_r[seq_along(xj) + length(xi)]
 
     ## test
-    t.test(x_ranks, y_ranks, paired = paired, var.equal = FALSE, alternative = alternative, ...)$p.value
+    test_res <- t.test(x_ranks, y_ranks, paired = paired, var.equal = FALSE, alternative = alternative, ...)$p.value
+    
   }
 
   ## compile results
@@ -124,7 +125,7 @@ pairwise.rank.welch.t.test <- function(x, g, p.adjust.method = p.adjust.methods,
       alternative = alternative, ...
     ))$estimate
 
-    bigger_group <- as.character(ifelse(est > 0, i, j))
+    bigger_group <- ifelse(est > 0, i, j)
     return(bigger_group)
   }
   # (estimate = estimate1-estimate2) ~ positive -> levels(g)[1], negative -> levels(g)[2]
