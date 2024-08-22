@@ -83,9 +83,7 @@ centile.t.tests.full_result <- function(df, feature_list, comp_multiplier = 1) {
     "pheno" = character(),
     "group1" = character(),
     "group2" = character(),
-    "p.value" = double(),
-    "df" = double(),
-    "estimate" = double()
+    "p.value" = double()
   )
   # run tests
   attach(df)
@@ -106,14 +104,14 @@ centile.t.tests.full_result <- function(df, feature_list, comp_multiplier = 1) {
                                                  g = df[["dataset"]],
                                                  paired = TRUE,
                                                  p.adj = "none"))
-    df.pairwise.est <- df.pairwise.est %>%
+    df.pairwise.grp <- df.pairwise.grp %>%
       rename(bigger_group = p.value) # fix name
     
     #confirm list
-    stopifnot(dim(df.pairwise.est) == dim(df.pairwise.t))
+    stopifnot(dim(df.pairwise.grp) == dim(df.pairwise.t))
 
     # join
-    df.pairwise.t2 <- left_join(df.pairwise.t, df.pairwise.est)
+    df.pairwise.t2 <- left_join(df.pairwise.t, df.pairwise.grp)
 
     df.pairwise.t2$pheno <- pheno
     t.df <- rbind(t.df, df.pairwise.t2)

@@ -82,7 +82,7 @@ pairwise.rank.welch.t.test <- function(x, g, p.adjust.method = p.adjust.methods,
   else "Wilcoxon rank sum test"
 
   ## comp matrix
-  compare.levels <- function(i, j, return=c("p.value", "estimate", "df", "bigger_group")) {
+  compare.levels <- function(i, j) {
     ## get vals
     xi <- x[as.integer(g) == i]
     xj <- x[as.integer(g) == j]
@@ -95,50 +95,37 @@ pairwise.rank.welch.t.test <- function(x, g, p.adjust.method = p.adjust.methods,
     x_ranks <- pooled_r[seq_along(xi)]
     y_ranks <- pooled_r[seq_along(xj) + length(xi)]
 
-    ## test
-    test_res <- t.test(x_ranks, y_ranks, paired = paired, var.equal = FALSE, alternative = alternative, ...)$p.value
+    ## test & return all results
+    test_res <- t.test(x_ranks, y_ranks, paired = paired, var.equal = FALSE, alternative = alternative, ...)
+    
+    ## reformat object
+    tidy_test_res <- broom::tidy(test_res)
+    
+    ## find & append bigger group
+    # (estimate = estimate1-estimate2) ~ positive -> levels(g)[1], negative -> levels(g)[2]
+    bigger_group <- ifelse(test_res$estimate > 0, i, j)
+    tidy_test_res$big_grp <- bigger_group
+
+    list_test_res <- list(tidy_test_res) #return list where first val is tibble
+    return(list_test_res)
     
   }
 
   ## compile results
   PVAL <- pairwise.table(compare.levels, levels(g), p.adjust.method)
 
-  # find which site has larger estimate
-  ## comp matrix
-  compare.levels.est <- function(i, j) {
-    ## get vals
-    xi <- x[as.integer(g) == i]
-    xj <- x[as.integer(g) == j]
-
-    # rank pooled vals
-    pooled <- c(xi, xj)
-    pooled_r <- rank(pooled, na.last = NA)
-
-    ## split rankings back into the original lists
-    x_ranks <- pooled_r[seq_along(xi)]
-    y_ranks <- pooled_r[seq_along(xj) + length(xi)]
-
-    ## get est
-    est <- broom::tidy(t.test(x_ranks, y_ranks,
-      paired = paired,
-      var.equal = FALSE,
-      alternative = alternative, ...
-    ))$estimate
-
-    bigger_group <- ifelse(est > 0, i, j)
-    return(bigger_group)
-  }
-  # (estimate = estimate1-estimate2) ~ positive -> levels(g)[1], negative -> levels(g)[2]
-  big_group <- pairwise.table(compare.levels.est, levels(g), p.adjust.method)
-  est_matrix <- matrix(as.list(levels(g))[big_group], ncol = ncol(big_group), dimnames = dimnames(big_group))
-
-  ans <- list(
-    method = METHOD, data.name = DNAME,
-    p.value = PVAL, p.adjust.method = p.adjust.method,
-    larger_group = big_group
-  )
-  class(ans) <- "pairwise.htest" # prevents larger_group from displaying but enables tidy()
-  ans
+  # 
+  # # (estimate = estimate1-estimate2) ~ positive -> levels(g)[1], negative -> levels(g)[2]
+  # big_group <- pairwise.table(compare.levels.est, levels(g), p.adjust.method)
+  # est_matrix <- matrix(as.list(levels(g))[big_group], ncol = ncol(big_group), dimnames = dimnames(big_group))
+  # 
+  # ans <- list(
+  #   method = METHOD, data.name = DNAME,
+  #   p.value = PVAL, p.adjust.method = p.adjust.method,
+  #   larger_group = big_group
+  # )
+  # class(ans) <- "tidy.pairwise.htest" # prevents larger_group from displaying but enables tidy()
+  # ans
 }
 
 # making new fun that will return the level with the greater estimated ranks in each pairwise comparison
@@ -188,3 +175,62 @@ pairwise.rank.maxgrp <- function(x, g, p.adjust.method = p.adjust.method,
   class(ans) <- "pairwise.htest"
   ans
 }
+
+# new tidy function to succinctly return all desired statistics from 'pairwise.rank.welch.t.test()'
+# based heavily on 'tidy.pairwise.htest()' 
+# from 'https://rdrr.io/cran/broom/src/R/stats-htest-tidiers.R#sym-tidy.pairwise.htest'
+
+tidy_pairwise.all.results <- function(x, ...) {
+  #tidy p-values
+  p.tibble <- tibble(group1 = rownames(x$p.value)) %>%
+    cbind(x$p.value) %>%
+    pivot_longer(
+      cols = c(dplyr::everything(), -group1),
+      names_to = "group2",
+      values_to = "p.value"
+    ) %>%
+    stats::na.omit() %>%
+    unite(comp, c("group1", "group2")) %>%
+    as_tibble()
+  
+  #tidy larger groups
+  grp.tibble <- tibble(group1 = rownames(x$big_grp)) %>%
+    cbind(x$big_grp) %>%
+    pivot_longer(
+      cols = c(dplyr::everything(), -group1),
+      names_to = "group2",
+      values_to = "bigger_group"
+    ) %>%
+    stats::na.omit() %>%
+    unite(comp, c("group1", "group2")) %>%
+    as_tibble()
+  
+  #tidy estimates
+  est.tibble <- tibble(group1 = rownames(x$est)) %>%
+    cbind(x$est) %>%
+    pivot_longer(
+      cols = c(dplyr::everything(), -group1),
+      names_to = "group2",
+      values_to = "estimate"
+    ) %>%
+    stats::na.omit() %>%
+    unite(comp, c("group1", "group2")) %>%
+    as_tibble()
+  
+  #tidy dfs
+  df.tibble <- tibble(group1 = rownames(x$df)) %>%
+    cbind(x$df) %>%
+    pivot_longer(
+      cols = c(dplyr::everything(), -group1),
+      names_to = "group2",
+      values_to = "df"
+    ) %>%
+    stats::na.omit() %>%
+    unite(comp, c("group1", "group2")) %>%
+    as_tibble()
+ #merge
+  tbl <- Reduce(function(...) merge(..., by=comp, all=T), list(p.tibble, grp.tibble, est.tibble, df.tibble))
+ 
+return(tbl)  
+}
+
