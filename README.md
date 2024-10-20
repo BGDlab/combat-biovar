@@ -1,9 +1,9 @@
-# combat-biovar
+# ComBatLS Manuscript Analyses
 
 Testing the ability of [ComBatLS](https://github.com/andy1764/ComBatFamily) to harmonize multisite imaging features while preserving biological variance in scale. Contains code for all analyses and figures presented in *ComBatLS: A location- and scale-preserving method for multi-site image harmonization*.
 
 ## Preprint
-Gardner, M., Shinohara, R. T., Bethlehem, R. A. I., Romero-Garcia, R., Warrier, V., Dorfschmidt, L., Shanmugan, S., Seidlitz, J., Alexander-Bloch, A., & Chen, A. (2024). ComBatLS: A location- and scale-preserving method for multi-site image harmonization. bioRxiv, 2024.06.21.599875. https://doi.org/10.1101/2024.06.21.599875
+Gardner, M., Shinohara, R. T., Bethlehem, R. A. I., Romero-Garcia, R., Warrier, V., Dorfschmidt, L., Shanmugan, S., Thompson, P., Seidlitz, J., Alexander-Bloch, A., & Chen, A. (2024). ComBatLS: A location- and scale-preserving method for multi-site image harmonization. bioRxiv, 2024.06.21.599875. https://doi.org/10.1101/2024.06.21.599875
 
 ## Contents
 ### eda/
