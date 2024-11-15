@@ -42,7 +42,8 @@ cn.df_first <- cn.df %>%
   arrange(age_days) %>%
   group_by(participant) %>%
   slice_head(n=1) %>%
-  mutate(site_full = gsub(" ", "_", ifelse(is.na(site), study, paste(study, site, sep="&")))) %>%
+  mutate(site_full = gsub(" ", "_", ifelse(is.na(site), study, paste(study, site, sep="&"))),
+         age_yrs = (age_days-280)/365.25) %>%
   ungroup() %>%
   group_by(site_full) %>%
   filter(n() > 1) #keep sites with at least 2 ppl
@@ -52,21 +53,21 @@ check for sex differences in sites
 
 ```{r}
 sfig_full_sample <- ggplot(cn.df_first) +
-  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=interaction(site, study, sep="&"), fill=sex)) +
-  scale_y_continuous(labels = scales::percent) +
+  geom_bar(aes(x=..count../tapply(..count.., ..y.. ,sum)[..y..], y=interaction(site, study, sep="&"), fill=sex)) +
+  scale_x_continuous(labels = scales::percent) +
   #theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  guides(x = ggh4x::guide_axis_nested(delim="&")) +
+  guides(y = ggh4x::guide_axis_nested(delim="&")) +
   theme_linedraw() +
   theme(
-    axis.ticks.x = element_blank(),
-    axis.text.x = element_blank(),
-    ggh4x.axis.nesttext.x = element_text(angle = 45, vjust = .9, hjust=1, size=5),
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    ggh4x.axis.nesttext.y = element_text(size=6),
     ggh4x.axis.nestline = element_line(linetype = 1),
-    legend.position="bottom"
+    legend.position="right"
   ) +
-  geom_hline(yintercept=.5, color="lightgray", linetype="dashed") +
-  labs(x="Data Collection Site", y="Sample Composition", fill="Sex")
-ggsave(paste0(base_path, "/figs/sfig_full_sample.jpeg"), sfig_full_sample, width=15, height=7, units="in")
+  geom_vline(xintercept=.5, color="lightgray", linetype="dashed") +
+  labs(y="Data Collection Site", x="Sample Composition", fill="Sex")
+ggsave(paste0(base_path, "/figs/sfig_full_sample.jpeg"), sfig_full_sample, width=6, height=14, units="in")
 ```
 
 look into a couple studies specifically
@@ -126,10 +127,81 @@ p6 <- cn.df_first %>%
 sfig_samples <- ggarrange(p1, p2, p3, p4, p5, p6, 
                           ncol=2, nrow=3, 
                           common.legend = TRUE, legend="right",
-                          align="v")
-ggsave(paste0(base_path, "/figs/sfig_subsamples.jpeg"), sfig_samples, width=15, height=10, units="in")
+                          align="v",
+                          labels = "AUTO")
+ggsave(paste0(base_path, "/figs/sfig_subsamples.jpeg"), sfig_samples, 
+       width=15, height=10, units="in")
 ```
 
+look at age variability
+
+```{r}
+sfig_full_sample_age <- ggplot(cn.df_first) +
+  geom_boxplot(aes(x=age_yrs, y=interaction(site, study, sep="&"))) +
+  guides(y = ggh4x::guide_axis_nested(delim="&")) +
+  theme_linedraw() +
+  theme(
+    axis.ticks.y = element_blank(),
+    axis.text.y = element_blank(),
+    ggh4x.axis.nesttext.y = element_text(size=6),
+    ggh4x.axis.nestline = element_line(linetype = 1),
+    axis.title.y=element_blank()
+  ) +
+  labs(x="Age (Years Post-Birth)")
+ggsave(paste0(base_path, "/figs/sfig_full_sample_age.jpeg"), sfig_full_sample_age, width=6, height=14, units="in")
+
+sitewise_full_plot <- ggarrange(sfig_full_sample, sfig_full_sample_age,
+          ncol=2, nrow=1, align = "hv",
+          common.legend = TRUE, legend = "bottom",
+          labels="AUTO")
+ggsave(paste0(base_path, "/figs/sitewise_full_plot.jpeg"), sitewise_full_plot, 
+       width=15, height=15, units="in")
+```
+
+
+```{r}
+plot_by_age <- function(df) {
+  ggplot(df, aes(y = age_yrs, x=site)) +
+    geom_boxplot() +
+    theme_linedraw() +
+    theme(legend.position = "none",
+          axis.text.x = element_text(angle = 45, hjust = 1)) +
+    xlab("Site") +
+    ylab("Age")
+}
+
+p1.age <- cn.df_first %>% 
+  filter(study == "ABCD") %>% 
+  plot_by_age() + labs(title="ABCD")
+
+p2.age <- cn.df_first %>% 
+  filter(study == "UKB") %>% 
+  plot_by_age() + labs(title="UK Biobank")
+
+#bad balanced
+p3.age <- cn.df_first %>% 
+  filter(study == "EMBARC") %>% 
+  plot_by_age() + labs(title="EMBARC")
+
+p4.age <- cn.df_first %>% 
+  filter(study == "ADNI") %>% 
+  plot_by_age() + labs(title="ADNI")
+
+p5.age <- cn.df_first %>% 
+  filter(study == "abide1") %>% 
+  plot_by_age() + labs(title="ABIDE 1")
+
+p6.age <- cn.df_first %>% 
+  filter(study == "ADHD200") %>% 
+  plot_by_age() + labs(title="ADHD200")
+
+sfig_samples.age <- ggarrange(p1.age, p2.age, p3.age, p4.age, p5.age, p6.age, 
+                          ncol=2, nrow=3,
+                          align="v",
+                          labels = "AUTO")
+ggsave(paste0(base_path, "/figs/sfig_subsamples_age.jpeg"), sfig_samples.age, 
+       width=15, height=10, units="in")
+```
 
 ```{r}
 #drop repeat scans
