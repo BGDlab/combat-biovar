@@ -27,11 +27,109 @@ cn.df <- fread(paste0(base_path,"/data/lifespan_dataset_dkatlas_CNonly_euler.csv
 ```
 
 drop UKB for sharing
-```{r}
+```{r, eval=FALSE}
 cn.df_dropUKB <- cn.df %>%
   dplyr::filter(study != "UKB")
 fwrite(cn.df_dropUKB, file=paste0(base_path, "/data/lifespan_dataset_dkatlas_CNonly_euler_noukb.csv"))
 ```
+
+Plot full samples for supplemental figures looking at imbalanced demographics across sites
+
+```{r}
+#just get first scan
+cn.df_first <- cn.df %>%
+  drop_na(c(age_days, participant, study)) %>%
+  arrange(age_days) %>%
+  group_by(participant) %>%
+  slice_head(n=1) %>%
+  mutate(site_full = gsub(" ", "_", ifelse(is.na(site), study, paste(study, site, sep="&")))) %>%
+  ungroup() %>%
+  group_by(site_full) %>%
+  filter(n() > 1) #keep sites with at least 2 ppl
+```
+
+check for sex differences in sites
+
+```{r}
+sfig_full_sample <- ggplot(cn.df_first) +
+  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=interaction(site, study, sep="&"), fill=sex)) +
+  scale_y_continuous(labels = scales::percent) +
+  #theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  guides(x = ggh4x::guide_axis_nested(delim="&")) +
+  theme_linedraw() +
+  theme(
+    axis.ticks.x = element_blank(),
+    axis.text.x = element_blank(),
+    ggh4x.axis.nesttext.x = element_text(angle = 45, vjust = .9, hjust=1, size=5),
+    ggh4x.axis.nestline = element_line(linetype = 1),
+    legend.position="bottom"
+  ) +
+  geom_hline(yintercept=.5, color="lightgray", linetype="dashed") +
+  labs(x="Data Collection Site", y="Sample Composition", fill="Sex")
+ggsave(paste0(base_path, "/figs/sfig_full_sample.jpeg"), sfig_full_sample, width=15, height=7, units="in")
+```
+
+look into a couple studies specifically
+
+```{r}
+plot_by_sex <- function(df) {
+  df_prepared <- df %>%
+    group_by(site, sex) %>%
+    summarise(count = n(), .groups = "drop") %>%
+    group_by(site) %>%
+    mutate(percentage = count / sum(count)) %>%
+    ungroup()
+  
+  ggplot(df_prepared, aes(x = site, y = percentage, fill = sex)) +
+    geom_bar(stat = "identity", position = "stack") +
+    geom_text(
+      aes(label = count, group = sex),
+      position = position_stack(vjust = 0.5),
+      color = "white",
+      size=2.5
+    ) +
+    scale_y_continuous(labels = scales::percent_format()) +
+    theme_linedraw() +
+    xlab("Site") +
+    ylab("Percentage") +
+    labs(fill="Sex") +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+#good balance
+p1<- cn.df_first %>% 
+  filter(study == "ABCD") %>% 
+  plot_by_sex() + labs(title="ABCD")
+  
+
+p2 <- cn.df_first %>% 
+  filter(study == "UKB") %>% 
+  plot_by_sex() + labs(title="UK Biobank")
+
+#bad balance
+p3 <- cn.df_first %>% 
+  filter(study == "cVEDA") %>% 
+  plot_by_sex() + labs(title="cVEDA")
+
+p4 <- cn.df_first %>% 
+  filter(study == "ADNI") %>% 
+  plot_by_sex() + labs(title="ADNI")
+
+p5 <- cn.df_first %>% 
+  filter(study == "abide1") %>% 
+  plot_by_sex() + labs(title="ABIDE 1")
+
+p6 <- cn.df_first %>% 
+  filter(study == "ADHD200") %>% 
+  plot_by_sex() + + labs(title="ADHD200")
+
+sfig_samples <- ggarrange(p1, p2, p3, p4, p5, p6, 
+                          ncol=2, nrow=3, 
+                          common.legend = TRUE, legend="right",
+                          align="v")
+ggsave(paste0(base_path, "/figs/sfig_subsamples.jpeg"), sfig_samples, width=15, height=10, units="in")
+```
+
 
 ```{r}
 #drop repeat scans
@@ -210,13 +308,6 @@ ggplot(cn.df.imp) +
 ```
 
 check for sex differences in sites
-
-```{r}
-ggplot(cn.df.imp) +
-  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=site, fill=sex)) + 
-  scale_y_continuous(labels = scales::percent) +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
-```
 
 Write out
 
