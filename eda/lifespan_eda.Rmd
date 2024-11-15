@@ -121,7 +121,7 @@ p5 <- cn.df_first %>%
 
 p6 <- cn.df_first %>% 
   filter(study == "ADHD200") %>% 
-  plot_by_sex() + + labs(title="ADHD200")
+  plot_by_sex() + labs(title="ADHD200")
 
 sfig_samples <- ggarrange(p1, p2, p3, p4, p5, p6, 
                           ncol=2, nrow=3, 
