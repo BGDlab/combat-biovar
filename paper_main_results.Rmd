@@ -24,6 +24,8 @@ if(!require('pacman')) {
   install.packages('pacman')
 }
 pacman::p_load(data.table, ggplot2, tidyverse, ggseg, ggsegExtra, paletteer, ggpubr, gridExtra, lemon, parallel, rstatix, lme4, interactions, ggrepel, ggrain, ggh4x, skimr)
+remotes::install_github("BGDlab/ggsegTissue")
+library(ggsegTissue)
 ```
 ```{r}
 source("./cubic_scripts/R_scripts/stats_tests.R")
@@ -31,7 +33,7 @@ source("./cubic_scripts/R_scripts/stats_tests.R")
 
 
 ```{r}
-aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
+# aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
 data_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives"
 
 #pheno lists
@@ -1530,7 +1532,7 @@ ven_plot <- ggplot(ven.df) +
   theme_linedraw(base_size = 11) +
   theme(plot.title = element_text(size=12), legend.position="bottom") +
   geom_label(data=tmp_labels, aes(x=age_years, y=value, label=as.character(centile)), nudge_x = -0.75, size=3) +
-  xlab("Age (days)") + ylab("Volume (mm3)") +
+  xlab("Age (Years Post-Conception)") + ylab("Volume (mm3)") +
   labs(title="Ventricular volume brain charts")
 ```
 
@@ -1821,7 +1823,7 @@ plot
 ```{r}
 comp <- get_comparisons(raw_sex_eff, pheno_cat, ref.group = NULL)
 
-? <- ggboxplot(raw_sex_eff, x = "pheno_cat", y = "sex_standard",
+sex_eff_comp_plt <- ggboxplot(raw_sex_eff, x = "pheno_cat", y = "sex_standard",
           color = "pheno_cat")+ 
   stat_compare_means(method = "wilcox.test", comparisons = comp, label="p.signif")+ # Add pairwise comparisons p-value
   stat_compare_means(label.y = 0.25) +     # Add global p-value
