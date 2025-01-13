@@ -31,7 +31,9 @@ options("mc.cores")
 source("./cubic_scripts/R_scripts/gamlss_helper_funs.R")
 
 #ATLAS
-aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
+remotes::install_github("BGDlab/ggsegTissue")
+library(ggsegTissue)
+
 #write out new dk atlas w/o medial wall
 dk_nomed <- dk
 dk_nomed$data <- dk_nomed$data %>%
@@ -846,7 +848,7 @@ ggplot(aes(y=age_years, x=study, color=sex)) +
   theme_linedraw(base_size = 11) +
   #guides(y = ggh4x::guide_axis_nested(delim = "&")) +
   theme(axis.title.x=element_blank(), axis.text.x = element_blank()) +
-  labs(color="Sex", y = "Age (Years)")
+  labs(color="Sex", y = "Age\n(Years Post-Conception)")
 
 #overall sample
 full_boxplot2 <- 
@@ -879,7 +881,7 @@ full_barplot2 <-
   geom_hline(yintercept = .5, color="lightgray", linetype="longdash") +
   theme_linedraw(base_size = 11) +
   theme(axis.ticks.y = element_blank(), axis.title=element_blank(), axis.text.y=element_blank(), axis.text.x = element_text(angle=90, hjust=0.5, size=12)) +
-  labs(color="Sex", y = "Age (Years)", y="")
+  labs(color="Sex", y = "Age\n(Years Post-Conception)", y="")
 ```
 
 ```{r}
