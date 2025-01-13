@@ -77,17 +77,19 @@ for config in $config_list; do
     bash_script=$cf_bash_dir/${csv_fname}_${config}_combat.sh
     touch $bash_script
 
+    echo "#!/bin/bash" > $bash_script
+
     # ComBat LM
     if [ $config = "cf.lm" ]; then
-        echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'lm, formula = y ~ age_days + sexMale + sex.age'" > $bash_script
+        echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'lm, formula = y ~ age_days + sexMale + sex.age'" >> $bash_script
 
     # ComBat GAM
     elif [ $config = "cf.gam" ]; then
-        echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'gam, formula = y ~ s(age_days) + sexMale + sex.age'" > $bash_script
+        echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'gam, formula = y ~ s(age_days) + sexMale + sex.age'" >> $bash_script
 
     # ComBat GAMLSS
     elif [ $config = "cf.gamlss" ]; then
-        echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + sex.age, sigma.formula = ~ pb(age_days, inter=5)  + sexMale'" > $bash_script
+        echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + sex.age, sigma.formula = ~ pb(age_days, inter=5)  + sexMale'" >> $bash_script
     fi
     # Submit bash script
     qsub -l h_vmem=64G,s_vmem=64G -N ${config}.${batch}.${csv_fname} \
@@ -130,7 +132,10 @@ for csv_file in "$save_data_path"/*.csv; do
         while read -r pheno; do
             bash_script=$gamlss_bash_dir/${pheno}_${csv_name}_fit.sh
             touch $bash_script
-            echo "singularity run --cleanenv $img Rscript --save $mod_script $csv_file $pheno $gamlss_dir" > $bash_script
+
+            echo "#!/bin/bash" > $bash_script
+
+            echo "singularity run --cleanenv $img Rscript --save $mod_script $csv_file $pheno $gamlss_dir" >> $bash_script
 
             qsub -N ${pheno}.${csv_name} \
                 -o $gamlss_bash_dir/${pheno}_${csv_name}_no.tbv_out.txt \
