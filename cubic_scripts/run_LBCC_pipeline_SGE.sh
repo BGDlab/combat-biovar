@@ -1,6 +1,6 @@
 #!/bin/bash
 # Run ComBat, ComBat-GAM, and ComBatLS on curated LBCC data, then fit brain charts.
-# updated to run on SGE using ChatGPT
+# updated to run on SLURM using ChatGPT
 # Follow with run_LBCC_stats.sh
 #######################################################################################
 # SET PATHS
@@ -91,10 +91,12 @@ for config in $config_list; do
     elif [ $config = "cf.gamlss" ]; then
         echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + sex.age, sigma.formula = ~ pb(age_days, inter=5)  + sexMale'" >> $bash_script
     fi
+
     # Submit bash script
     qsub -l h_vmem=64G,s_vmem=64G -N ${config}.${batch}.${csv_fname} \
         -o $cf_bash_dir/${config}.${csv_fname}_${batch}_out.txt \
-        -e $cf_bash_dir/${config}.${csv_fname}_${batch}_err.txt $bash_script
+        -e $cf_bash_dir/${config}.${csv_fname}_${batch}_err.txt \
+	-l time=2-00:00:00 $bash_script
 done
 #######################################################################################
 # CHECK FOR OUTPUTS
@@ -139,7 +141,8 @@ for csv_file in "$save_data_path"/*.csv; do
 
             qsub -N ${pheno}.${csv_name} \
                 -o $gamlss_bash_dir/${pheno}_${csv_name}_no.tbv_out.txt \
-                -e $gamlss_bash_dir/${pheno}_${csv_name}_no.tbv_err.txt $bash_script
+                -e $gamlss_bash_dir/${pheno}_${csv_name}_no.tbv_err.txt \
+		-l time=2-00:00:00 $bash_script
         done < $list
     done
 done
