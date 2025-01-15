@@ -93,10 +93,10 @@ for config in $config_list; do
     fi
 
     # Submit bash script
-    qsub -l h_vmem=64G,s_vmem=64G -N ${config}.${batch}.${csv_fname} \
+    sbatch --time=04-00:00:00 --mem=64G -J ${config}.${batch}.${csv_fname} \
         -o $cf_bash_dir/${config}.${csv_fname}_${batch}_out.txt \
         -e $cf_bash_dir/${config}.${csv_fname}_${batch}_err.txt \
-	-l time=2-00:00:00 $bash_script
+	--partition=long $bash_script
 done
 #######################################################################################
 # CHECK FOR OUTPUTS
@@ -139,10 +139,10 @@ for csv_file in "$save_data_path"/*.csv; do
 
             echo "singularity run --cleanenv $img Rscript --save $mod_script $csv_file $pheno $gamlss_dir" >> $bash_script
 
-            qsub -N ${pheno}.${csv_name} \
+            sbatch -J ${pheno}.${csv_name} \
                 -o $gamlss_bash_dir/${pheno}_${csv_name}_no.tbv_out.txt \
                 -e $gamlss_bash_dir/${pheno}_${csv_name}_no.tbv_err.txt \
-		-l time=2-00:00:00 $bash_script
+		--partition=long --time=04-00:00:00 $bash_script
         done < $list
     done
 done
