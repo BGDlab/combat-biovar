@@ -246,29 +246,40 @@ Test w/in feature sex-biases in errors (diff_list) using `featurewise_sex_bias_t
 ```{r}
 cent.subj.sex.test.list <- readRDS(paste0(data_path, "/full_featurewise_cent_sex_bias_tests.RDS"))
 cent.subj.sex.test.df <- bind_rows(cent.subj.sex.test.list)
+
+cent.subj.sex.test.df <- cent.subj.sex.test.df %>%
+  mutate(sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
+  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
+                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
+                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
+  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
 ```
 
 simple bar-plot to count regions w significant sex-biases
 
 ```{r}
 cent.subj.sex.test.df %>%
-  mutate(sig_fdr = factor(sig_fdr, ordered=TRUE, levels=c("TRUE", "FALSE"))) %>%
-  ggplot(aes(x=perm, fill=sig_fdr)) +
+  ggplot(aes(x=perm, fill=significant)) +
   geom_bar() +
-  #geom_text(stat='count', aes(label=..count..)) +
   facet_wrap(~dataset) +
   theme(axis.text.x = element_blank()) +
-  scale_fill_manual(values = c("lightblue", "red"))
+  scale_fill_manual(values = c("#EA6F5F", "#F3AEA6", "#5FDAEA"))
 ```
+
+removing fdr correction
 
 ```{r}
 #get range
 cent.subj.sex.test.df %>%
-  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+  mutate(median_sex_diff_fdr = case_when(sig_fdr == FALSE ~ NA,
+                              TRUE ~ median_sex_diff*100),
+         median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
                               TRUE ~ median_sex_diff*100)) %>%
   group_by(dataset) %>%
   summarize(min_sex_diff = min(median_sex_diff, na.rm=TRUE),
-            max_sex_diff = max(median_sex_diff, na.rm=TRUE))
+            min_sex_diff_fdr = min(median_sex_diff_fdr, na.rm=TRUE),
+            max_sex_diff = max(median_sex_diff, na.rm=TRUE),
+            max_sex_diff_fdr = max(median_sex_diff_fdr, na.rm=TRUE))
 
 #look by feature type
 sex_bias_hist_plt <- cent.subj.sex.test.df %>%
@@ -316,13 +327,17 @@ t.test.cent.sex.test.med <- cent.sex.test.med %>%
                                p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
                                p.val_fdr >= 0.01 & p.val_fdr < 0.05 ~ "*",
                                p.val_fdr >= 0.05 ~ ""),
+         sig = case_when(t.test.p < 0.001 ~ "***",
+                               t.test.p >= 0.001 & t.test.p < 0.01 ~ "**",
+                               t.test.p >= 0.01 & t.test.p < 0.05 ~ "*",
+                               t.test.p >= 0.05 ~ ""),
          y_pos = case_when(dataset=="cf" ~ 9.3,
                            dataset=="cf.lm" ~ 11,
                            dataset=="cf.gam" ~ 10.5,
                            dataset=="cf.gamlss" ~ 6))
 #get vals
 t.test.cent.sex.test.med_tbl <- t.test.cent.sex.test.med %>%
-  dplyr::select(dataset, pheno_cat, t.test.est, t.test.stat, t.test.df, p.val_fdr, sig_fdr) %>%
+  dplyr::select(dataset, pheno_cat, t.test.est, t.test.stat, t.test.df, t.test.p, sig, sig_fdr) %>%
   mutate(dataset = case_when(dataset == "cf" ~ "ComBat w/o Covariates",
                                    dataset == "cf.lm" ~ "Linear ComBat",
                                    dataset == "cf.gam" ~ "ComBat-GAM",
@@ -332,13 +347,14 @@ t.test.cent.sex.test.med_tbl <- t.test.cent.sex.test.med %>%
          "Estimate" = t.test.est,
          "t-statistic" = t.test.stat,
          "dfs" = t.test.df,
-         "p-value (FDR-corrected)" = p.val_fdr,
-         "Significance" = sig_fdr) %>%
+         "p-value" = t.test.p,
+         "Significance" = sig,
+         "Significance (FDR-corrected)" = sig_fdr) %>%
   gt() %>%
   tab_style(style = list(cell_fill(color = "gray95")),
     locations = cells_row_groups()) %>%
   tab_options(column_labels.font.weight = "bold") %>%
-  tab_header(title = "One-sided t-tests of sex differences in centile errors across 100 replications")
+  tab_header(title = "One-sample t-tests of sex differences in centile errors across 100 replications")
 gtsave(t.test.cent.sex.test.med_tbl, filename="figs/cent_median_sexdiff_table.png")
 ```
 
@@ -346,7 +362,7 @@ plots
 ```{r}
 t.test.cent.sex.test.med %>%
   ggplot() +
-  geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
+  geom_col(aes(x=pheno_cat, y=sig, fill=dataset), position="dodge")
 
 t.test.cent.sex.test.med.filt <- t.test.cent.sex.test.med %>% dplyr::filter(dataset != "cf")
 
@@ -357,7 +373,7 @@ sex_bias_density_plt <- cent.sex.test.med %>%
   geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
   facet_wrap(~pheno_cat) +
   theme_linedraw() +
-  geom_text(aes(label = sig_fdr, x= x_pos*100, y=y_pos),
+  geom_text(aes(label = sig, x= x_pos*100, y=y_pos),
               data = t.test.cent.sex.test.med.filt) +
   scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
@@ -371,7 +387,7 @@ sex_bias_density_plt_full <- cent.sex.test.med %>%
   geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
   facet_wrap(~pheno_cat) +
   theme_linedraw() +
-  geom_text(aes(label = sig_fdr, x= x_pos*100, y=y_pos),
+  geom_text(aes(label = sig, x= x_pos*100, y=y_pos),
               data = t.test.cent.sex.test.med) +
   scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
@@ -446,15 +462,23 @@ get_t_tests <- function(df, raw_df){
   out <- df %>%
     dplyr::filter(dataset != "raw") %>%
     group_by(dataset) %>%
-    summarise(p_val = t.test(female_ratio, mu=mu)$p.val,
-              pheno_cat = cat,
+    summarise(pheno_cat = cat,
               max_val = max(female_ratio),
-              mu=mu) %>%
-    mutate(p.val_fdr = p.adjust(p_val, method="fdr", n = (4*4*2)), #adjusting for 4 methods * 4 pheno classes * 2 centile categories
+              mu=mu,
+            t.test.p = tidy(t.test(female_ratio, mu=mu))$p.value,
+            t.test.est = tidy(t.test(female_ratio, mu=mu))$estimate,
+            t.test.stat = tidy(t.test(female_ratio, mu=mu))$statistic,
+            t.test.df = tidy(t.test(female_ratio, mu=mu))$parameter,) %>%
+    mutate(p.val_fdr = p.adjust(t.test.p, method="fdr", n = (4*4*2)), #adjusting for 4 methods * 4 pheno classes * 2 centile categories
            sig_fdr = case_when(p.val_fdr < 0.001 ~ "***",
                                p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
                                p.val_fdr >= 0.01 & p.val_fdr < 0.05 ~ "*",
-                               p.val_fdr >= 0.05 ~ "NS"))
+                               p.val_fdr >= 0.05 ~ "NS"),
+           sig = case_when(t.test.p < 0.001 ~ "***",
+                               t.test.p >= 0.001 & t.test.p < 0.01 ~ "**",
+                               t.test.p >= 0.01 & t.test.p < 0.05 ~ "*",
+                               t.test.p >= 0.05 ~ "NS")
+           )
   return(out)
 }
 
@@ -486,6 +510,34 @@ all_t_test.df <- full_join(all_t_test.df, y_pos.df) %>%
   dplyr::filter(dataset != "raw")
 ```
 
+Table for supplement
+```{r}
+names(all_t_test.df)
+
+highlow_t_test.df_tbl <- all_t_test.df %>%
+  dplyr::select(dataset, pheno_cat, source, t.test.est, t.test.stat, t.test.df, t.test.p, sig, sig_fdr) %>%
+  mutate(dataset = case_when(dataset == "cf" ~ "ComBat w/o Covariates",
+                                   dataset == "cf.lm" ~ "Linear ComBat",
+                                   dataset == "cf.gam" ~ "ComBat-GAM",
+                                   dataset == "cf.gamlss" ~ "ComBatLS"),
+         source = ifelse(source=="high", ">80%", "<20%")) %>%
+  rename("ComBat Method" = dataset,
+         "Centile Group" = source,
+         "Phenotype Category" = pheno_cat,
+         "Estimate" = t.test.est,
+         "t-statistic" = t.test.stat,
+         "dfs" = t.test.df,
+         "p-value" = t.test.p,
+         "Significance" = sig,
+         "Significance (FDR-corrected)" = sig_fdr) %>%
+  gt() %>%
+  tab_style(style = list(cell_fill(color = "gray95")),
+    locations = cells_row_groups()) %>%
+  tab_options(column_labels.font.weight = "bold") %>%
+  tab_header(title = "One-sample t-test of female's over- or under-representation in high and low centile groups")
+gtsave(highlow_t_test.df_tbl, filename="figs/cent_sexratios_highlow_table.png")
+```
+
 ```{r}
 #plots!
 all_cent_sum.df %>%
@@ -495,7 +547,7 @@ all_cent_sum.df %>%
   # geom_dotplot(binaxis = "y", stackdir="center") +
   facet_grid(pheno_cat~source, scales="free_y") +
   geom_hline(data=all_cent.sum_raw, aes(yintercept=female_ratio), linetype="dashed")+
-  geom_text(aes(label = sig_fdr, y = max_val + 0.01),
+  geom_text(aes(label = sig, y = max_val + 0.01),
               data = all_t_test.df) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"),  name = "ComBat Configuration", labels=dataset_names) + 
   theme_linedraw()
