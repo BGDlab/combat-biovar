@@ -652,20 +652,24 @@ Sex-Bias tests
 
 ```{r}
 noext.sex.test.list <- readRDS(paste0(data_path, "/no.ext_featurewise_cent_sex_bias_tests.RDS"))
-noext.sex.test.df <- bind_rows(noext.sex.test.list)
+noext.sex.test.df <- bind_rows(noext.sex.test.list) %>%
+  mutate(sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
+  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
+                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
+                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
+  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
 ```
 
 simple bar-plot to count regions w sigificant sex-differences
 
 ```{r}
 noext.sex.test.df %>%
-  mutate(sig_fdr = factor(sig_fdr, ordered=TRUE, levels=c("TRUE", "FALSE"))) %>%
-  ggplot(aes(x=perm, fill=sig_fdr)) +
+  ggplot(aes(x=perm, fill=significant)) +
   geom_bar() +
   #geom_text(stat='count', aes(label=..count..)) +
   facet_wrap(~dataset) +
   theme(axis.text.x = element_blank()) +
-  scale_fill_manual(values = c("lightblue", "red"))
+    scale_fill_manual(values = c("#EA6F5F", "#F3AEA6", "#5FDAEA"))
 ```
 
 Distribution of error medians w/in each pheno category
@@ -690,6 +694,10 @@ next.t.test.cent.sex.test.med <- noext.sex.testmed %>%
                                p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
                                p.val_fdr >= 0.01 & p.val_fdr < 0.05 ~ "*",
                                p.val_fdr >= 0.05 ~ ""),
+         sig = case_when(t.test.p < 0.001 ~ "***",
+                               t.test.p >= 0.001 & t.test.p < 0.01 ~ "**",
+                               t.test.p >= 0.01 & t.test.p < 0.05 ~ "*",
+                               t.test.p >= 0.05 ~ ""),
          y_pos = case_when(dataset=="cf" ~ 6,
                            dataset=="cf.lm" ~ 9,
                            dataset=="cf.gam" ~ 9.5,
@@ -698,11 +706,11 @@ next.t.test.cent.sex.test.med <- noext.sex.testmed %>%
 
 t.test.cent.sex.test.med %>%
   ggplot() +
-  geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
+  geom_col(aes(x=pheno_cat, y=sig, fill=dataset), position="dodge")
 
 next.t.test.cent.sex.test.med %>%
   ggplot() +
-  geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
+  geom_col(aes(x=pheno_cat, y=sig, fill=dataset), position="dodge")
 
 sex_bias_density_plt_noext <- noext.sex.testmed %>%
   #dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
@@ -711,7 +719,7 @@ sex_bias_density_plt_noext <- noext.sex.testmed %>%
   geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
   facet_wrap(~pheno_cat) +
   theme_linedraw() +
-  geom_text(aes(label = sig_fdr, x= x_pos*100, y=y_pos),
+  geom_text(aes(label = sig, x= x_pos*100, y=y_pos),
               data = next.t.test.cent.sex.test.med) +
   scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
@@ -832,20 +840,23 @@ Test w/in feature sex-biases in errors (diff_list) using `featurewise_sex_bias_t
 
 ```{r}
 z.sex.test.list <- readRDS(paste0(data_path, "/full_featurewise_z_sex_bias_tests.RDS"))
-z.sex.test.df <- bind_rows(z.sex.test.list)
+z.sex.test.df <- bind_rows(z.sex.test.list) %>%
+  mutate(sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
+  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
+                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
+                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
+  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
 ```
 
 simple bar-plot to count regions w significant sex-biases
 
 ```{r}
 z.sex.test.df %>%
-  mutate(sig_fdr = factor(sig_fdr, ordered=TRUE, levels=c("TRUE", "FALSE"))) %>%
-  ggplot(aes(x=perm, fill=sig_fdr)) +
+  ggplot(aes(x=perm, fill=significant)) +
   geom_bar() +
-  #geom_text(stat='count', aes(label=..count..)) +
   facet_wrap(~dataset) +
   theme(axis.text.x = element_blank()) +
-  scale_fill_manual(values = c("lightblue", "red"))
+  scale_fill_manual(values = c("#EA6F5F", "#F3AEA6", "#5FDAEA"))
 ```
 
 Distribution of error medians w/in each pheno category
@@ -870,8 +881,8 @@ ggplot() +
   theme_linedraw(base_size=12) +
   theme(legend.position = "none") +
   labs(x="Male - Female Median Centile Errors", y="Number of Features") +
-  ggtitle("Sex differences in median centile errors across 100 sampling replications")
-ggsave(filename="figs/z.sex_bias_hist_plt.z.png", sex_bias_hist_plt)
+  ggtitle("Sex differences in median z-score errors across 100 sampling replications")
+ggsave(filename="figs/z.sex_bias_hist_plt.z.png", z.sex_bias_hist_plt)
 ```
 
 ```{r}
@@ -898,6 +909,10 @@ t.test.z.sex.test.med <- z.sex.test.med %>%
                                p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
                                p.val_fdr >= 0.01 & p.val_fdr < 0.05 ~ "*",
                                p.val_fdr >= 0.05 ~ ""),
+         sig = case_when(t.test.p < 0.001 ~ "***",
+                               t.test.p >= 0.001 & t.test.p < 0.01 ~ "**",
+                               t.test.p >= 0.01 & t.test.p < 0.05 ~ "*",
+                               t.test.p >= 0.05 ~ ""),
          y_pos = case_when(dataset=="cf" ~ 155,
                            dataset=="cf.lm" ~ 360,
                            dataset=="cf.gam" ~ 345,
@@ -905,7 +920,7 @@ t.test.z.sex.test.med <- z.sex.test.med %>%
 
 #pretty table
 t.test.z.sex.test.med_tbl <- t.test.z.sex.test.med %>%
-  dplyr::select(dataset, pheno_cat, t.test.est, t.test.stat, t.test.df, p.val_fdr, sig_fdr) %>%
+  dplyr::select(dataset, pheno_cat, t.test.est, t.test.stat, t.test.df, t.test.p, sig, sig_fdr) %>%
   mutate(dataset = case_when(dataset == "cf" ~ "ComBat w/o Covariates",
                                    dataset == "cf.lm" ~ "Linear ComBat",
                                    dataset == "cf.gam" ~ "ComBat-GAM",
@@ -915,8 +930,9 @@ t.test.z.sex.test.med_tbl <- t.test.z.sex.test.med %>%
          "Estimate" = t.test.est,
          "t-statistic" = t.test.stat,
          "dfs" = t.test.df,
-         "p-value (FDR-corrected)" = p.val_fdr,
-         "Significance" = sig_fdr) %>%
+         "p-value" = t.test.p,
+         "Significance" = sig,
+         "Significance (FDR-corrected)" = sig_fdr) %>%
   gt() %>%
   tab_style(style = list(cell_fill(color = "gray95")),
     locations = cells_row_groups()) %>%
@@ -932,7 +948,7 @@ t.test.z.sex.test.med.filt <- t.test.z.sex.test.med %>%
 
 t.test.z.sex.test.med %>%
   ggplot() +
-  geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
+  geom_col(aes(x=pheno_cat, y=sig, fill=dataset), position="dodge")
 
 z.sex_bias_density_plt <- z.sex.test.med %>%
   dplyr::filter(dataset != "cf") %>%
@@ -941,7 +957,7 @@ z.sex_bias_density_plt <- z.sex.test.med %>%
   geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
   facet_wrap(~pheno_cat) +
   theme_linedraw() +
-  geom_text(aes(label = sig_fdr, x= x_pos, y=y_pos),
+  geom_text(aes(label = sig, x= x_pos, y=y_pos),
               data = t.test.z.sex.test.med.filt) +
   scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
@@ -954,7 +970,7 @@ z.sex_bias_density_plt2 <- z.sex.test.med %>%
   geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
   facet_wrap(~pheno_cat, scales="free") +
   theme_linedraw() +
-  geom_text(aes(label = sig_fdr, x= x_pos, y=y_pos),
+  geom_text(aes(label = sig, x= x_pos, y=y_pos),
               data = t.test.z.sex.test.med) +
   scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
@@ -1048,7 +1064,7 @@ all_z_sum.df %>%
   # geom_dotplot(binaxis = "y", stackdir="zer") +
   facet_grid(pheno_cat~source, scales="free_y") +
   geom_hline(data=all_z.sum_raw, aes(yintercept=female_ratio), linetype="dashed")+
-  geom_text(aes(label = sig_fdr, y = max_val + 0.01),
+  geom_text(aes(label = sig, y = max_val + 0.01),
               data = z.all_t_test.df) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"),  name = "ComBat Configuration", labels=dataset_names) + 
   theme_linedraw()
@@ -1080,7 +1096,7 @@ z_sex_boxplts <- all_z_sum.df_scaled %>%
   # geom_dotplot(binaxis = "y", stackdir="zer") +
   facet_grid(pheno_cat~source, scales="free_y", labeller = labeller(source=z_ext_list)) +
   geom_hline(yintercept=0, linetype="dashed")+
-  geom_text(aes(label = sig_fdr, y = .07),
+  geom_text(aes(label = sig, y = .07),
               data = z.all_t_test.df) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) + 
   theme_linedraw() +
@@ -1148,20 +1164,23 @@ Sex-Bias tests
 
 ```{r}
 noext.sex.test.z.list <- readRDS(paste0(data_path, "/no.ext_featurewise_z_sex_bias_tests.RDS"))
-noext.sex.test.z.df <- bind_rows(noext.sex.test.z.list)
+noext.sex.test.z.df <- bind_rows(noext.sex.test.z.list) %>%
+  mutate(sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
+  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
+                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
+                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
+  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
 ```
 
-simple bar-plot to count regions w sigificant sex-biases
+simple bar-plot to count regions w significant sex-biases
 
 ```{r}
 noext.sex.test.z.df %>%
-  mutate(sig_fdr = factor(sig_fdr, ordered=TRUE, levels=c("TRUE", "FALSE"))) %>%
-  ggplot(aes(x=perm, fill=sig_fdr)) +
+  ggplot(aes(x=perm, fill=significant)) +
   geom_bar() +
-  #geom_text(stat='count', aes(label=..count..)) +
   facet_wrap(~dataset) +
   theme(axis.text.x = element_blank()) +
-  scale_fill_manual(values = c("lightblue", "red"))
+  scale_fill_manual(values = c("#EA6F5F", "#F3AEA6", "#5FDAEA"))
 ```
 
 Distribution of error medians w/in each pheno category
@@ -1187,6 +1206,10 @@ next.t.test.z.sex.test.med <- noext.sex.test.z.med %>%
                                p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
                                p.val_fdr >= 0.01 & p.val_fdr < 0.05 ~ "*",
                                p.val_fdr >= 0.05 ~ ""),
+         sig = case_when(t.test.p < 0.001 ~ "***",
+                               t.test.p >= 0.001 & t.test.p < 0.01 ~ "**",
+                               t.test.p >= 0.01 & t.test.p < 0.05 ~ "*",
+                               t.test.p >= 0.05 ~ ""),
          y_pos = case_when(dataset=="cf" ~ 150,
                            dataset=="cf.lm" ~ 320,
                            dataset=="cf.gam" ~ 330,
@@ -1195,11 +1218,11 @@ next.t.test.z.sex.test.med <- noext.sex.test.z.med %>%
 
 t.test.z.sex.test.med %>%
   ggplot() +
-  geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
+  geom_col(aes(x=pheno_cat, y=sig, fill=dataset), position="dodge")
 
 next.t.test.z.sex.test.med %>%
   ggplot() +
-  geom_col(aes(x=pheno_cat, y=sig_fdr, fill=dataset), position="dodge")
+  geom_col(aes(x=pheno_cat, y=sig, fill=dataset), position="dodge")
 
 z.sex_bias_density_plt_noext <- noext.sex.test.z.med %>%
   #dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
@@ -1208,7 +1231,7 @@ z.sex_bias_density_plt_noext <- noext.sex.test.z.med %>%
   geom_vline(xintercept = 0, linetype="dashed", color="#3F3F3F") +
   facet_wrap(~pheno_cat) +
   theme_linedraw() +
-  geom_text(aes(label = sig_fdr, x= x_pos, y=y_pos),
+  geom_text(aes(label = sig, x= x_pos, y=y_pos),
               data = next.t.test.z.sex.test.med) +
   scale_fill_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
   scale_color_manual(values = c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF"), name = "ComBat \nConfiguration", labels=dataset_names) +
