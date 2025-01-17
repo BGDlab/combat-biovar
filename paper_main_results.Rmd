@@ -449,17 +449,24 @@ sex_t_tests_in_feat.df <- readRDS("./derivatives/ukb_basic/featurewise_cent_sexb
 sex_t_tests_in_feat.df %>%
     group_by(dataset) %>%
     dplyr::summarize(n_sig_regions = sum(sig_fdr),
-              min_pval = min(p.val_fdr),
-              max_pval = max(p.val_fdr)) %>%
+              min_pval = min(p.value),
+              max_pval = max(p.value)) %>%
     ungroup() %>%
     as.data.frame()
 ```
 
 quick plot for median diffs
 ```{r}
+sex_t_tests_in_feat.df <- sex_t_tests_in_feat.df %>%
+  mutate(sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
+  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
+                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
+                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
+  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
+
 sex_t_tests_in_feat.df %>%
   dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
-  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+  mutate(median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
                               TRUE ~ median_sex_diff*100)) %>%
   ggplot() +
   geom_histogram(aes(x=median_sex_diff, fill= dataset, color=dataset), alpha=0.4, position = "identity") +
@@ -474,7 +481,7 @@ sex_t_tests_in_feat.df %>%
 ```{r}
 #get range
 sex_t_tests_in_feat.df %>%
-  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+  mutate(median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
                               TRUE ~ median_sex_diff*100)) %>%
   group_by(dataset) %>%
   summarize(min_sex_diff = min(median_sex_diff, na.rm=TRUE),
@@ -483,7 +490,7 @@ sex_t_tests_in_feat.df %>%
 #look by feature type
 sex_t_tests_in_feat.df %>%
   # dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
-  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+  mutate(median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
                               TRUE ~ median_sex_diff*100),
          pheno_cat = factor(case_when(
     pheno %in% vol_list_global ~ "Global Volume",
@@ -522,7 +529,7 @@ dataset_names <- c(raw = "Raw Data", cf = "ComBat \nw/o Covar", cf.lm = "ComBat"
 sex.var.plot.df <- sex_t_tests_to_plot %>%
   dplyr::filter(pheno_cat != "Global Volume" & dataset != "raw") %>%
   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         median_sex_diff = ifelse(sig_fdr == TRUE, median_sex_diff*100, NA))
+         median_sex_diff = ifelse(sig_uncor == TRUE, median_sex_diff*100, NA))
 #find range
 max(sex.var.plot.df$median_sex_diff, na.rm=TRUE)
 min(sex.var.plot.df$median_sex_diff, na.rm=TRUE)
@@ -552,7 +559,7 @@ sex.var.plot.global.df <- sex_t_tests_to_plot %>%
                                             pheno == "WMV" ~ "WM",
                                             pheno == "sGMV" ~ "sGM",
                                             TRUE ~ NA)),
-        median_sex_diff = ifelse(sig_fdr == TRUE, median_sex_diff*100, NA)) %>% 
+        median_sex_diff = ifelse(sig_uncor == TRUE, median_sex_diff*100, NA)) %>% 
   group_by(dataset)
 
 #color range
@@ -733,10 +740,17 @@ saveRDS(noext.sex_t_tests_in_feat.df, "./derivatives/ukb_basic/featurewise_cent_
 ```{r}
 noext.sex_t_tests_in_feat.df <- readRDS("./derivatives/ukb_basic/featurewise_cent_sexbias_all_noext_out.RDS")
 
+noext.sex_t_tests_in_feat.df <- noext.sex_t_tests_in_feat.df %>%
+  mutate(sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
+  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
+                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
+                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
+  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
+
 #compare summaries
 noext.sex_t_tests_in_feat.df %>%
     group_by(dataset) %>%
-    dplyr::summarize(n_sig_regions = sum(sig_fdr),
+    dplyr::summarize(n_sig_regions = sum(sig_uncor),
               min_pval = min(p.val_fdr),
               max_pval = max(p.val_fdr)) %>%
     ungroup() %>%
@@ -744,7 +758,7 @@ noext.sex_t_tests_in_feat.df %>%
 
 sex_t_tests_in_feat.df %>%
     group_by(dataset) %>%
-    dplyr::summarize(n_sig_regions = sum(sig_fdr),
+    dplyr::summarize(n_sig_regions = sum(sig_uncor),
               min_pval = min(p.val_fdr),
               max_pval = max(p.val_fdr)) %>%
     ungroup() %>%
@@ -756,7 +770,7 @@ plot comparative differences in medians
 sex.var.plot.full.df <- sex_t_tests_to_plot %>%
   dplyr::filter(!grepl('_refA', dataset)) %>% #drop refA levels
   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+         median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
                               TRUE ~ median_sex_diff*100)) %>%
   group_by(dataset, pheno_cat) %>%
   dplyr::select(dataset, pheno_cat, pheno, median_sex_diff)
@@ -773,7 +787,7 @@ noext.sex_t_tests_in_feat.df2 <- noext.sex_t_tests_in_feat.df %>%
     label = sub("_[^_]*_", "_", pheno)) %>%
   dplyr::filter(!grepl('_refA', dataset)) %>% #drop refA levels
   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+         median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
                               TRUE ~ median_sex_diff*100)) %>%
   dplyr::select(dataset, pheno_cat, pheno, median_sex_diff) %>%
   group_by(dataset, pheno_cat)
@@ -812,7 +826,7 @@ sex.var.plot.df.noext <- noext.sex_t_tests_in_feat.df %>%
     label = sub("_[^_]*_", "_", pheno)) %>%
   dplyr::filter(pheno_cat != "Global Volume" & dataset != "raw") %>%
   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+         median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
                               TRUE ~ median_sex_diff*100))
 #find range
 max(sex.var.plot.df.noext$median_sex_diff, na.rm=TRUE)
@@ -839,7 +853,7 @@ noext.sex.var.plot.global.df <- noext.sex_t_tests_in_feat.df %>%
     TRUE ~ NA_character_))) %>%
   dplyr::filter(pheno_cat == "Global Volume" & dataset != "raw") %>%
   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+         median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
                               TRUE ~ median_sex_diff*100)) %>%
   group_by(dataset)
 
@@ -1090,10 +1104,17 @@ saveRDS(z.sex_t_tests_in_feat.df, "./derivatives/ukb_basic/featurewise_z_sexbias
 ```{r}
 z.sex_t_tests_in_feat.df <- readRDS("./derivatives/ukb_basic/featurewise_z_sexbias_all_out.RDS")
 
+z.sex_t_tests_in_feat.df <- z.sex_t_tests_in_feat.df %>%
+  mutate(sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
+  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
+                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
+                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
+  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
+
 #also get summary
 z.sex_t_tests_in_feat.df %>%
     group_by(dataset) %>%
-    dplyr::summarize(n_sig_regions = sum(sig_fdr),
+    dplyr::summarize(n_sig_regions = sum(sig_uncor),
               min_pval = min(p.val_fdr),
               max_pval = max(p.val_fdr)) %>%
     ungroup() %>%
@@ -1125,7 +1146,7 @@ dataset_names <- c(raw = "Raw Data", cf = "ComBat \nw/o Covar", cf.lm = "ComBat"
 z.sex.var.plot.df <- z.sex_t_tests_to_plot %>%
   dplyr::filter(pheno_cat != "Global Volume" & dataset != "raw") %>%
   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         median_sex_diff = ifelse(sig_fdr == TRUE, median_sex_diff, NA))
+         median_sex_diff = ifelse(sig_uncor == TRUE, median_sex_diff, NA))
 
 z.sex.var.plot <- ggplot(z.sex.var.plot.df) +
   theme_linedraw(base_size=12) +
@@ -1148,7 +1169,7 @@ z.sex.var.plot.global.df <- z.sex_t_tests_to_plot %>%
                                             pheno == "WMV" ~ "WM",
                                             pheno == "sGMV" ~ "sGM",
                                             TRUE ~ NA)),
-        median_sex_diff = ifelse(sig_fdr == TRUE, median_sex_diff, NA)) %>% 
+        median_sex_diff = ifelse(sig_uncor == TRUE, median_sex_diff, NA)) %>% 
   group_by(dataset)
 
 z.sex.var.plot.global <- ggplot(z.sex.var.plot.global.df) +
@@ -1292,11 +1313,18 @@ saveRDS(noext.z.sex_t_tests_in_feat.df, "./derivatives/ukb_basic/featurewise_z_s
 
 ```{r}
 noext.z.sex_t_tests_in_feat.df <- readRDS("./derivatives/ukb_basic/featurewise_z_sexbias_all_noext_out.RDS")
+noext.z.sex_t_tests_in_feat.df <- noext.z.sex_t_tests_in_feat.df %>%
+  mutate(sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
+  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
+                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
+                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
+  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
+
 
 #compare summaries
 noext.z.sex_t_tests_in_feat.df %>%
     group_by(dataset) %>%
-    dplyr::summarize(n_sig_regions = sum(sig_fdr),
+    dplyr::summarize(n_sig_regions = sum(sig_uncor),
               min_pval = min(p.val_fdr),
               max_pval = max(p.val_fdr)) %>%
     ungroup() %>%
@@ -1304,7 +1332,7 @@ noext.z.sex_t_tests_in_feat.df %>%
 
 z.sex_t_tests_in_feat.df %>%
     group_by(dataset) %>%
-    dplyr::summarize(n_sig_regions = sum(sig_fdr),
+    dplyr::summarize(n_sig_regions = sum(sig_uncor),
               min_pval = min(p.val_fdr),
               max_pval = max(p.val_fdr)) %>%
     ungroup() %>%
@@ -1327,7 +1355,7 @@ sex.var.plot.df.noext_z <- noext.z.sex_t_tests_in_feat.df %>%
     label = sub("_[^_]*_", "_", pheno)) %>%
   dplyr::filter(pheno_cat != "Global Volume" & dataset != "raw") %>%
   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+         median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
                               TRUE ~ median_sex_diff))
 #find range
 max(sex.var.plot.df.noext_z$median_sex_diff, na.rm=TRUE)
@@ -1340,7 +1368,7 @@ sex.var.plot.noext_z <- ggplot(sex.var.plot.df.noext_z) +
              aes(fill = median_sex_diff)) +
   facet_grid(dataset ~ pheno_cat, labeller = labeller(dataset = as_labeller(dataset_names))) + 
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=2/3, plot.margin = margin(1,1,1,1, 'pt')) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nZ-score Error", limits=c(-0.5, 0.5)) #
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nZ-score Error", limits=c(-0.4, 0.4)) #
 ```
 
 ```{r}
@@ -1355,7 +1383,7 @@ noext.sex.var.plot.global.df_z <- noext.z.sex_t_tests_in_feat.df %>%
     TRUE ~ NA_character_))) %>%
   dplyr::filter(pheno_cat == "Global Volume" & dataset != "raw") %>%
   mutate(dataset = factor(dataset, levels = c("raw", "cf", "cf.lm", "cf.gam", "cf.gamlss"), ordered = TRUE),
-         median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+         median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
                               TRUE ~ median_sex_diff)) %>%
   group_by(dataset)
 
@@ -1370,7 +1398,7 @@ noext.sex.var.plot.global_z <- ggplot(noext.sex.var.plot.global.df_z) +
   facet_grid(dataset~pheno_cat) + 
   theme_linedraw(base_size=12) +
   theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.border = element_rect(color= "gray", fill = NA), aspect.ratio=, plot.margin = margin(1,1,1,1, 'pt'), strip.text.y = element_blank()) +
-  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nZ-score Error", limits = c(-0.5, 0.5)) #,
+  paletteer::scale_fill_paletteer_c("grDevices::Cork", name = "Male - Female Median \nZ-score Error", limits = c(-0.4, 0.4)) #,
 # sex.var.plot.global
 ```
 
