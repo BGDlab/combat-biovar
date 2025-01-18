@@ -445,10 +445,19 @@ saveRDS(sex_t_tests_in_feat.df, "./derivatives/ukb_basic/featurewise_cent_sexbia
 
 ```{r}
 sex_t_tests_in_feat.df <- readRDS("./derivatives/ukb_basic/featurewise_cent_sexbias_all_out.RDS")
+
+sex_t_tests_in_feat.df <- sex_t_tests_in_feat.df %>%
+  mutate(sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
+  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
+                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
+                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
+  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
+
 #also get summary
 sex_t_tests_in_feat.df %>%
     group_by(dataset) %>%
-    dplyr::summarize(n_sig_regions = sum(sig_fdr),
+    dplyr::summarize(n_sig = sum(sig_uncor),
+      n_sig_regions_fdr = sum(sig_fdr),
               min_pval = min(p.value),
               max_pval = max(p.value)) %>%
     ungroup() %>%
@@ -457,13 +466,6 @@ sex_t_tests_in_feat.df %>%
 
 quick plot for median diffs
 ```{r}
-sex_t_tests_in_feat.df <- sex_t_tests_in_feat.df %>%
-  mutate(sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
-  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
-                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
-                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
-  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
-
 sex_t_tests_in_feat.df %>%
   dplyr::filter(dataset == "cf.gam" | dataset == "cf.gamlss") %>%
   mutate(median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
