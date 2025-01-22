@@ -56,7 +56,8 @@ z.pheno_abs.diff.list <- paste0(pheno_abs.diff.list, ".z")
 ```
 
 ```{r}
-aseg_cerebrum <- readRDS(file="/Users/megardn/Desktop/BGD_Repos/ggseg_atlas/aseg_cerebrum_atlas.RDS")
+remotes::install_github("BGDlab/ggsegTissue")
+library(ggsegTissue)
 #write out new dk atlas w/o medial wall
 dk_nomed <- dk
 dk_nomed$data <- dk_nomed$data %>%
@@ -343,13 +344,19 @@ Test w/in feature sex-biases in errors (diff_list) using `featurewise_sex_bias_t
 
 ```{r}
 cent.feat.sex.test.list <- readRDS(paste0(data_path, "/full_featurewise_cent_sex_bias_tests.RDS"))
+
 cent.feat.sex.test.df <- bind_rows(cent.feat.sex.test.list) %>%
   mutate(pheno_cat = as.factor(case_when(
       pheno %in% vol_list_global ~ "Global Volume",
       pheno %in% vol_list_regions ~ "Regional Volume",
       pheno %in% sa_list ~ "Regional SA",
       pheno %in% ct_list ~ "Regional CT",
-      TRUE ~ NA_character_)))
+      TRUE ~ NA_character_)),
+      sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
+  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
+                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
+                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
+  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
 ```
 
 simple bar-plot to count regions w significant sex-differences in errors
@@ -357,13 +364,13 @@ simple bar-plot to count regions w significant sex-differences in errors
 ```{r}
 cent.feat.sex.test.df %>%
   ggplot() +
-  geom_bar(aes(x=prop, fill=sig_fdr)) +
+  geom_bar(aes(x=prop, fill=significant)) +
   facet_wrap(~dataset) +
   scale_x_discrete(labels=percent_f) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 sig.sex_diff.violin <- cent.feat.sex.test.df %>%
-  dplyr::filter(sig_fdr == TRUE) %>%
+  dplyr::filter(sig_uncor == TRUE) %>%
   mutate(median_sex_diff = median_sex_diff*100) %>%
   ggplot() +
   geom_violin(aes(x=prop, y=median_sex_diff, fill=dataset, color=dataset)) +
@@ -414,9 +421,11 @@ cent.feat.test_global <- cent.feat.sex.test.df %>%
   dplyr::filter(pheno_cat == "Global Volume" & (dataset == "cf.gam" | dataset =="cf.gamlss"))
 
 stats_sex.centile_for_plot <- inner_join(cent.sex_comp_tbl2, cent.feat.test_global)
+table(stats_sex.centile_for_plot$significant)
+
 #kinda hacky way of fixing positions
 stats_sex.centile_for_plot.corrected <- stats_sex.centile_for_plot %>%
-  mutate(p.adj.signif = ifelse(sig_fdr == "FALSE", "ns", "*"),
+  mutate(p.signif = ifelse(sig_uncor == "FALSE", "ns", "*"),
          y.position=case_when(dataset=="cf.gam" ~ max_cf.gam*100+0.5,
                            dataset=="cf.gamlss" ~ max_cf.gamlss*100+0.5,
                            TRUE ~ NA))
@@ -436,20 +445,22 @@ sex_err_ratio.plt <- ratio.df %>%
   scale_x_discrete(labels=percent_f) +
   theme(plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "bottom") +
   labs(fill="Sex", color="Sex")+
-  stat_pvalue_manual(stats_sex.centile_for_plot.corrected, label = "p.adj.signif", label.size = 2, tip.length = 0) +
+  stat_pvalue_manual(stats_sex.centile_for_plot.corrected, label = "p.signif", label.size = 2, tip.length = 0) +
   facet_grid(dataset ~ pheno, labeller=labeller(dataset=dataset_names), scales="free_x")
 sex_err_ratio.plt
 ```
 
 ```{r}
 t.test.cent.sex.diff <- cent.feat.sex.test.df %>%
-  dplyr::filter(sig_fdr == TRUE) %>%
+  #dplyr::filter(sig_fdr == TRUE) %>%
   group_by(dataset, prop) %>%
   summarise(w.test.p = tidy(wilcox.test(median_sex_diff, mu=0))$p.value,
             max_val = max(median_sex_diff)*100) %>% #test median of each distribution against 0, then scale to centiles
-  mutate(p.val_fdr = p.adjust(w.test.p, method="fdr", n = (4*11)),
-         y_pos = max_val + 0.5) %>%
+  mutate(p.val_fdr = p.adjust(w.test.p, method="fdr", n = (11)),
+         y_pos = max_val + 0.25) %>%
   add_significance("p.val_fdr", cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+  symbols = c("***", "**", "*", "ns")) %>%
+  add_significance("w.test.p", cutpoints = c(0, 0.001, 0.01, 0.05, 1),
   symbols = c("***", "**", "*", "ns"))
 
 cortical_cent_sex_diff.plt <- cent.feat.sex.test.df %>%
@@ -468,8 +479,9 @@ cortical_cent_sex_diff.plt <- cent.feat.sex.test.df %>%
 
 cortical_cent_sex_diff.plt
 
-cent_sex_diff.plt2 <- cent.feat.sex.test.df %>%
-  dplyr::filter(sig_fdr == TRUE) %>%
+#w/ fdr correction
+cent.feat.sex.test.df %>%
+  #dplyr::filter(sig_uncor == TRUE) %>%
   mutate(median_sex_diff = median_sex_diff*100) %>%
   ggplot(aes(x=prop, y=median_sex_diff)) +
   geom_boxplot(aes(color=dataset)) +
@@ -482,9 +494,29 @@ cent_sex_diff.plt2 <- cent.feat.sex.test.df %>%
   theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
   labs(y="Median Male - Female Centile Error", x = "% Females in Imbalanced Site") +
   scale_x_discrete(labels=percent_f)
+
+cent_sex_diff.plt2 <- cent.feat.sex.test.df %>%
+  #dplyr::filter(sig_uncor == TRUE) %>%
+  mutate(median_sex_diff = median_sex_diff*100) %>%
+  ggplot(aes(x=prop, y=median_sex_diff)) +
+  geom_boxplot(aes(color=dataset)) +
+  geom_jitter(size=0.4, alpha=0.1) +
+  facet_wrap(~dataset, labeller=labeller(dataset=dataset_names), scales="free_y") + 
+  geom_text(aes(label = w.test.p.signif, y = y_pos),
+              data = t.test.cent.sex.diff) +
+  theme_linedraw() +
+  scale_color_manual(values=c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
+  theme(legend.position="none", plot.title = element_text(size=12), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  labs(y="Median Male - Female Centile Error", x = "% Females in Imbalanced Site") +
+  scale_x_discrete(labels=percent_f)
 cent_sex_diff.plt2
 
 ggsave("figs/cent_sex_diff.plt2.jpeg", cent_sex_diff.plt2)
+sfig13 <- ggarrange(sex_err_ratio.plt, cent_sex_diff.plt2,
+          nrow=2,
+          heights = c(.7, 1),
+          labels = "AUTO")
+ggsave("figs/sfig13.jpeg", sfig13, height=9, width=7)
 ```
 
 ### W/o extremes
@@ -532,7 +564,18 @@ ggplot() +
 Test sex-differences in centile errors w/in each feature
 ```{r}
 noext_cent.subj.sex.test.list <- readRDS(paste0(data_path, "/no.ext_featurewise_cent_sex_bias_tests.RDS"))
-noext_cent.feat.sex.test.df <- bind_rows(noext_cent.subj.sex.test.list)
+noext_cent.feat.sex.test.df <- bind_rows(noext_cent.subj.sex.test.list) %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)),
+      sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
+  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
+                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
+                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
+  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
 ```
 
 simple bar-plot to count regions w significant sex-differences
@@ -540,7 +583,7 @@ simple bar-plot to count regions w significant sex-differences
 ```{r}
 noext_cent.feat.sex.test.df %>%
   ggplot() +
-  geom_bar(aes(x=prop, fill=sig_fdr)) +
+  geom_bar(aes(x=prop, fill=significant)) +
   facet_wrap(~dataset) +
   scale_x_discrete(labels=percent_f) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
@@ -558,7 +601,7 @@ noext_cent.feat.sex.test.df <- noext_cent.feat.sex.test.df %>%
     TRUE ~ NA_character_)))
 
 noext_cent.feat.sex.test.df %>%
-  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+  mutate(median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
                               TRUE ~ median_sex_diff*100)) %>%
   ggplot() +
   geom_histogram(aes(x=median_sex_diff, fill= pheno_cat, color=pheno_cat), alpha=0.4, position = "identity") +
@@ -573,12 +616,8 @@ noext_t.test.cent.sex.diff <- noext_cent.feat.sex.test.df %>%
   mutate(p.val_fdr = p.adjust(t.test.p, method="fdr", n = (3*4*11)), #not testing global vols, too few data points
                   sig_fdr_tf = case_when(p.val_fdr < 0.05 ~ TRUE,
                                       p.val_fdr >= 0.05 ~ FALSE),
-         sig_fdr = case_when(
-           # p.val_fdr < 0.001 ~ "***",
-           #                     p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
-           #                     p.val_fdr >= 0.01 & 
-                               p.val_fdr < 0.05 ~ "*",
-                               p.val_fdr >= 0.05 ~ ""),
+         sig_uncor = case_when(t.test.p < 0.05 ~ "*",
+                               t.test.p >= 0.05 ~ ""),
          y_pos = ifelse(max_val < 0, ((max_val*100)*0.5), (max_val*100)+0.8))
 
 noext_cent.feat.sex.test.df %>%
@@ -587,7 +626,7 @@ noext_cent.feat.sex.test.df %>%
   ggplot(aes(x=prop, y=median_sex_diff)) +
   geom_boxplot(aes(color=dataset)) +
     facet_grid(dataset~pheno_cat, labeller=labeller(dataset=dataset_names)) + 
-  geom_text(aes(label = sig_fdr, y = y_pos),
+  geom_text(aes(label = sig_uncor, y = y_pos),
               data = noext_t.test.cent.sex.diff[which(noext_t.test.cent.sex.diff$dataset != "cf"),]) +
   theme_linedraw() +
   scale_color_manual(values=c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
@@ -760,7 +799,18 @@ Test w/in feature sex-differences in errors (diff_list) using `featurewise_sex_b
 
 ```{r}
 z.sex.test.list <- readRDS(paste0(data_path, "/full_featurewise_z_sex_bias_tests.RDS"))
-z.feat.sex.test.df <- bind_rows(z.sex.test.list)
+z.feat.sex.test.df <- bind_rows(z.sex.test.list) %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)),
+      sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
+  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
+                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
+                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
+  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
 ```
 
 simple bar-plot to count regions w significant sex-differences
@@ -768,13 +818,13 @@ simple bar-plot to count regions w significant sex-differences
 ```{r}
 z.feat.sex.test.df %>%
   ggplot() +
-  geom_bar(aes(x=prop, fill=sig_fdr)) +
+  geom_bar(aes(x=prop, fill=significant)) +
   facet_wrap(~dataset) +
   scale_x_discrete(labels=percent_f) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
 
 z.sig.sex_diff.violin <- z.feat.sex.test.df %>%
-  dplyr::filter(sig_fdr == TRUE) %>%
+  dplyr::filter(sig_uncor == TRUE) %>%
   ggplot() +
   geom_violin(aes(x=prop, y=median_sex_diff, fill=dataset, color=dataset)) +
   theme_linedraw() +
@@ -800,6 +850,14 @@ z.feat.sex.test.df <- z.feat.sex.test.df %>%
     TRUE ~ NA_character_)))
 
 z.feat.sex.test.df %>%
+  mutate(median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
+                              TRUE ~ median_sex_diff)) %>%
+  ggplot() +
+  geom_histogram(aes(x=median_sex_diff, fill= pheno_cat, color=pheno_cat), alpha=0.4, position = "identity") +
+  geom_vline(xintercept = 0, linetype="dashed") +
+  facet_grid(prop~dataset, scales="free")
+
+z.feat.sex.test.df %>%
   mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
                               TRUE ~ median_sex_diff)) %>%
   ggplot() +
@@ -813,9 +871,9 @@ t.test.z.sex.diff <- z.feat.sex.test.df %>%
   summarise(t.test.p = tidy(t.test(median_sex_diff, mu=0))$p.value,
             max_val = max(median_sex_diff)) %>% #test median of each distribution against 0
   mutate(p.val_fdr = p.adjust(t.test.p, method="fdr", n = (3*4*11)), #not testing global vols, too few data points
-                  sig_fdr_tf = case_when(p.val_fdr < 0.05 ~ TRUE,
-                                      p.val_fdr >= 0.05 ~ FALSE),
-         sig_fdr = case_when(p.val_fdr < 0.05 ~ "*",
+                  # sig_fdr_tf = case_when(p.val_fdr < 0.05 ~ TRUE,
+                  #                     p.val_fdr >= 0.05 ~ FALSE),
+         sig_uncor = case_when(p.val_fdr < 0.05 ~ "*",
                             p.val_fdr >= 0.05 ~ ""),
          y_pos = max_val+0.005)
 
@@ -825,7 +883,7 @@ z.feat.sex.test.df %>%
   ggplot(aes(x=prop, y=median_sex_diff)) +
   geom_boxplot(aes(color=dataset)) +
     facet_grid(dataset~pheno_cat, labeller=labeller(dataset=dataset_names)) + 
-  geom_text(aes(label = sig_fdr, y = y_pos),
+  geom_text(aes(label = sig_uncor, y = y_pos),
               data = t.test.z.sex.diff[which(t.test.z.sex.diff$dataset != "cf"),]) +
   theme_linedraw() +
   scale_color_manual(values=c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
@@ -836,23 +894,22 @@ z.feat.sex.test.df %>%
 
 ```{r}
 z.t.test.cent.sex.diff <- z.feat.sex.test.df %>%
-  dplyr::filter(sig_fdr == TRUE) %>%
+  dplyr::filter(sig_uncor == TRUE) %>%
   group_by(dataset, prop) %>%
   summarise(w.test.p = tidy(wilcox.test(median_sex_diff, mu=0))$p.value,
             max_val = max(median_sex_diff)) %>% #test median of each distribution against 0
-  mutate(p.val_fdr = p.adjust(w.test.p, method="fdr", n = (4*11)), 
-         y_pos = max_val + 3) %>%
-  add_significance("p.val_fdr", cutpoints = c(0, 0.001, 0.01, 0.05, 1),
+  mutate(p.val_fdr = p.adjust(w.test.p, method="fdr", n = (11)), 
+         y_pos = max_val*1.3) %>%
+  add_significance("w.test.p", cutpoints = c(0, 0.001, 0.01, 0.05, 1),
   symbols = c("***", "**", "*", "ns"))
 
 z.cent_sex_diff.plt <- z.feat.sex.test.df %>%
-  dplyr::filter(sig_fdr == TRUE) %>%
-  mutate(median_sex_diff = median_sex_diff*100) %>%
+  dplyr::filter(sig_uncor == TRUE) %>%
   ggplot(aes(x=prop, y=median_sex_diff)) +
   geom_boxplot(aes(color=dataset)) +
   geom_jitter(size=0.4, alpha=0.1) +
-  facet_wrap(~dataset, labeller=labeller(dataset=dataset_names)) + 
-  geom_text(aes(label = p.val_fdr.signif, y = y_pos),
+  facet_wrap(~dataset, labeller=labeller(dataset=dataset_names), scales="free_y") + 
+  geom_text(aes(label = w.test.p.signif, y = y_pos),
               data = z.t.test.cent.sex.diff) +
   theme_linedraw() +
   scale_color_manual(values=c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
@@ -914,7 +971,18 @@ Test sex-diffs in z errors w/in each feature
 
 ```{r}
 noext_z.feat.sex.test.list <- readRDS(paste0(data_path, "/no.ext_featurewise_z_sex_bias_tests.RDS"))
-noext_z.feat.sex.test.df <- bind_rows(noext_z.feat.sex.test.list)
+noext_z.feat.sex.test.df <- bind_rows(noext_z.feat.sex.test.list) %>%
+  mutate(pheno_cat = as.factor(case_when(
+      pheno %in% vol_list_global ~ "Global Volume",
+      pheno %in% vol_list_regions ~ "Regional Volume",
+      pheno %in% sa_list ~ "Regional SA",
+      pheno %in% ct_list ~ "Regional CT",
+      TRUE ~ NA_character_)),
+      sig_uncor = ifelse(p.value<0.05, TRUE, FALSE)) %>%
+  mutate(significant = case_when(sig_fdr == TRUE ~ "Survives FDR Correction",
+                                 sig_uncor == TRUE & sig_fdr == FALSE ~ "Uncorrected Only",
+                                 sig_uncor == FALSE & sig_fdr == FALSE ~ "Not Significant")) %>%
+  mutate(significant = factor(significant, ordered=TRUE, levels=c("Survives FDR Correction", "Uncorrected Only", "Not Significant")))
 ```
 
 simple bar-plot to count regions w sigificant sex-biases
@@ -922,7 +990,7 @@ simple bar-plot to count regions w sigificant sex-biases
 ```{r}
 noext_z.feat.sex.test.df %>%
   ggplot() +
-  geom_bar(aes(x=prop, fill=sig_fdr)) +
+  geom_bar(aes(x=prop, fill=significant)) +
   facet_wrap(~dataset) +
   scale_x_discrete(labels=percent_f) +
   theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
@@ -941,7 +1009,7 @@ noext_z.feat.sex.test.df <- noext_z.feat.sex.test.df %>%
     TRUE ~ NA_character_)))
 
 noext_z.feat.sex.test.df %>%
-  mutate(median_sex_diff = case_when(sig_fdr == FALSE ~ NA,
+  mutate(median_sex_diff = case_when(sig_uncor == FALSE ~ NA,
                               TRUE ~ median_sex_diff)) %>%
   ggplot() +
   geom_histogram(aes(x=median_sex_diff, fill= pheno_cat, color=pheno_cat), alpha=0.4, position = "identity") +
@@ -956,12 +1024,12 @@ noext_t.test.z.sex.diff <- noext_z.feat.sex.test.df %>%
   mutate(p.val_fdr = p.adjust(t.test.p, method="fdr", n = (3*4*11)), #not testing global vols, too few data points
                   sig_fdr_tf = case_when(p.val_fdr < 0.05 ~ TRUE,
                                       p.val_fdr >= 0.05 ~ FALSE),
-         sig_fdr = case_when(
+         sig_uncor = case_when(
            # p.val_fdr < 0.001 ~ "***",
            #                     p.val_fdr >= 0.001 & p.val_fdr < 0.01 ~ "**",
            #                     p.val_fdr >= 0.01 & 
-                               p.val_fdr < 0.05 ~ "*",
-                               p.val_fdr >= 0.05 ~ ""),
+                               t.test.p < 0.05 ~ "*",
+                               t.test.p >= 0.05 ~ ""),
          y_pos = (max_val+0.01))
 
 noext_z.feat.sex.test.df %>%
@@ -970,7 +1038,7 @@ noext_z.feat.sex.test.df %>%
   ggplot(aes(x=prop, y=median_sex_diff)) +
   geom_boxplot(aes(color=dataset)) +
     facet_grid(dataset~pheno_cat, labeller=labeller(dataset=dataset_names)) + 
-  geom_text(aes(label = sig_fdr, y = y_pos),
+  geom_text(aes(label = sig_uncor, y = y_pos),
               data = noext_t.test.z.sex.diff[which(noext_t.test.z.sex.diff$dataset != "cf"),]) +
   theme_linedraw() +
   scale_color_manual(values=c(cf= "#440D54", cf.gam = "#3D75C2", cf.lm = "#75C23D", cf.gamlss ="#CFB023FF")) +
