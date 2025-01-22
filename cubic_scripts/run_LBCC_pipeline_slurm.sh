@@ -66,7 +66,7 @@ covar_list="age_days,sexMale,sex.age" # age_days
 batch="study"
 
 # List possible configurations
-config_list="cf.lm cf.gam cf.gamlss"
+config_list="cf.gam cf.gamlss" #cf.lm
 
 # Get data
 csv_fname=$(basename $og_data .csv)
@@ -142,9 +142,72 @@ for csv_file in "$save_data_path"/*.csv; do
             sbatch -J ${pheno}.${csv_name} \
                 -o $gamlss_bash_dir/${pheno}_${csv_name}_no.tbv_out.txt \
                 -e $gamlss_bash_dir/${pheno}_${csv_name}_no.tbv_err.txt \
-		--partition=long --time=04-00:00:00 $bash_script
+                --partition=long --time=04-00:00:00 $bash_script
         done < $list
     done
+done
+
+echo "launching gamlss jobs with study term"
+#######################################################################################
+# SUBMIT GAMLSS JOBS WITH STUDY TERM
+#give permissions
+
+#run iterations
+for csv_file in "$save_data_path"/*.csv
+do
+  	csv_name=$(basename $csv_file .csv)
+	csv_name=${csv_name//_/\-}
+	echo "Pulling data from $csv_name"
+	#iterate through measure types 
+	for list in "$pheno_path"/*
+	do
+		#iterate through list of phenotypes
+		while read -r pheno
+		do
+			#write bash script
+			bash_script=$gamlss_bash_dir/${pheno}_${csv_name}_fit.sh
+			touch $bash_script
+			
+			echo "#!/bin/bash" > $bash_script
+			
+			echo "singularity run --cleanenv $img Rscript --save $mod_script_batch $csv_file $pheno $gamlss_dir" > $bash_script
+
+			#qsub bash script
+			sbatch -J ${pheno}.${csv_name}.batch.est \
+			-o $gamlss_bash_dir/${pheno}_${csv_name}_batch.est_out.txt \
+			-e $gamlss_bash_dir/${pheno}_${csv_name}_batch.est_err.txt \
+			--partition=long --time=04-00:00:00 $bash_script
+
+		done < $list
+	done
+done
+
+
+#######################################################################################
+# CHECK FOR OUTPUTS
+#expect # models in gamlss_dir = #csvs * 208
+csv_counts=$((${combat_counts}+1))
+mod_counts=$((${csv_counts}*208*2))
+
+echo "${csv_counts} csvs, looking for ${mod_counts} output csvs"
+
+SECONDS=0
+
+while :    # while TRUE
+do
+	count_mods=$(find $gamlss_dir -type f -name '*mod.rds' | wc -l)
+    # detect the expected output from 1st job
+    if [ $count_mods -eq $mod_counts ] 
+	then    # 1st job successfully finished
+        echo "${count_mods} gamlss models written"
+        break
+    elif [ $SECONDS -gt 172800 ] #kill if taking more than 2 days
+	then
+	echo "taking too long, abort!"
+	exit 2
+    fi
+	echo "${count_mods} gamlss models found"
+    sleep 60    # wait for 1min before detecting again
 done
 
 echo "SUCCESS! All done :)"
