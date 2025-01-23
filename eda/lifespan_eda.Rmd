@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, see, broom.mixed)
+pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, see, broom.mixed, ggrain, ggpubr)
 
 base_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar"
 vol_list_global <- readRDS(file=paste0(base_path, "/cubic_scripts/R_scripts/vol_list_global.rds"))
@@ -23,7 +23,7 @@ source(paste0(base_path, "/cubic_scripts/R_scripts/gamlss_helper_funs.R"))
 
 Load data from Jakob - updated with euler numbers and corrected VETSA study
 ```{r}
-cn.df <- fread(paste0(base_path,"/data/v1_2_1_nature.csv"), stringsAsFactors = TRUE)
+cn.df <- fread(paste0(base_path,"/data/v1_2_1_nature.csv"), stringsAsFactors = TRUE, na.strings="")
 ```
 
 Plot full samples for supplemental figures looking at imbalanced demographics across sites
@@ -317,16 +317,16 @@ Keep studies w missing site info and just treat as single-site
 ```{r}
 #clean up site NAs
 cn.df.imp1 <- cn.df.eulerfilt2 %>%
-  mutate(site = trimws(as.character(site)),
-         study = trimws(study)) %>%
-  mutate(site = gsub(" ", "_", ifelse(is.na(site), study, paste(study, site, sep="_")))) 
+  mutate(site = gsub(" ", "_", trimws(as.character(site))),
+         study = gsub(" ", "_", trimws(as.character(study)))) %>%
+  mutate(site = ifelse(is.na(site), study, paste(study, site, sep="_"))) 
 skim(cn.df.imp1)
 ```
 
 ```{r}
 #drop NAs listwise
 cn.df.imp <- cn.df.imp1%>%
-  dplyr::select(!c(INDEX.ID, country)) %>%#drop index ID for filtering
+  dplyr::select(!c(INDEX.ID)) %>%#drop index ID for filtering
   na.omit()
 
 skim(cn.df.imp)
@@ -338,7 +338,7 @@ n_unique(cn.df.imp$study)
 # sum(is.na(cn.df.imp$site))
 ```
 
-Demographics
+##Demographics
 
 ```{r}
 #sample size, sex
@@ -382,9 +382,155 @@ fwrite(cn.df.imp, file=paste0(base_path, "/data/lifespan_CN_imp-sites_euler.csv"
 
 #save names with site (since not saved correctly from centile outputs)
 study_site_key <- cn.df.imp %>%
-  dplyr::select(study, site) %>%
+  dplyr::select(study, site, country, fs_version) %>%
   unique()
 n_unique(study_site_key$study) == n_unique(cn.df.imp$study)
 n_unique(study_site_key$site) == n_unique(cn.df.imp$site)
 fwrite(study_site_key, file=paste0(base_path, "/data/lifespan_study_site_key.csv"))
+```
+
+###Plot
+
+Clean up names, order by age
+```{r}
+#reorder studies by age
+age.df <- cn.df.imp %>%
+  group_by(study) %>%
+  summarize(mean_age = mean(age_days)) %>%
+  arrange(mean_age)
+study_names_clean <- gsub("_", " ", unique(age.df$study))
+
+final_df <- cn.df.imp %>% 
+  mutate(age_years=(age_days-280)/365.25,
+         study = gsub("_", " ", study)) %>%
+  mutate(study = factor(study, levels=study_names_clean, ordered=TRUE))
+```
+
+Sample plot
+```{r}
+sample_boxplot <- final_df %>%
+  #mutate(study = factor(study, levels=c(age.df$study), ordered=TRUE)) %>%
+ggplot(aes(y=study, x=age_years)) +
+  geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
+  theme_linedraw(base_size = 11) +
+  #guides(y = ggh4x::guide_axis_nested(delim = "&")) +
+  theme(axis.title.x=element_blank(), axis.ticks.y = element_blank(), axis.text.x=element_blank()) +
+  labs(color="Sex", y = "Study")
+
+#overall sample
+full_boxplot <- final_df %>%
+  mutate(ylab = "   Full Sample") %>%
+  ggplot(aes(y=ylab, x=age_years, color=sex)) +
+  geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
+  theme_linedraw(base_size = 11) +
+  # theme(plot.margin = margin(0,0,0,0, 'cm')) +
+  # scale_y_discrete(labels=c("1" = "Full Sample")) +
+  labs(color="Sex", x = "Age (Years)", y="")
+
+sample_barplot <- final_df %>%
+  #mutate(study = factor(study, levels=c(age.df$study), ordered=TRUE)) %>%
+  ggplot() +
+  geom_bar(aes( x=..count../tapply(..count.., ..y.. ,sum)[..y..], y=study, fill=sex)) +
+  scale_x_continuous(labels = scales::percent) +
+  geom_vline(xintercept = .5, color="lightgray", linetype="longdash") +
+  theme_linedraw(base_size = 11) +
+  theme(axis.ticks.y = element_blank(), axis.text=element_blank(), axis.title=element_blank()) +
+  labs(fill="Sex")
+
+full_barplot <- final_df %>%
+  mutate(ylab = "Full Sample") %>%
+  ggplot() +
+  geom_bar(aes(x=..count../tapply(..count.., ..y.. ,sum)[..y..], y=ylab, fill=sex)) + 
+  scale_x_continuous(labels = scales::percent) +
+  geom_vline(xintercept = .5, color="lightgray", linetype="longdash") +
+  theme_linedraw(base_size = 11) +
+  theme(axis.ticks.y = element_blank(), axis.text.y=element_blank(), axis.title.y=element_blank()) +
+  labs(fill="Sex", x = "Sex")
+
+ggarrange(sample_boxplot, sample_barplot,
+          full_boxplot, full_barplot,
+          nrow=2, ncol=2, 
+          align = "hv", 
+          common.legend = TRUE,
+          widths=c(2, 1),
+          heights=c(10, 1))
+```
+
+look at country info
+
+```{r}
+sample_boxplot2 <- final_df %>%
+  ggplot(aes(y=age_years, x=study, fill=country)) +
+  geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
+  theme_linedraw(base_size = 11) +
+  #guides(y = ggh4x::guide_axis_nested(delim = "&")) +
+  theme(axis.title.x=element_blank(), axis.text.x = element_blank(), legend.position = "right") +
+  labs(fill="Country", y = "Age (Years)")  +
+  paletteer::scale_fill_paletteer_d("ggthemes::Tableau_20")
+```
+
+```{r}
+blank <- ggplot() + theme_void()
+
+#overall sample
+full_boxplot2 <- final_df %>%
+  mutate(xlab = "Full Sample ") %>%
+  ggplot(aes(x=xlab, y=age_years, color=sex)) +
+  geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
+  theme_linedraw(base_size = 11) +
+  theme(axis.title=element_blank(), axis.text=element_blank(), axis.ticks.y=element_blank()) +
+  labs(color="Sex", x=" ")
+
+sample_barplot2 <- final_df %>%
+  ggplot() +
+  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=study, fill=sex)) +
+  geom_hline(yintercept = .5, color="lightgray", linetype="longdash") +
+  theme_linedraw(base_size = 11) +
+  scale_y_continuous(labels = scales::percent) +
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_text(angle=90, hjust=0.5), axis.text.y = element_text(size=6)) +
+  labs(fill="Sex", x = "Study", y="Percent Sex")
+
+full_barplot2 <- 
+  final_df %>%
+  mutate(xlab = "  Full Sample  ") %>%
+  ggplot() +
+  geom_bar(aes(y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=xlab, fill=sex)) + 
+  geom_hline(yintercept = .5, color="lightgray", linetype="longdash") +
+  theme_linedraw(base_size = 11) +
+  theme(axis.ticks.y = element_blank(), axis.title=element_blank(), axis.text.y=element_blank(), axis.text.x = element_text(angle=90, hjust=0.5, size=12)) +
+  labs(color="Sex", y = "Age (Years)", y="")
+
+full_rain <- final_df %>%
+  ggplot(aes(x=sex, y=age_years, fill=sex)) +
+  geom_rain(alpha=.4) +
+  theme_linedraw(base_size = 11) +
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_text(angle=90, hjust=0.5), 
+        axis.title.x = element_blank(), axis.text.y = element_text(size=6),
+        legend.position = "none") +
+  labs(y="Age (Years)")
+```
+
+```{r}
+country_leg <- as_ggplot(get_legend(sample_boxplot2))
+sex_leg <- as_ggplot(get_legend(sample_barplot2))
+
+fig5A <- ggarrange(sample_boxplot2, country_leg,
+          sample_barplot2,  sex_leg,
+          nrow=2, ncol=2, 
+          #align = "v", 
+          common.legend = FALSE,
+          legend = "none",
+          widths=c(11, 1),
+          heights=c(1.9, 1)
+          )
+```
+
+```{r}
+fig5_AB <- ggarrange(fig5A, full_rain,
+          nrow=1, ncol=2, 
+          legend = "none",
+          widths=c(3, 1),
+          labels = "AUTO")
+
+saveRDS(fig5_AB, file="../figs/figure_5_AB.rds")
 ```

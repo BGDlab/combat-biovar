@@ -67,18 +67,21 @@ Combat-GAM Centiles - study-level batch correction
 ```{r}
 gam_centile_df <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study_predictions.csv"))
 
-gam_centile_df <- full_join(gam_centile_df, study_site_key) %>% 
-  mutate(age_years=age_days/365.25)
+gam_centile_df <- left_join(gam_centile_df, study_site_key) %>% 
+  mutate(age_years=(age_days-280)/365.25)
 n_unique(gam_centile_df$study)
 
 dim(gam_centile_df)
+
+gam_centile_df %>% dplyr::filter(is.na(age_days))
 ```
 
 Combat-LS Centiles
 ```{r}
 gamlss_centile_df <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study_predictions.csv"))
 gamlss_centile_df <- full_join(gamlss_centile_df, study_site_key) %>% 
-  mutate(age_years=age_days/365.25)
+    mutate(age_years=(age_days-280)/365.25)
+
 
 dim(gamlss_centile_df)
 ```
@@ -92,7 +95,8 @@ Unharmonized Centiles
 ```{r}
 raw_centile_df <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-raw_predictions.csv"))
 raw_centile_df <- full_join(raw_centile_df, study_site_key) %>% 
-  mutate(age_years=age_days/365.25)
+    mutate(age_years=(age_days-280)/365.25)
+
 
 dim(raw_centile_df)
 min(raw_centile_df$age_years) == min(gamlss_centile_df$age_years)
@@ -103,7 +107,8 @@ Deltas
 ```{r}
 deltas_df <- fread(file=paste0(der_path, "/batch.study_pred_deltas.csv"))
 deltas_df <- full_join(deltas_df, study_site_key) %>% 
-  mutate(age_years=age_days/365.25)
+    mutate(age_years=(age_days-280)/365.25)
+
 
 dim(deltas_df)
 min(deltas_df$age_years) == min(gamlss_centile_df$age_years)
@@ -117,64 +122,6 @@ Check numbers
 nrow(gamlss_centile_df) #n
 n_unique(gamlss_centile_df$study) 
 n_unique(gamlss_centile_df$site) #correct
-```
-
-Sample plot
-```{r}
-#reorder studies by age
-age.df <- gamlss_centile_df %>%
-  group_by(study) %>%
-  summarize(mean_age = mean(age_years)) %>%
-  arrange(mean_age)
-
-sample_boxplot <- gamlss_centile_df %>%
-  mutate(study = factor(study, levels=c(age.df$study), ordered=TRUE)) %>%
-ggplot(aes(y=study, x=age_years)) +
-  geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
-  theme_linedraw(base_size = 11) +
-  #guides(y = ggh4x::guide_axis_nested(delim = "&")) +
-  theme(axis.title.x=element_blank(), axis.ticks.y = element_blank(), axis.text.x=element_blank()) +
-  labs(color="Sex", y = "Study")
-
-#overall sample
-full_boxplot <- 
-  gamlss_centile_df %>%
-  mutate(ylab = "   Full Sample") %>%
-  ggplot(aes(y=ylab, x=age_years, color=sex)) +
-  geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
-  theme_linedraw(base_size = 11) +
-  # theme(plot.margin = margin(0,0,0,0, 'cm')) +
-  # scale_y_discrete(labels=c("1" = "Full Sample")) +
-  labs(color="Sex", x = "Age (Years)", y="")
-
-sample_barplot <- gamlss_centile_df %>%
-  mutate(study = factor(study, levels=c(age.df$study), ordered=TRUE)) %>%
-  ggplot() +
-  geom_bar(aes( x=..count../tapply(..count.., ..y.. ,sum)[..y..], y=study, fill=sex)) +
-  scale_x_continuous(labels = scales::percent) +
-  geom_vline(xintercept = .5, color="lightgray", linetype="longdash") +
-  theme_linedraw(base_size = 11) +
-  theme(axis.ticks.y = element_blank(), axis.text=element_blank(), axis.title=element_blank()) +
-  labs(fill="Sex")
-
-full_barplot <- 
-  gamlss_centile_df %>%
-  mutate(ylab = "Full Sample") %>%
-  ggplot() +
-  geom_bar(aes(x=..count../tapply(..count.., ..y.. ,sum)[..y..], y=ylab, fill=sex)) + 
-  scale_x_continuous(labels = scales::percent) +
-  geom_vline(xintercept = .5, color="lightgray", linetype="longdash") +
-  theme_linedraw(base_size = 11) +
-  theme(axis.ticks.y = element_blank(), axis.text.y=element_blank(), axis.title.y=element_blank()) +
-  labs(fill="Sex", x = "Sex")
-
-ggarrange(sample_boxplot, sample_barplot,
-          full_boxplot, full_barplot,
-          nrow=2, ncol=2, 
-          align = "hv", 
-          common.legend = TRUE,
-          widths=c(2, 1),
-          heights=c(10, 1))
 ```
 
 #Batch Effects
@@ -837,52 +784,6 @@ all_subj_means.df %>%
 all assoc with study n
 
 #FIGURE 5
-
-```{r}
-blank <- ggplot() + theme_void()
-
-sample_boxplot2 <- gamlss_centile_df %>%
-  mutate(study = factor(study, levels=c(age.df$study), ordered=TRUE)) %>%
-ggplot(aes(y=age_years, x=study, color=sex)) +
-  geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
-  theme_linedraw(base_size = 11) +
-  #guides(y = ggh4x::guide_axis_nested(delim = "&")) +
-  theme(axis.title.x=element_blank(), axis.text.x = element_blank()) +
-  labs(color="Sex", y = "Age\n(Years Post-Conception)")
-
-#overall sample
-full_boxplot2 <- 
-  gamlss_centile_df %>%
-  mutate(xlab = "Full Sample ") %>%
-  ggplot(aes(x=xlab, y=age_years, color=sex)) +
-  geom_boxplot(outlier.size = 1, outlier.colour=NULL) +
-  theme_linedraw(base_size = 11) +
-  theme(axis.title=element_blank(), axis.text=element_blank(), axis.ticks.y=element_blank()) +
-  # scale_y_discrete(labels=c("1" = "Full Sample")) +
-  labs(color="Sex", x=" ")
-
-sample_barplot2 <- gamlss_centile_df %>%
-  mutate(study = factor(study, levels=c(age.df$study), ordered=TRUE)) %>%
-  ggplot() +
-  geom_bar(aes( y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=study, fill=sex)) +
-  #scale_y_continuous(labels = scales::percent) +
-  geom_hline(yintercept = .5, color="lightgray", linetype="longdash") +
-  theme_linedraw(base_size = 11) +
-  scale_y_continuous(labels = scales::percent) +
-  #theme(axis.ticks.x = element_blank(), axis.text=element_blank(), axis.title=element_blank()) +
-  theme(axis.ticks.x = element_blank(), axis.text.x = element_text(angle=90, hjust=0.5), axis.text.y = element_text(size=6)) +
-  labs(fill="Sex", x = "Study", y="Percent Sex")
-
-full_barplot2 <- 
-  gamlss_centile_df %>%
-  mutate(xlab = "  Full Sample  ") %>%
-  ggplot() +
-  geom_bar(aes(y=..count../tapply(..count.., ..x.. ,sum)[..x..], x=xlab, fill=sex)) + 
-  geom_hline(yintercept = .5, color="lightgray", linetype="longdash") +
-  theme_linedraw(base_size = 11) +
-  theme(axis.ticks.y = element_blank(), axis.title=element_blank(), axis.text.y=element_blank(), axis.text.x = element_text(angle=90, hjust=0.5, size=12)) +
-  labs(color="Sex", y = "Age\n(Years Post-Conception)", y="")
-```
 
 ```{r}
 # study demographics
