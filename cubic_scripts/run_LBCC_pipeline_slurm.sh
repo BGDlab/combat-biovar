@@ -170,7 +170,7 @@ do
 			
 			echo "#!/bin/bash" > $bash_script
 			
-			echo "singularity run --cleanenv $img Rscript --save $mod_script_batch $csv_file $pheno $gamlss_dir" > $bash_script
+			echo "singularity run --cleanenv $img Rscript --save $mod_script_batch $csv_file $pheno $gamlss_dir" >> $bash_script
 
 			#qsub bash script
 			sbatch -J ${pheno}.${csv_name}.batch.est \

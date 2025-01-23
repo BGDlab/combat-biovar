@@ -76,7 +76,7 @@ do
 	
 	echo "#!/bin/bash" > $bash_script
 			
-	echo "singularity run --cleanenv $img Rscript --save $data_prep_cb $csv_file $save_data_path" > $bash_script
+	echo "singularity run --cleanenv $img Rscript --save $data_prep_cb $csv_file $save_data_path" >> $bash_script
 	
 	#qsub bash script
 	sbatch -J ${csv_name}.cbprep\
