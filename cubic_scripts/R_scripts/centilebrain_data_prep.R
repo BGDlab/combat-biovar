@@ -1,7 +1,8 @@
 #Replicating results using models from CentileBrain resource, per reviewer request
 #take harmonized LBCC data and prep for fitting centilebrain models
 
-library(tidyverse)
+library(dplyr)
+library(data.table)
 
 #GET ARGS
 args <- commandArgs(trailingOnly = TRUE)
