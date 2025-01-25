@@ -71,57 +71,57 @@ config_list="cf.gam cf.gamlss" #cf.lm
 # Get data
 csv_fname=$(basename $og_data .csv)
 #######################################################################################
-# for config in $config_list; do
-#     echo "Prepping $config"
-#     # Write bash script
-#     bash_script=$cf_bash_dir/${csv_fname}_${config}_combat.sh
-#     touch $bash_script
-# 
-#     echo "#!/bin/bash" > $bash_script
-# 
-#     # ComBat LM
-#     if [ $config = "cf.lm" ]; then
-#         echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'lm, formula = y ~ age_days + sexMale + sex.age'" >> $bash_script
-# 
-#     # ComBat GAM
-#     elif [ $config = "cf.gam" ]; then
-#         echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'gam, formula = y ~ s(age_days) + sexMale + sex.age'" >> $bash_script
-# 
-#     # ComBat GAMLSS
-#     elif [ $config = "cf.gamlss" ]; then
-#         echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + sex.age, sigma.formula = ~ pb(age_days, inter=5)  + sexMale'" >> $bash_script
-#     fi
-# 
-#     # Submit bash script
-#     sbatch --time=04-00:00:00 --mem=64G -J ${config}.${batch}.${csv_fname} \
-#         -o $cf_bash_dir/${config}.${csv_fname}_${batch}_out.txt \
-#         -e $cf_bash_dir/${config}.${csv_fname}_${batch}_err.txt \
-# 	--partition=long $bash_script
-# done
+for config in $config_list; do
+    echo "Prepping $config"
+    # Write bash script
+    bash_script=$cf_bash_dir/${csv_fname}_${config}_combat.sh
+    touch $bash_script
+
+    echo "#!/bin/bash" > $bash_script
+
+    # ComBat LM
+    if [ $config = "cf.lm" ]; then
+        echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'lm, formula = y ~ age_days + sexMale + sex.age'" >> $bash_script
+
+    # ComBat GAM
+    elif [ $config = "cf.gam" ]; then
+        echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'gam, formula = y ~ s(age_days) + sexMale + sex.age'" >> $bash_script
+
+    # ComBat GAMLSS
+    elif [ $config = "cf.gamlss" ]; then
+        echo "singularity run --cleanenv $img Rscript --save $cf_script $og_data $batch $save_data_path $config $covar_list 'gamlss, formula = y ~ pb(age_days) + sexMale + sex.age, sigma.formula = ~ pb(age_days, inter=5)  + sexMale'" >> $bash_script
+    fi
+
+    # Submit bash script
+    sbatch --time=04-00:00:00 --mem=64G -J ${config}.${batch}.${csv_fname} \
+        -o $cf_bash_dir/${config}.${csv_fname}_${batch}_out.txt \
+        -e $cf_bash_dir/${config}.${csv_fname}_${batch}_err.txt \
+	--partition=long $bash_script
+done
 #######################################################################################
 # CHECK FOR OUTPUTS
 combat_counts=$(echo ${config_list[@]} | wc -w)
 
-# echo "Submitted ${combat_counts} ComBat configurations, looking for ${combat_counts} output CSVs"
-# 
-# SECONDS=0
-# 
-# while :; do
-#     count_file=$(find $save_data_path -type f -name '*.csv' | wc -l)
-#     if [ $count_file -eq $combat_counts ]; then
-#         echo "${count_file} CSVs written"
-#         break
-#     elif [ $SECONDS -gt 172800 ]; then # Kill if taking more than 2 days
-#         echo "Taking too long, abort!"
-#         exit 2
-#     fi
-#     echo "${count_file} CSVs found"
-#     sleep 60 # Wait for 1 min before detecting again
-# done
-# 
-# # Copy raw data frame
-# cp $og_data $save_data_path/lifespan_CN_imp-sites_euler_raw.csv
-# sleep 30
+echo "Submitted ${combat_counts} ComBat configurations, looking for ${combat_counts} output CSVs"
+
+SECONDS=0
+
+while :; do
+    count_file=$(find $save_data_path -type f -name '*.csv' | wc -l)
+    if [ $count_file -eq $combat_counts ]; then
+        echo "${count_file} CSVs written"
+        break
+    elif [ $SECONDS -gt 172800 ]; then # Kill if taking more than 2 days
+        echo "Taking too long, abort!"
+        exit 2
+    fi
+    echo "${count_file} CSVs found"
+    sleep 60 # Wait for 1 min before detecting again
+done
+
+# Copy raw data frame
+cp $og_data $save_data_path/lifespan_CN_imp-sites_euler_raw.csv
+sleep 30
 
 echo "Launching GAMLSS jobs"
 #######################################################################################
