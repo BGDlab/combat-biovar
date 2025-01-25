@@ -765,5 +765,30 @@ cohens_f2_local <- function(full_mod, null_mod){
   fsq <- (full_rsq - null_rsq)/(1-full_rsq)
   return(fsq)
 }
+
+############
+#mad_filt(): filters values from df col x that are > or < thresholds defined by median(x) +- n*mad(x).
+###basically just slight modification of hampel()from jvandoorn/makilab with slight modifications
+# e.g. sapply(iris, mad_filt)
+mad_filt <- function(x, n = 3, flag=NA) {
+  y <- x # Output vector
+  
+  if(is.numeric(x)){
+  
+  m <- median(x, na.rm = TRUE)
+  md <- mad(x, na.rm = TRUE)
+  
+  x_ind <- which(x >= m + n * md | x <= m - n * md)
+
+  y[x_ind] <- flag
+  
+  return(y)
+  
+  } else {
+    warning("skipping non-numeric vectors")
+    return(x)
+  }
+
+}
   
 
