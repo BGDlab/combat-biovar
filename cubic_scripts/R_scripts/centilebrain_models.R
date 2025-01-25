@@ -15,7 +15,7 @@ pheno <- as.character(args[2])
 save_path <- args[3]
 
 #FIT GAMLSS
-model_formula <- paste0("lms(", pheno, ", age_days, method.pb='GAIC', data=df, k=5)")
+model_formula <- paste0("lms(", pheno, ", age_days, method.pb='GAIC', data=df, k=5, calibration=FALSE)")
 
 mod <- eval(parse(text=model_formula))
 
