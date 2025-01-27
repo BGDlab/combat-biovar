@@ -28,7 +28,6 @@ saveRDS(mod,paste0(save_path, "/", pheno, "_", csv_rename, "_cb_mod.rds"))
 #ALSO FIT MOD WITH SITE EFFECTS
 #easier to match mod with df
 fam <- mod$family[1]
-pheno <- mod$mu.terms[2]
 
 print(paste("fitting", pheno, "with", fam, "family to get study terms"))
 
