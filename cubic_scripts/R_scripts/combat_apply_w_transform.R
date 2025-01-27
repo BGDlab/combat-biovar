@@ -160,7 +160,7 @@ for (l in list_of_feature_lists){
             eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, eb = ", eb_arg, ", ", x, ")")))
           } , error = function(e) {
             message("error, trying method=CG()")
-            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, eb = ", eb_arg, ", ", x, ")")))
+            eval(parse(text = paste0("comfam(pheno.df, batch, covar.df, eb = ", eb_arg, ", ", x, ", method=CG())")))
           } , finally = {
             message("done")
           } )
