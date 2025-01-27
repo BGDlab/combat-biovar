@@ -28,6 +28,7 @@ cn.df <- fread(paste0(base_path,"/data/v1_2_1_nature.csv"), stringsAsFactors = T
 pheno_list <- readRDS(paste0(base_path, "/cubic_scripts/R_scripts/pheno_list.rds"))
 ```
 
+#Visualize
 Plot full samples for supplemental figures looking at imbalanced demographics across sites
 
 ```{r}
@@ -198,13 +199,28 @@ ggsave(paste0(base_path, "/figs/sfig_subsamples_age.jpeg"), sfig_samples.age,
        width=15, height=10, units="in")
 ```
 
+## Curate
+
+Remove infants (anyone younger than 3 yrs)
+
 ```{r}
+cn.df.noinf <- cn.df %>%
+  dplyr::filter(age_days >= (365.25*3+280)) %>%
+  mutate(study = droplevels(study),
+         site = droplevels(site))
+nrow(cn.df) - nrow(cn.df.noinf)
+n_unique(cn.df$study) - n_unique(cn.df.noinf$study)
+min(cn.df.noinf$age_days)
+```
+
+```{r}
+set.seed(1212)
 #drop repeat scans
-cn.df.unique <- cn.df %>%
-  drop_na(c(age_days, participant, study)) %>%
+cn.df.unique <- cn.df.noinf %>%
+  drop_na(c(age_days, INDEX.ID, study)) %>%
   arrange(age_days) %>%
-  group_by(participant) %>%
-  slice(1) %>%
+  group_by(INDEX.ID) %>%
+  slice_sample(n=1) %>%
   ungroup() %>%
   mutate(sexMale = as.numeric(case_when(sex == "Male" ~ 1,
                                         sex == "Female" ~ 0,
@@ -212,8 +228,9 @@ cn.df.unique <- cn.df %>%
          sex.age = sexMale*age_days,
          log_age = log(age_days, base=10))
 
-nrow(cn.df.unique) == n_unique(cn.df.unique$participant)
-nrow(cn.df) - nrow(cn.df.unique)
+nrow(cn.df.unique) == n_unique(cn.df.unique$INDEX.ID)
+nrow(cn.df.noinf) - nrow(cn.df.unique) #n scans
+n_unique(cn.df.noinf$INDEX.ID[duplicated(cn.df.noinf$INDEX.ID)]) #n subjects
 ```
 
 ```{r}
@@ -224,7 +241,6 @@ n_unique(cn.df.unique$study)
 
 euler # noted as surfholes
 
-## Visualize Features
 plot global brain features for basic qc - check again post-combat
 
 ```{r}
@@ -256,31 +272,11 @@ ggplot(cn.df.unique) +
   geom_point(aes(x=log_age, y=Ventricles, color=sex))
 ```
 
-## Curate
-
-Remove infants (anyone younger than 3 yrs)
-
-```{r}
-cn.df.noinf <- cn.df.unique %>%
-  dplyr::filter(age_days >= (365.25*3+280)) %>%
-  mutate(study = droplevels(study),
-         site = droplevels(site))
-nrow(cn.df.unique) - nrow(cn.df.noinf)
-n_unique(cn.df.unique$study) - n_unique(cn.df.noinf$study)
-min(cn.df.noinf$age_days)
-```
-
-Visualizing euler distributions
-```{r}
-cn.df.noinf %>%
-  ggplot() +
-  geom_boxplot(aes(x=study, y=surfholes))
-```
 
 Removing subjects w/o surfholes, subjects with surfholes values > 2 MADs above study median (same as sensitivity analyses in LBCC)
 
 ```{r}
-cn.df.eulerfilt <- cn.df.noinf %>%
+cn.df.eulerfilt <- cn.df.unique %>%
   dplyr::filter(!is.na(surfholes)) #drops 2 studies w missing euler data
 
 study_mad <- cn.df.eulerfilt %>%
@@ -312,7 +308,7 @@ cn.df.eulerfilt2 <- left_join(cn.df.eulerfilt, study_mad) %>%
   dplyr::filter(surfholes <= euler_threshold)
 ```
 
-Removed `r nrow(cn.df.noinf) - nrow(cn.df.eulerfilt2)` subjects, `r nrow(cn.df.eulerfilt2)` remain
+Removed `r nrow(cn.df.unique) - nrow(cn.df.eulerfilt2)` subjects, `r nrow(cn.df.eulerfilt2)` remain
 
 
 Keep studies w missing site info and just treat as single-site
@@ -377,8 +373,8 @@ nrow(cn.df.imp) == (nrow(cn.df_mad_filt) + nrow(mad_drop))
 
 ```{r}
 #sample size, sex
-length(unique(cn.df_mad_filt$participant))
-nrow(cn.df_mad_filt) == length(unique(cn.df_mad_filt$participant))
+length(unique(cn.df_mad_filt$INDEX.ID))
+stopifnot(nrow(cn.df_mad_filt) == length(unique(cn.df_mad_filt$INDEX.ID)))
 
 table(cn.df_mad_filt$sex)
 
@@ -412,7 +408,7 @@ n_unique(study_site_key$site) == n_unique(cn.df_mad_filt$site)
 fwrite(study_site_key, file=paste0(base_path, "/data/lifespan_study_site_key.csv"))
 ```
 
-###Plot
+##Plot
 
 Clean up names, order by age
 ```{r}
@@ -565,5 +561,6 @@ fig5_AB <- ggarrange(fig5A, full_rain,
           widths=c(1.8, 1),
           labels = "AUTO")
 fig5_AB
-saveRDS(fig5_AB, file="../figs/figure_5_AB.rds")
+#saveRDS(fig5_AB, file="../figs/figure_5_AB.rds")
+ggsave("../figs/fig5_ab.jpeg", fig5_AB, width=18, height=10, units="in")
 ```
