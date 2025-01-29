@@ -522,9 +522,7 @@ get.og.data.centiles <- function(gamlss.rds.file, og.data, get.zscores = FALSE){
   return(centiles)
   } else {
     #check to make sure distribution family is LMS
-    if (fname != "BCCG") 
-      stop(paste("This gamlss model does not use the BCCG family distribution, can't get z scores.", "\n If you think this message was returned in error, update code to include appropriate dist. families.", ""))
-    
+   
     #get z scores from normed centiles - how z.score() does it, but double check
     rqres <- qnorm(centiles)
     
@@ -575,9 +573,7 @@ get.og.data.centiles.lbcc <- function(gamlss.rds.file, og.data, get.zscores = FA
     return(centiles)
   } else {
     #check to make sure distribution family is LMS
-    if (fname != "BCCG") 
-      stop(paste("This gamlss model does not use the BCCG family distribution, can't get z scores.", "\n If you think this message was returned in error, update code to include appropriate dist. families.", ""))
-    
+
     #get z scores from normed centiles - how z.score() does it, but double check
     rqres <- qnorm(centiles)
     
