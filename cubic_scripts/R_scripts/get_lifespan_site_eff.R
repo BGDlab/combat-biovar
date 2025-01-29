@@ -34,13 +34,13 @@ notbv_model.files <- all.model.files[grep(notbv_search, all.model.files)]
 print("selected brain chart model files:")
 print(notbv_model.files[1:4])
 
-#extract values from summary table
-notbv_summary.list <- lapply(notbv_model.files, get.gamlss.summary)
-names(notbv_summary.list) <- lapply(notbv_model.files, get.y)
-#dataframe
-notbv_summary.df <- bind_rows(notbv_summary.list, .id="pheno")
-#write out
-fwrite(notbv_summary.df, paste0(save_path, "/", fname_str, "_notbv_full_sum.csv"))
+# #extract values from summary table
+# notbv_summary.list <- lapply(notbv_model.files, get.gamlss.summary)
+# names(notbv_summary.list) <- lapply(notbv_model.files, get.y)
+# #dataframe
+# notbv_summary.df <- bind_rows(notbv_summary.list, .id="pheno")
+# #write out
+# fwrite(notbv_summary.df, paste0(save_path, "/", fname_str, "_notbv_full_sum.csv"))
 
 #site effect models - 'site.est'
 site.est_search <- paste0(fname_str_search, "_site.est")
@@ -48,13 +48,13 @@ site.est_model.files <- all.model.files[grep(site.est_search, all.model.files)]
 print("selected site.est model files:")
 print(site.est_model.files[1:4])
 
-#extract values from summary table
-site.est_summary.list <- lapply(site.est_model.files, get.gamlss.summary)
-names(site.est_summary.list) <- lapply(site.est_model.files, get.y)
-#dataframe
-site.est_summary.df <- bind_rows(site.est_summary.list, .id="pheno")
-#write out
-fwrite(site.est_summary.df, paste0(save_path, "/", fname_str, "_site.est_full_sum.csv"))
+# #extract values from summary table
+# site.est_summary.list <- lapply(site.est_model.files, get.gamlss.summary)
+# names(site.est_summary.list) <- lapply(site.est_model.files, get.y)
+# #dataframe
+# site.est_summary.df <- bind_rows(site.est_summary.list, .id="pheno")
+# #write out
+# fwrite(site.est_summary.df, paste0(save_path, "/", fname_str, "_site.est_full_sum.csv"))
 
 
 #Get Cohen's F2 for study effect
