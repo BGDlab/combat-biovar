@@ -86,7 +86,7 @@ done
 echo "getting deltas"
 ######################################################################################
 # GET Diffs between ComBatGAM and ComBatLS centiles
-config_str="batch.study"
+config_str="batch.study-data_no.tbv_predictions"
 bash_script=$cent_bash_dir/${config_str}_deltas.sh
 touch $bash_script
 
