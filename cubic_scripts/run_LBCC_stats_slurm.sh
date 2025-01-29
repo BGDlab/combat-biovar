@@ -105,7 +105,7 @@ echo "getting site effect estimates and summaries"
 ######################################################################################
 # GET MODEL SUMMARIES AND SITE EFFECTS
 
-config_list_plusraw="lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study lifespan-CN-imp-sites-euler-raw" 
+config_list_plusraw="lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data lifespan-CN-imp-sites-euler-raw" 
 for config in $config_list_plusraw
 do
 	echo "Prepping $config"
