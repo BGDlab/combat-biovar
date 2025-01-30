@@ -56,56 +56,56 @@ fi
 #######################################################################################
 #CHECK FOR HARMONIZED & RAW DATAFRAMES TO FIT MODELS ON
 count_file=$(find $in_data_path -type f -name '*.csv' | wc -l)
-if [ ! $count_file -eq 3 ]; then
-  echo "incorrect number of dataframes. should be 3 (raw, combat-gam, and combatLS)"
-  exit 1
-fi
+# if [ ! $count_file -eq 3 ]; then
+#   echo "incorrect number of dataframes. should be 3 (raw, combat-gam, and combatLS)"
+#   exit 1
+# fi
 
 echo "found $count_file csvs, proceeding"
 #######################################################################################
 #PREP DATAFRAMES
-for csv_file in "$in_data_path"/*.csv
-do
-  csv_name=$(basename $csv_file .csv)
-	csv_name=${csv_name//_/\-}
-	echo "prepping data from $csv_name for centilebrain models"
-	
-	#write bash script
-	bash_script=$gamlss_bash_dir/${csv_name}_cb_prep.sh
-	touch $bash_script
-	
-	echo "#!/bin/bash" > $bash_script
-			
-	echo "singularity run --cleanenv $img Rscript --save $data_prep_cb $csv_file $save_data_path" >> $bash_script
-	
-	#qsub bash script
-	sbatch -J ${csv_name}.cbprep\
-			-o $gamlss_bash_dir/${csv_name}_cbprep_out.txt \
-			-e $gamlss_bash_dir/${csv_name}_cbprep_err.txt \
-			$bash_script
-			
-done
+# for csv_file in "$in_data_path"/*.csv
+# do
+#   csv_name=$(basename $csv_file .csv)
+# 	csv_name=${csv_name//_/\-}
+# 	echo "prepping data from $csv_name for centilebrain models"
+# 	
+# 	#write bash script
+# 	bash_script=$gamlss_bash_dir/${csv_name}_cb_prep.sh
+# 	touch $bash_script
+# 	
+# 	echo "#!/bin/bash" > $bash_script
+# 			
+# 	echo "singularity run --cleanenv $img Rscript --save $data_prep_cb $csv_file $save_data_path" >> $bash_script
+# 	
+# 	#qsub bash script
+# 	sbatch -J ${csv_name}.cbprep\
+# 			-o $gamlss_bash_dir/${csv_name}_cbprep_out.txt \
+# 			-e $gamlss_bash_dir/${csv_name}_cbprep_err.txt \
+# 			$bash_script
+# 			
+# done
 
 #######################################################################################
 # CHECK FOR OUTPUTS
 #expect 2 saved csvs per input
 
-echo "looking for 6 output CSVs"
-
-SECONDS=0
-
-while :; do
-    count_file=$(find $save_data_path -type f -name '*.csv' | wc -l)
-    if [ $count_file -eq 6 ]; then
-        echo "${count_file} CSVs written"
-        break
-    elif [ $SECONDS -gt 172800 ]; then # Kill if taking more than 2 days
-        echo "Taking too long, abort!"
-        exit 2
-    fi
-    echo "${count_file} CSVs found"
-    sleep 60 # Wait for 1 min before detecting again
-done
+# echo "looking for 6 output CSVs"
+# 
+# SECONDS=0
+# 
+# while :; do
+#     count_file=$(find $save_data_path -type f -name '*.csv' | wc -l)
+#     if [ $count_file -eq 6 ]; then
+#         echo "${count_file} CSVs written"
+#         break
+#     elif [ $SECONDS -gt 172800 ]; then # Kill if taking more than 2 days
+#         echo "Taking too long, abort!"
+#         exit 2
+#     fi
+#     echo "${count_file} CSVs found"
+#     sleep 60 # Wait for 1 min before detecting again
+# done
 
 echo "Launching GAMLSS jobs"
 #######################################################################################
