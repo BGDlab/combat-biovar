@@ -63,7 +63,7 @@ cohensf2.df <- data.frame("pheno" = character(),
 
 for (pheno in pheno_list){
 
-  pheno_search <- passte0("^", pheno)
+  pheno_search <- paste0("^", pheno)
 
   #get full model
   full_mod_name <- site.est_model.files[grep(pheno_search, site.est_model.files)]
@@ -85,7 +85,7 @@ for (pheno in pheno_list){
   cohensf2.df <- rbind(cohensf2.df, f2.df)},
   
   error=function(e) {
-    message(paste("Can't load", pheno)
+    message(paste("Can't load", pheno))
     print(e)
   })
 }
