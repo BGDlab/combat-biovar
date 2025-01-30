@@ -62,12 +62,15 @@ cohensf2.df <- data.frame("pheno" = character(),
                           "fsq" = double())
 
 for (pheno in pheno_list){
+
+  pheno_search <- passte0("^", pheno)
+
   #get full model
-  full_mod_name <- site.est_model.files[grep(pheno, site.est_model.files)]
+  full_mod_name <- site.est_model.files[grep(pheno_search, site.est_model.files)]
   print(full_mod_name)
   
   #get null model
-  null_mod_name <- notbv_model.files[grep(pheno, notbv_model.files)]
+  null_mod_name <- notbv_model.files[grep(pheno_search, notbv_model.files)]
   print(null_mod_name)
   
   tryCatch({
@@ -82,7 +85,7 @@ for (pheno in pheno_list){
   cohensf2.df <- rbind(cohensf2.df, f2.df)},
   
   error=function(e) {
-    message("Can't load this pheno")
+    message(paste("Can't load", pheno)
     print(e)
   })
 }
