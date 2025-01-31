@@ -48,14 +48,17 @@ gamlss.df <- gamlss.df %>%
 #checks
 stopifnot(names(gam.df) == names(gamlss.df))
 stopifnot(nrow(gam.df) == nrow(gamlss.df))
+print(paste("dim:", dim(gam.df)))
 
 #subtract
 diff.df <- gam.df - gamlss.df
+print("rename cols")
 diff.df <- diff.df %>%
   rename_with(~ paste("delta", ., sep = ".")) %>%
   mutate(id = row_number())
 
 #merge back
+print("merge back subject info")
 stopifnot(nrow(diff.df) == nrow(id.gam.df))
 cf_deltas <- base::merge(id.gam.df, diff.df, by = "id") %>%
   dplyr::select(!id)
