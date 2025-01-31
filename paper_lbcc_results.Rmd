@@ -17,6 +17,16 @@ Relies on outputs derived/functions from:
     - `R_scripts/get_lifespan_site_eff.R`
     - `R_scripts/get_lifespan_deltas.R`
     
+Requires the following inputs from cluster:
+
+ - `lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study_predictions.csv`
+ - `lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study_predictions.csv`
+ - `lifespan-CN-imp-sites-euler-raw_predictions.csv`
+ - `batch.study_pred_deltas.csv`
+ - `lifespan-CN-imp-sites-euler-raw_cohenfsq.csv`
+ - `lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_cohenfsq.csv`
+ - `lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_cohenfsq.csv`
+    
 # Setup
 
 ```{r setup, include=FALSE}
@@ -65,22 +75,22 @@ der_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar/derivatives/lifespan
 Combat-GAM Centiles - study-level batch correction
 
 ```{r}
-gam_centile_df <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study_predictions.csv"))
+gam_centile_df <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-log-cf-cf.gam-batch.study-data_no.tbv_predictions.csv"))
 
 gam_centile_df <- left_join(gam_centile_df, study_site_key) %>% 
-  mutate(age_years=(age_days-280)/365.25)
+  mutate(age_years=(age_days-280)/365.25) %>%
+  unite(INDEX.ID, c(study, participant, sex), sep = "|", remove=FALSE)
 n_unique(gam_centile_df$study)
 
 dim(gam_centile_df)
-
-gam_centile_df %>% dplyr::filter(is.na(age_days))
 ```
 
 Combat-LS Centiles
 ```{r}
-gamlss_centile_df <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study_predictions.csv"))
+gamlss_centile_df <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-log-cf-cf.gamlss-batch.study-data_no.tbv_predictions.csv"))
 gamlss_centile_df <- full_join(gamlss_centile_df, study_site_key) %>% 
-    mutate(age_years=(age_days-280)/365.25)
+  mutate(age_years=(age_days-280)/365.25) %>%
+  unite(INDEX.ID, c(study, participant, sex), sep = "|", remove=FALSE)
 
 
 dim(gamlss_centile_df)
@@ -93,9 +103,10 @@ min(gamlss_centile_df$age_years)
 
 Unharmonized Centiles
 ```{r}
-raw_centile_df <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-raw_predictions.csv"))
-raw_centile_df <- full_join(raw_centile_df, study_site_key) %>% 
-    mutate(age_years=(age_days-280)/365.25)
+raw_centile_df <- fread(file=paste0(der_path, "/lifespan-CN-imp-sites-euler-raw_no.tbv_predictions.csv"))
+raw_centile_df <- full_join(raw_centile_df, study_site_key) %>%
+  unite(INDEX.ID, c(study, participant, sex), sep = "|", remove=FALSE) %>%
+  mutate(age_years=(age_days-280)/365.25)
 
 
 dim(raw_centile_df)
@@ -105,9 +116,10 @@ min(raw_centile_df$age_years) == min(gamlss_centile_df$age_years)
 Deltas
 
 ```{r}
-deltas_df <- fread(file=paste0(der_path, "/batch.study_pred_deltas.csv"))
+deltas_df <- fread(file=paste0(der_path, "/batch.study-data_no.tbv_predictions_pred_deltas.csv"))
 deltas_df <- full_join(deltas_df, study_site_key) %>% 
-    mutate(age_years=(age_days-280)/365.25)
+  unite(INDEX.ID, c(study, participant, sex), sep = "|", remove=FALSE) %>%
+  mutate(age_years=(age_days-280)/365.25)
 
 
 dim(deltas_df)
@@ -152,13 +164,13 @@ w/in subject means
 ```{r}
 raw_centile_df.mean <- raw_centile_df.clean %>%
   pivot_longer(cols=any_of(pheno_list), names_to="pheno", values_to = "centile") %>%
-  group_by(participant) %>%
+  group_by(INDEX.ID) %>%
   summarize(study = unique(study),
             site = unique(site),
             age_days=unique(age_days),
             sex=unique(sex),
             mean_cent=mean(centile))
-nrow(raw_centile_df.mean) == n_unique(raw_centile_df.mean$participant)
+nrow(raw_centile_df.mean) == n_unique(raw_centile_df.mean$INDEX.ID)
 ```
 
 ```{r}
@@ -196,13 +208,13 @@ average w/in subject
 ```{r}
 raw_z_df.mean <- raw_z_df.clean %>%
   pivot_longer(cols=any_of(pheno_list.z), names_to="pheno", values_to = "z_score") %>%
-  group_by(participant) %>%
+  group_by(INDEX.ID) %>%
   summarize(study = unique(study),
             site = unique(site),
             age_days=unique(age_days),
             sex=unique(sex),
             mean_z=mean(z_score))
-nrow(raw_z_df.mean) == n_unique(raw_z_df.clean$participant)
+nrow(raw_z_df.mean) == n_unique(raw_z_df.clean$INDEX.ID)
 ```
 
 ```{r}
@@ -241,13 +253,13 @@ average w/in subject
 ```{r}
 gam_centile_df.mean <- gam_centile_df.clean %>%
   pivot_longer(cols=any_of(pheno_list), names_to="pheno", values_to = "centile") %>%
-  group_by(participant) %>%
+  group_by(INDEX.ID) %>%
   summarize(study = unique(study),
             site = unique(site),
             age_days=unique(age_days),
             sex=unique(sex),
             mean_cent=mean(centile))
-nrow(gam_centile_df.mean) == n_unique(gam_centile_df.mean$participant)
+nrow(gam_centile_df.mean) == n_unique(gam_centile_df.mean$INDEX.ID)
 ```
 
 ```{r}
@@ -285,13 +297,13 @@ average w/in subject
 ```{r}
 gam_z_df.mean <- gam_z_df.clean %>%
   pivot_longer(cols=any_of(pheno_list.z), names_to="pheno", values_to = "z_score") %>%
-  group_by(participant) %>%
+  group_by(INDEX.ID) %>%
   summarize(study = unique(study),
             site = unique(site),
             age_days=unique(age_days),
             sex=unique(sex),
             mean_z=mean(z_score))
-nrow(gam_z_df.mean) == n_unique(gam_z_df.clean$participant)
+nrow(gam_z_df.mean) == n_unique(gam_z_df.clean$INDEX.ID)
 ```
 
 ```{r}
@@ -335,7 +347,7 @@ average w/in subject
 ```{r}
 gamlss_centile_df.mean <- gamlss_centile_df.clean %>%
   pivot_longer(cols=any_of(pheno_list), names_to="pheno", values_to = "centile") %>%
-  group_by(participant) %>%
+  group_by(INDEX.ID) %>%
   summarize(study = unique(study),
             site = unique(site),
             age_days=unique(age_days),
@@ -344,7 +356,7 @@ gamlss_centile_df.mean <- gamlss_centile_df.clean %>%
             sexMale=unique(sexMale),
             fs_version=unique(fs_version),
             mean_cent=mean(centile))
-nrow(gamlss_centile_df.mean) == n_unique(gamlss_centile_df.mean$participant)
+nrow(gamlss_centile_df.mean) == n_unique(gamlss_centile_df.mean$INDEX.ID)
 ```
 
 ```{r}
@@ -387,13 +399,13 @@ average w/in subject
 ```{r}
 gamlss_z_df.mean <- gamlss_z_df.clean %>%
   pivot_longer(cols=any_of(pheno_list.z), names_to="pheno", values_to = "z_score") %>%
-  group_by(participant) %>%
+  group_by(INDEX.ID) %>%
   summarize(study = unique(study),
             site=unique(site),
             age_days=unique(age_days),
             sex=unique(sex),
             mean_z=mean(z_score))
-nrow(gamlss_z_df.mean) == n_unique(gamlss_z_df.clean$participant)
+nrow(gamlss_z_df.mean) == n_unique(gamlss_z_df.clean$INDEX.ID)
 ```
 
 ```{r}
@@ -486,6 +498,9 @@ f2.df %>%
   group_by(combat) %>%
   summarize(median = median(fsq),
             IQR = IQR(fsq))
+
+length(unique(f2.df$pheno))
+setdiff(pheno_list, unique(f2.df$pheno)) #pheno not loaded
 ```
 
 pretty plot
@@ -503,7 +518,7 @@ ggsave("figs/cohens_fsq.jpeg", fsq_plt)
 
 ```{r}
 f2.df.sum <- f2.df %>%
-  dplyr::filter(combat != "Umharmonized") %>%
+  dplyr::filter(combat != "Unharmonized") %>%
   group_by(pheno) %>%
   arrange(combat) %>%
   mutate(F2_diff = fsq - fsq[1]) #gamlss - gam value, + number means site effect is larger in combatLS
@@ -536,8 +551,9 @@ study_info <- raw_centile_df.clean %>%
   group_by(study) %>%
   summarize(study_mean_age=mean(age_years),
             study_median_age=median(age_years),
-            study_n= n()) %>%
-  dplyr::select(study, study_mean_age, study_median_age, study_n)
+            study_n= n(),
+            age_range = max(age_years) - min(age_years)) %>%
+  dplyr::select(study, study_mean_age, study_median_age, study_n, age_range)
 ```
 
 clean delta df
@@ -549,7 +565,7 @@ cent_deltas_df <- deltas_df %>%
 #get subject-level means
 mean_cent_deltas_df <- cent_deltas_df %>%
   pivot_longer(cols=any_of(paste0("delta.", pheno_list)), names_to="pheno", values_to = "centile") %>%
-  group_by(participant) %>%
+  group_by(INDEX.ID) %>%
   summarize(study = unique(study),
             site = unique(site),
             age_days=unique(age_days),
@@ -558,15 +574,15 @@ mean_cent_deltas_df <- cent_deltas_df %>%
             abs_mean_delta_cent=(mean(abs(centile)))*100) 
 
 mean_cent_deltas_df_study <- full_join(mean_cent_deltas_df, study_info)
+mean_cent_deltas_df_study <- mean_cent_deltas_df_study %>%
+  mutate(age_diff = (age_days/365.25) - study_mean_age,
+         abs_age_diff = abs(age_diff))
 
 summary(mean_cent_deltas_df_study$abs_mean_delta_cent)
 ```
 
 see how often features move between extreme (>95% or <5%) to not-extreme
 ```{r}
-#rm features that didn't converge in both datasets
-pheno_list_cent <- pheno_list[pheno_list != "lh_SA_posteriorcingulate" & pheno_list != "rh_CT_posteriorcingulate"]
-
 gam_centile_df.clean$combat <- "cf.gam"
 gamlss_centile_df.clean$combat <- "cf.gamlss"
 
@@ -574,26 +590,27 @@ centiles_df <- full_join(gam_centile_df.clean, gamlss_centile_df.clean)
 
 centiles_cat <- centiles_df %>%
   mutate(combat = factor(combat, ordered=TRUE, levels=c("cf.gam", "cf.gamlss"))) %>%
-  mutate(across(pheno_list_cent, ~ as.factor(case_when(. > 0.95 ~ "high", 
+  mutate(across(pheno_list, ~ as.factor(case_when(. > 0.95 ~ "high", 
                                                . < 0.05 ~ "low",
                                                TRUE ~ "mid")))) %>%
   arrange(combat) %>%
-  group_by(participant) %>%
-  mutate(across(pheno_list_cent, 
+  group_by(INDEX.ID) %>%
+  mutate(across(pheno_list, 
                 ~ . == first(.), .names = "is_equal_{col}")) %>%
   ungroup()
+saveRDS(centiles_cat, file="centiles_cat.rds")
 ```
 
 ```{r}
 centiles_cat_filt <- centiles_cat %>%
-  dplyr::select(participant, combat, all_of(pheno_list_cent))
+  dplyr::select(INDEX.ID, combat, all_of(pheno_list))
   
 ext_count_df <- centiles_cat_filt %>%
   rowwise() %>%
-  mutate(count_high = sum(c_across(pheno_list_cent) == "high"),
-         count_mid = sum(c_across(pheno_list_cent) == "mid"),
-         count_low = sum(c_across(pheno_list_cent) == "low")) %>%
-  dplyr::select(participant, combat, starts_with("count"))
+  mutate(count_high = sum(c_across(pheno_list) == "high"),
+         count_mid = sum(c_across(pheno_list) == "mid"),
+         count_low = sum(c_across(pheno_list) == "low")) %>%
+  dplyr::select(INDEX.ID, combat, starts_with("count"))
 
 ext_count_df %>%
   ggplot() +
@@ -606,22 +623,22 @@ ext_count_df %>%
 ```{r}
 centiles_cat_filt2 <- centiles_cat %>%
   dplyr::filter(combat =="cf.gamlss") %>%
-  dplyr::select(participant, starts_with("is_equal_")) %>%
+  dplyr::select(INDEX.ID, starts_with("is_equal_")) %>%
   mutate(sum = rowSums(across(starts_with("is_equal_")))) %>%
-  mutate(changed = ifelse(sum == length(pheno_list_cent), "no_change", "change")) #if not all features are true -> changed
+  mutate(changed = ifelse(sum == length(pheno_list), "no_change", "change")) #if not all features are true -> changed
 
-max(centiles_cat_filt2$sum) == length(pheno_list_cent) #correct
+stopifnot(max(centiles_cat_filt2$sum) == length(pheno_list)) #correct
 
-length(pheno_list_cent) - mean(centiles_cat_filt2$sum) #mean per subject
-length(pheno_list_cent) - min(centiles_cat_filt2$sum) #range
-length(pheno_list_cent) - max(centiles_cat_filt2$sum)
+length(pheno_list) - mean(centiles_cat_filt2$sum) #mean per subject
+length(pheno_list) - min(centiles_cat_filt2$sum) #range
+length(pheno_list) - max(centiles_cat_filt2$sum)
 
 #percentage subjects
 table(centiles_cat_filt2$changed)["change"]/nrow(centiles_cat_filt2)
 
 #percentage features
 #n changed features = # total features - sum
-n_feat <- n_unique(centiles_cat_filt2$participant)*length(pheno_list_cent)
+n_feat <- n_unique(centiles_cat_filt2$INDEX.ID)*length(pheno_list)
 n_unchanged <- sum(centiles_cat_filt2$sum) #true = 1 = no change
 
 n_feat-n_unchanged
@@ -633,7 +650,7 @@ plot
 centiles_cat_filt2_long <- centiles_cat_filt2 %>%
   pivot_longer(cols=starts_with("is_equal_"), names_to="pheno", names_prefix="is_equal_", values_to="is_equal")
 
-n_unique(centiles_cat_filt2_long$participant)*206 == nrow(centiles_cat_filt2_long)
+n_unique(centiles_cat_filt2_long$INDEX.ID)*208 == nrow(centiles_cat_filt2_long)
 
 cent_cat_plt <- centiles_cat_filt2_long %>%
   dplyr::filter(is_equal==FALSE) %>%
@@ -687,6 +704,17 @@ mean_cent_deltas_df_study %>%
   ggplot(aes(x=abs(age_diff), y=abs_mean_delta_cent)) +
   geom_point(alpha=0.05) +
   geom_smooth(method="lm")
+```
+
+similarly, studies with larger age ranges change more
+```{r}
+summary(lm(abs_mean_delta_cent ~ age_range + study_n, data=mean_cent_deltas_df_study))
+
+mean_cent_deltas_df_study %>%
+  ggplot(aes(x=age_range, y=abs_mean_delta_cent, color=study)) +
+  geom_point(alpha=0.05) +
+  geom_smooth(method="lm") +
+  theme(legend.position = "none")
 ```
 
 control for N when looking at deltas b/c UKB will always have low deltas since it's having an outsized effect on setting the distribution that both ComBatGAM and ComBatLS are targeting. 
@@ -786,31 +814,34 @@ all assoc with study n
 #FIGURE 5
 
 ```{r}
+demo_plt <- readRDS("figs/figure_5_AB.rds")
+
 # study demographics
 fig5_vert <- ggarrange(
-  #ggarrange(blank,
-ggarrange(sample_boxplot2, full_boxplot2,
-          sample_barplot2, full_barplot2,
-          nrow=2, ncol=2, 
-          #align = "v", 
-          common.legend = TRUE,
-          legend = "right",
-          widths=c(18, 1),
-          heights=c(1, 1)
-          ),
+#   #ggarrange(blank,
+# ggarrange(sample_boxplot2, full_boxplot2,
+#           sample_barplot2, full_barplot2,
+#           nrow=2, ncol=2, 
+#           #align = "v", 
+#           common.legend = TRUE,
+#           legend = "right",
+#           widths=c(18, 1),
+#           heights=c(1, 1)
+#           ),
 # blank,
 # nrow=1, ncol=3,
 # common.legend = FALSE,
 # widths= c(1, 20, 1)),
 # boxplots
+demo_plt,
 mean_cents_bxplt_nolabel,
 common.legend=FALSE,
 nrow=2, ncol=1,
-heights=c(1, 1.5),
-labels="AUTO"
+heights=c(2, 1),
+labels=c("", "C")
 )
 
-ggsave("figs/figure_5_vertical.jpeg", fig5_vert, width=15, height=9, units="in")
+ggsave("figs/figure_5_vertical.jpeg", fig5_vert, width=17, height=15, units="in")
 ```
 
 ##Supplemental Figs
@@ -821,18 +852,18 @@ mean abs delta ~ study mean age
 summary(abs_lm)
 
 #predict w CIs
-pdat <- with(mean_cent_deltas_df_study,
+pdat1 <- with(mean_cent_deltas_df_study,
              tibble(study_mean_age = seq(min(study_mean_age),
                             max(study_mean_age),
                             length = 200),
              study_n = rep(median(study_n), length=200)))
 
-pred_abs_lm <- predict(abs_lm, pdat, se.fit=TRUE)
+pred_abs_lm1 <- predict(abs_lm, pdat1, se.fit=TRUE)
 
-pred_df <- pdat %>% 
-  bind_cols(data.frame(pred_abs_lm))
+pred_df1 <- pdat1 %>% 
+  bind_cols(data.frame(pred_abs_lm1))
 
-pred_df <- pred_df %>%
+pred_df1 <- pred_df1 %>%
   mutate(upper = fit + (1.96 * se.fit), #95% CIs
          lower = fit - (1.96 * se.fit))
 
@@ -840,13 +871,47 @@ mean_delta_fig <- mean_cent_deltas_df_study %>%
   ggplot(aes(x=study_mean_age, y=abs_mean_delta_cent)) +
   geom_point(aes(color=study), alpha=0.2) +
   geom_ribbon(aes(ymin = lower, ymax = upper,
-                    x = study_mean_age), data = pred_df,
+                    x = study_mean_age), data = pred_df1,
                 inherit.aes = FALSE, alpha = 0.2) +
-    geom_line(data = pred_df, aes(y = fit, x=study_mean_age))+
+    geom_line(data = pred_df1, aes(y = fit, x=study_mean_age))+
   theme_linedraw()+
   theme(legend.position="none") +
   labs(x="Mean Age of Primary Study Sample (Years)", y="Mean Absolute Difference in Centile Scores (Centiles)")
-ggsave("figs/supp_mean_delta_fig.jpeg", mean_delta_fig, width=10, height=7, units="in")
+#ggsave("figs/supp_mean_delta_fig.jpeg", mean_delta_fig, width=10, height=7, units="in")
+```
+
+mean abs delta ~ study range
+
+```{r}
+range_mod <- lm(abs_mean_delta_cent ~ age_range + study_n, data=mean_cent_deltas_df_study)
+summary(range_mod)
+
+#predict w CIs
+pdat2 <- with(mean_cent_deltas_df_study,
+             tibble(age_range = seq(min(age_range),
+                            max(age_range),
+                            length = 200),
+             study_n = rep(median(study_n), length=200)))
+
+pred_abs_lm2 <- predict(range_mod, pdat2, se.fit=TRUE)
+
+pred_df2 <- pdat2 %>% 
+  bind_cols(data.frame(pred_abs_lm2))
+
+pred_df2 <- pred_df2 %>%
+  mutate(upper = fit + (1.96 * se.fit), #95% CIs
+         lower = fit - (1.96 * se.fit))
+
+range_delta_fig <- mean_cent_deltas_df_study %>%
+  ggplot(aes(x=age_range, y=abs_mean_delta_cent)) +
+  geom_point(aes(color=study), alpha=0.2) +
+  geom_ribbon(aes(ymin = lower, ymax = upper,
+                    x = age_range), data = pred_df2,
+                inherit.aes = FALSE, alpha = 0.2) +
+    geom_line(data = pred_df2, aes(y = fit, x=age_range))+
+  theme_linedraw()+
+  theme(legend.position="none") +
+  labs(x="Age Range of Primary Study Sample (Years)", y="Mean Absolute Difference in Centile Scores (Centiles)")
 ```
 
 ```{r}
@@ -859,13 +924,11 @@ mean_cent_deltas_df_study%>%
   nrow()
 ```
 
-Cornell_C2 has very low n=5 -> big differences in estimation
-
 ```{r}
 summary(abs_lm2)
 
 #predict w CIs
-pdat2 <- with(mean_cent_deltas_df_study,
+pdat3 <- with(mean_cent_deltas_df_study,
              tibble(abs_age_diff = seq(min(abs_age_diff),
                             max(abs_age_diff),
                             length = 200),
@@ -873,10 +936,10 @@ pdat2 <- with(mean_cent_deltas_df_study,
              study_mean_age = rep(median(study_mean_age), length=200)))
 
 
-pred2 <- predict(abs_lm2, pdat2, se.fit = TRUE)
+pred3 <- predict(abs_lm2, pdat3, se.fit = TRUE)
 
-pdat2 <- pdat2 %>%
-  bind_cols(data.frame(pred2)) %>%
+pdat3 <- pdat3 %>%
+  bind_cols(data.frame(pred3)) %>%
   mutate(upper = fit + (1.96 * se.fit),
          lower = fit - (1.96 * se.fit))
 
@@ -884,12 +947,12 @@ mean_delta_fig2 <- mean_cent_deltas_df_study %>%
   ggplot(aes(x=abs_age_diff, y=abs_mean_delta_cent)) +
   geom_point(alpha=0.05, aes(color=study)) +
   geom_ribbon(aes(ymin = lower, ymax = upper,
-                    x = abs_age_diff), data = pdat2,
-                inherit.aes = FALSE, alpha = 0.2) +
-    geom_line(data = pdat2, aes(y = fit, x=abs_age_diff)) +
+                    x = abs_age_diff), data = pdat3,
+                inherit.aes = FALSE, alpha = 0.4) +
+    geom_line(data = pdat3, aes(y = fit, x=abs_age_diff)) +
   theme_linedraw()+
   theme(legend.position="none") +
   labs(x="Subject's Offset from Mean Age of Primary Study (Years)", y="Mean Absolute Difference in Centile Scores (Centiles)")
-ggsave("figs/supp_mean_delta_fig2.jpeg", mean_delta_fig2, width=10, height=7, units="in")
+#ggsave("figs/supp_mean_delta_fig2.jpeg", mean_delta_fig2, width=10, height=7, units="in")
 ```
 

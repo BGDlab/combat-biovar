@@ -561,6 +561,6 @@ fig5_AB <- ggarrange(fig5A, full_rain,
           widths=c(1.8, 1),
           labels = "AUTO")
 fig5_AB
-#saveRDS(fig5_AB, file="../figs/figure_5_AB.rds")
+saveRDS(fig5_AB, file="../figs/figure_5_AB.rds")
 ggsave("../figs/fig5_ab.jpeg", fig5_AB, width=18, height=10, units="in")
 ```
