@@ -11,7 +11,7 @@ gamlss_dir=$study_dir/cb_gamlss_objs
 r_base=$base/cubic_scripts/R_scripts
 
 centile_script=$r_base/fit_CB_centiles.R
-mod_summary_script=$r_base/get_lifespan_site_eff.R
+mod_summary_script=$r_base/get_CB_site_eff.R
 deltas_script=$r_base/get_lifespan_deltas.R
 #######################################################################################
 cd $base/cubic_scripts #to source functions correctly
