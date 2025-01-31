@@ -144,7 +144,6 @@ Test to see if centile score is associated with study in either ComBatLS, ComBat
 ```{r}
 #clean predictions
 raw_centile_df.clean <- full_join(raw_centile_df, study_site_key) %>% 
-  mutate(age_years=age_days/365.25) %>%
   dplyr::select(!contains(".z") & !ends_with("_total") & !contains("TBV")) #drop z-scores and non-centiles
 
 skim(raw_centile_df.clean)
@@ -199,7 +198,6 @@ summary(aov(mean_cent ~ study, data=raw_centile_df.mean))
 ```{r}
 #clean predictions
 raw_z_df.clean <- full_join(raw_centile_df, study_site_key) %>% 
-  mutate(age_years=age_days/365.25) %>%
   dplyr::select(!any_of(pheno_list) & !ends_with("_total") & !contains("TBV")) #drop z-scores and non-centiles
 ```
 
@@ -234,7 +232,6 @@ summary(aov(mean_z ~ study, data=raw_z_df.mean))
 ```{r}
 #clean predictions
 gam_centile_df.clean <- full_join(gam_centile_df, study_site_key) %>% 
-  mutate(age_years=age_days/365.25)%>%
   dplyr::select(!contains(".z") & !ends_with("_total") & !contains("TBV")) #drop z-scores and non-centiles
 
 skim(gam_centile_df.clean)
@@ -288,7 +285,6 @@ summary(aov(mean_cent ~ study, data=gam_centile_df.mean))
 ```{r}
 #clean predictions
 gam_z_df.clean <- full_join(gam_centile_df, study_site_key) %>% 
-  mutate(age_years=age_days/365.25) %>%
   dplyr::select(!any_of(pheno_list) & !ends_with("_total") & !contains("TBV")) #drop z-scores and non-centiles
 ```
 
@@ -324,7 +320,6 @@ summary(aov(mean_z ~ study, data=gam_z_df.mean))
 ```{r}
 #clean predictions
 gamlss_centile_df.clean <- full_join(gamlss_centile_df, study_site_key) %>% 
-  mutate(age_years=age_days/365.25) %>%
   dplyr::select(!contains(".z")) #drop z-scores and non-centiles & !ends_with("_total") & !contains("TBV")
 ```
 
@@ -390,7 +385,6 @@ summary(aov(mean_cent ~ study, data=gamlss_centile_df.mean))
 ```{r}
 #clean predictions
 gamlss_z_df.clean <- full_join(gamlss_centile_df, study_site_key) %>% 
-  mutate(age_years=age_days/365.25) %>%
   dplyr::select(!any_of(pheno_list) & !ends_with("_total") & !contains("TBV")) #drop z-scores and non-centiles
 ```
 
