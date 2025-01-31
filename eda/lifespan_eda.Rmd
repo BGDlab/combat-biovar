@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 if(!require('pacman')) {
   install.packages('pacman')
 }
-pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, see, broom.mixed, ggrain, ggpubr)
+pacman::p_load(gamlss, gamlss.cens, gamlss.mx, gamlss.tr, ggplot2, tidyverse, ggpubr, skimr, gamlss.data, data.table, nlme, devtools, slider, see, broom.mixed, ggpubr)
 
 base_path <- "/Users/megardn/Desktop/BGD_Repos/combat_biovar"
 vol_list_global <- readRDS(file=paste0(base_path, "/cubic_scripts/R_scripts/vol_list_global.rds"))
@@ -522,24 +522,6 @@ full_barplot2 <-
 ```
 
 ```{r}
-full_rain <- final_df %>%
-  mutate(continent = factor(case_when(country == "India" | country == "China" | country == "Singapore" | country == "Japan" ~ "Asia",
-                               country == "USA" | country == "Canada" ~ "North America",
-                               country == "Brazil" ~ "South America",
-                               country == "Australia" ~ "Australia",
-                               TRUE ~ "Europe"))) %>%
-  ggplot(aes(x=continent, y=age_years, fill=sex)) +
-  geom_rain(alpha=.5, violin.args = list(scale="count", alpha=.5),
-            point.args=list(alpha=.2)) +
-  theme_linedraw(base_size = 14) +
-  theme(axis.title.x = element_blank(), axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1),
-        legend.position = "bottom") +
-  guides(fill=guide_legend(title="Sex")) + 
-  coord_fixed(ratio=.08) +
-  labs(y="Age (Years)")
-```
-
-```{r}
 country_leg <- as_ggplot(get_legend(sample_boxplot2))
 sex_leg <- as_ggplot(get_legend(sample_barplot2))
 
@@ -552,15 +534,5 @@ fig5A <- ggarrange(sample_boxplot2, country_leg,
           widths=c(8, 1),
           heights=c(1.9, 1)
           )
-```
-
-```{r}
-fig5_AB <- ggarrange(fig5A, full_rain,
-          nrow=1, ncol=2, 
-          #legend = "none",
-          widths=c(1.8, 1),
-          labels = "AUTO")
-fig5_AB
-saveRDS(fig5_AB, file="../figs/figure_5_AB.rds")
-ggsave("../figs/fig5_ab.jpeg", fig5_AB, width=18, height=10, units="in")
+saveRDS(fig5A, file="../figs/figure_5_A.rds")
 ```
