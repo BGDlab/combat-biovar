@@ -814,34 +814,19 @@ all assoc with study n
 #FIGURE 5
 
 ```{r}
-demo_plt <- readRDS("figs/figure_5_AB.rds")
+demo_plt <- readRDS("figs/figure_5_A.rds")
 
 # study demographics
 fig5_vert <- ggarrange(
-#   #ggarrange(blank,
-# ggarrange(sample_boxplot2, full_boxplot2,
-#           sample_barplot2, full_barplot2,
-#           nrow=2, ncol=2, 
-#           #align = "v", 
-#           common.legend = TRUE,
-#           legend = "right",
-#           widths=c(18, 1),
-#           heights=c(1, 1)
-#           ),
-# blank,
-# nrow=1, ncol=3,
-# common.legend = FALSE,
-# widths= c(1, 20, 1)),
-# boxplots
 demo_plt,
 mean_cents_bxplt_nolabel,
 common.legend=FALSE,
 nrow=2, ncol=1,
-heights=c(2, 1),
-labels=c("", "C")
+heights=c(1.3, 1),
+labels="AUTO"
 )
-
-ggsave("figs/figure_5_vertical.jpeg", fig5_vert, width=17, height=15, units="in")
+fig5_vert
+ggsave("figs/figure_5_vertical.jpeg", fig5_vert, width=12, height=12, units="in")
 ```
 
 ##Supplemental Figs
@@ -868,6 +853,7 @@ pred_df1 <- pred_df1 %>%
          lower = fit - (1.96 * se.fit))
 
 mean_delta_fig <- mean_cent_deltas_df_study %>%
+  mutate(study = gsub("_", " ", study)) %>%
   ggplot(aes(x=study_mean_age, y=abs_mean_delta_cent)) +
   geom_point(aes(color=study), alpha=0.2) +
   geom_ribbon(aes(ymin = lower, ymax = upper,
@@ -876,7 +862,8 @@ mean_delta_fig <- mean_cent_deltas_df_study %>%
     geom_line(data = pred_df1, aes(y = fit, x=study_mean_age))+
   theme_linedraw()+
   theme(legend.position="none") +
-  labs(x="Mean Age of Primary Study Sample (Years)", y="Mean Absolute Difference in Centile Scores (Centiles)")
+  labs(x="Mean Age of Primary Study Sample (Years)", y="Mean Absolute Difference in Centiles",
+       color="Study")
 #ggsave("figs/supp_mean_delta_fig.jpeg", mean_delta_fig, width=10, height=7, units="in")
 ```
 
@@ -903,6 +890,7 @@ pred_df2 <- pred_df2 %>%
          lower = fit - (1.96 * se.fit))
 
 range_delta_fig <- mean_cent_deltas_df_study %>%
+  mutate(study = gsub("_", " ", study)) %>%
   ggplot(aes(x=age_range, y=abs_mean_delta_cent)) +
   geom_point(aes(color=study), alpha=0.2) +
   geom_ribbon(aes(ymin = lower, ymax = upper,
@@ -911,7 +899,7 @@ range_delta_fig <- mean_cent_deltas_df_study %>%
     geom_line(data = pred_df2, aes(y = fit, x=age_range))+
   theme_linedraw()+
   theme(legend.position="none") +
-  labs(x="Age Range of Primary Study Sample (Years)", y="Mean Absolute Difference in Centile Scores (Centiles)")
+  labs(x="Age Range of Primary Study Sample (Years)", y="Mean Absolute Difference in Centiles")
 ```
 
 ```{r}
@@ -944,6 +932,7 @@ pdat3 <- pdat3 %>%
          lower = fit - (1.96 * se.fit))
 
 mean_delta_fig2 <- mean_cent_deltas_df_study %>%
+  mutate(study = gsub("_", " ", study)) %>%
   ggplot(aes(x=abs_age_diff, y=abs_mean_delta_cent)) +
   geom_point(alpha=0.05, aes(color=study)) +
   geom_ribbon(aes(ymin = lower, ymax = upper,
@@ -951,8 +940,21 @@ mean_delta_fig2 <- mean_cent_deltas_df_study %>%
                 inherit.aes = FALSE, alpha = 0.4) +
     geom_line(data = pdat3, aes(y = fit, x=abs_age_diff)) +
   theme_linedraw()+
-  theme(legend.position="none") +
-  labs(x="Subject's Offset from Mean Age of Primary Study (Years)", y="Mean Absolute Difference in Centile Scores (Centiles)")
-#ggsave("figs/supp_mean_delta_fig2.jpeg", mean_delta_fig2, width=10, height=7, units="in")
+  labs(x="Subject's Offset from Mean Age of Primary Study (Years)", y="Mean Absolute Difference in Centiles",
+       color="Study")
+
 ```
 
+```{r}
+sfig_lbcc <- ggarrange(
+mean_delta_fig,
+range_delta_fig,
+mean_delta_fig2,
+nrow=3, ncol=1,
+labels="AUTO",
+legend = "right",
+common.legend=TRUE
+)
+sfig_lbcc
+ggsave("figs/supp_lbcc.jpeg", sfig_lbcc, width=9, height=11, units="in")
+```
