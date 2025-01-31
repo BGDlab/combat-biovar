@@ -86,20 +86,23 @@ done
 echo "getting deltas"
 ######################################################################################
 # GET Diffs between ComBatGAM and ComBatLS centiles
-config_str="batch.study"
-bash_script=$cent_bash_dir/${config_str}_deltas.sh
-touch $bash_script
+config_list="batch.study-data-cb-female batch.study-data-cb-male"
+for config_str in $config_list
+do
+  bash_script=$cent_bash_dir/${config_str}_deltas.sh
+  touch $bash_script
 
-echo "#!/bin/bash" > $bash_script
+  echo "#!/bin/bash" > $bash_script
 
-#arg1=gam csv path, arg2=gamlss csv path, arg3=save path, arg4=search string
-echo "singularity run --cleanenv $img Rscript --save $deltas_script $cent_save_dir $config_str $config_str" >> $bash_script
+  #arg1=gam csv path, arg2=gamlss csv path, arg3=save path, arg4=search string
+  echo "singularity run --cleanenv $img Rscript --save $deltas_script $cent_save_dir $config_str $config_str" >> $bash_script
 
-#qsub bash script
-sbatch --time=04-00:00:00 --mem=64G -J ${config_str}_deltas \
+  #qsub bash script
+  sbatch --time=04-00:00:00 --mem=64G -J ${config_str}_deltas \
         -o $cent_bash_dir/${config_str}_deltas_out.txt \
         -e $cent_bash_dir/${config_str}_deltas_err.txt \
         --partition=long $bash_script
+done
 
 echo "getting site effect estimates and summaries"
 ######################################################################################
