@@ -20,7 +20,7 @@ gamlss.df.path <- list.files(path = csv_path, pattern = paste0("cf.gamlss-", con
 gamlss.df <- fread(gamlss.df.path)
 
 #get identifiers
-id_cols <- c("participant", "sex", "age_days", "site", "log_age", "sexMale", "sex.age", "fs_version")
+id_cols <- c("participant", "sex", "age_days", "log_age", "sexMale", "sex.age", "fs_version")
 
 id.gam.df <- gam.df %>%
   dplyr::select(all_of(id_cols)) %>%
