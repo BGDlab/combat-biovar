@@ -786,5 +786,3 @@ mad_filt <- function(x, n = 3, flag=NA) {
   }
 
 }
-  
-
