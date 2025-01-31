@@ -15,19 +15,21 @@ fname_str <- as.character(args[3]) #string for saving nameå
 #LOAD DFS
 #read in data
 gam.df.path <- list.files(path = csv_path, pattern = paste0("cf.gam-", config), full.names = TRUE) %>% unlist()
+print(gam.df.path)
 gam.df <- fread(gam.df.path)
 gamlss.df.path <- list.files(path = csv_path, pattern = paste0("cf.gamlss-", config), full.names = TRUE) %>% unlist()
+print(gamlss.df.path)
 gamlss.df <- fread(gamlss.df.path)
 
 #get identifiers
-id_cols <- c("participant", "sex", "age_days", "log_age", "sexMale", "sex.age", "fs_version")
+id_cols <- c("participant", "sex", "study", "site", "age_days", "log_age", "sexMale", "sex.age", "fs_version")
 
 id.gam.df <- gam.df %>%
-  dplyr::select(all_of(id_cols)) %>%
+  dplyr::select(any_of(id_cols)) %>%
   mutate(id = row_number())
 
 id.gamlss.df <- gamlss.df %>%
-  dplyr::select(all_of(id_cols)) %>%
+  dplyr::select(any_of(id_cols)) %>%
   mutate(id = row_number())
 
 stopifnot(id.gam.df == id.gamlss.df) #make sure same subj. in each
@@ -49,6 +51,9 @@ gamlss.df <- gamlss.df %>%
 stopifnot(names(gam.df) == names(gamlss.df))
 stopifnot(nrow(gam.df) == nrow(gamlss.df))
 print(paste("dim:", dim(gam.df)))
+
+print("names")
+print(names(gam.df))
 
 #subtract
 diff.df <- gam.df - gamlss.df
