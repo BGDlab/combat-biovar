@@ -63,7 +63,7 @@ cohensf2.df <- data.frame("pheno" = character(),
 
 for (pheno in pheno_list){
 
-  pheno_search <- paste0("^", pheno)
+  pheno_search <- paste0(read_path,"/", pheno)
 
   #get full model
   full_mod_name <- site.est_model.files[grep(pheno_search, site.est_model.files)]
