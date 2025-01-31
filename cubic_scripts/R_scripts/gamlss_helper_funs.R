@@ -787,8 +787,10 @@ mad_filt <- function(x, n = 3, flag=NA) {
 
 }
 
-#from gamlssTools
-pred_og_centile <- function(gamlssModel, og.data, get.std.scores = FALSE, new.data=NULL){
+#from gamlssTools, updated to read in first
+pred_og_centile <- function(gamlss.rds.file, og.data, get.std.scores = FALSE, new.data=NULL){
+  gamlss.rds.file <- as.character(gamlss.rds.file)
+  gamlssModel <- readRDS(gamlss.rds.file)
   pheno <- gamlssModel$mu.terms[[2]]
   
   if (is.null(new.data)) {
