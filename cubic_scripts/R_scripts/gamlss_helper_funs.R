@@ -788,22 +788,14 @@ mad_filt <- function(x, n = 3, flag=NA) {
 }
 
 #from gamlssTools, updated to read in first
-pred_og_centile <- function(gamlss.rds.file, og.data, get.std.scores = FALSE, new.data=NULL){
+pred_og_centile <- function(gamlss.rds.file, og.data, get.std.scores = FALSE){
   gamlss.rds.file <- as.character(gamlss.rds.file)
   gamlssModel <- readRDS(gamlss.rds.file)
   pheno <- gamlssModel$mu.terms[[2]]
   
-  if (is.null(new.data)) {
-    newData <- subset(og.data, select = predictor_list)
+
+    newData <- subset(og.data, select = c(age_days, study))
     predict_me <- og.data
-  } else {
-    stopifnot("Dataframe columns and model covariates don't match" = 
-                predictor_list %in% names(new.data))
-    newData <- subset(new.data, select = predictor_list)
-    predict_me <- new.data
-    #make sure all vals are within range of those originally modeled
-    check_range(subset(og.data, select = predictor_list), newData)
-  }
   
   #predict
   predModel <- predictAll(gamlssModel, newdata=newData, data=og.data, type= "response")
