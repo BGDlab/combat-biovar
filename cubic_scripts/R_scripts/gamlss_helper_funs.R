@@ -786,3 +786,72 @@ mad_filt <- function(x, n = 3, flag=NA) {
   }
 
 }
+
+#from gamlssTools
+pred_og_centile <- function(gamlssModel, og.data, get.std.scores = FALSE, new.data=NULL){
+  pheno <- gamlssModel$mu.terms[[2]]
+  
+  if (is.null(new.data)) {
+    newData <- subset(og.data, select = predictor_list)
+    predict_me <- og.data
+  } else {
+    stopifnot("Dataframe columns and model covariates don't match" = 
+                predictor_list %in% names(new.data))
+    newData <- subset(new.data, select = predictor_list)
+    predict_me <- new.data
+    #make sure all vals are within range of those originally modeled
+    check_range(subset(og.data, select = predictor_list), newData)
+  }
+  
+  #predict
+  predModel <- predictAll(gamlssModel, newdata=newData, data=og.data, type= "response")
+  
+  #get dist type (e.g. GG, BCCG) and write out function
+  fname <- gamlssModel$family[1]
+  pfun <- paste0("p", fname)
+  
+  #look for moments
+  has_sigma <- "sigma" %in% gamlssModel[[2]]
+  has_nu <- "nu" %in% gamlssModel[[2]]
+  has_tau <- "tau" %in% gamlssModel[[2]]
+  
+  centiles <- c()
+  #iterate through participants
+  for (i in 1:nrow(predict_me)){
+    cent_args <- list(predict_me[[pheno]][[i]], predModel$mu[[i]])
+    
+    if (has_sigma){
+      cent_args$sigma <- predModel$sigma[[i]]
+    }
+    if (has_nu){
+      cent_args$nu <- predModel$nu[[i]]
+    } 
+    if (has_tau){
+      cent_args$tau <- predModel$tau[[i]]
+    } 
+    
+    centiles[i] <- do.call(pfun, cent_args)
+    
+    #don't let centile = 1 (for z-scores)!
+    if (centiles[i] == 1) {
+      centiles[i] <- 0.99999999999999994 #largest number i could get w/o rounding to 1 (trial & error)
+    }
+    #don't let centile = 0 (for z-scores)!
+    if (centiles[i] == 0) {
+      centiles[i] <- 0.0000000000000000000000001 #25 dec places
+    }
+    
+  }
+  if (get.std.scores == FALSE){
+    return(centiles)
+  } else {
+    #get 'z scores' from normed centiles - how z.score() does it
+    rqres <- qnorm(centiles)
+    
+    #return dataframe
+    df <- data.frame("centile" = centiles,
+                     "std_score" = rqres)
+    return(df)
+  } 
+  
+}
