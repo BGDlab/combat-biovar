@@ -63,7 +63,7 @@ cent.df <- df %>%
 #loop through centiles for each phenotype
 for (name in names(cent.list)){
   cent.df[[name]] <- unlist(cent.list[[name]][, "centile"])
-  cent.df[[paste0(name, ".z")]] <- unlist(cent.list[[name]] [,"z_score"])
+  cent.df[[paste0(name, ".z")]] <- unlist(cent.list[[name]] [,"std_score"])
 }
 
 #write out
